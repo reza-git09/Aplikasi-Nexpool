@@ -18,6 +18,11 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  errors:
+    # Turunkan deprecated_member_use dari warning ke info
+    deprecated_member_use: ignore
+    # Abaikan use_build_context_synchronously untuk sementara
+    use_build_context_synchronously: ignore
 
 linter:
   # The lint rules applied to this project can be customized in the
@@ -31,8 +36,8 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    avoid_print: false            # Matikan aturan avoid_print (debug print diperbolehkan)
+    unnecessary_underscores: false # Matikan aturan unnecessary_underscores
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

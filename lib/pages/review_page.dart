@@ -468,95 +468,78 @@ class _ReviewPageState extends State<ReviewPage> {
       // BOTTOM NAVIGATION
       // =======================================================
 
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: SizedBox(
-            height: 65,
-            child: Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceAround,
-              children: [
-                navItem(
-                  Icons.home,
-                  'Home',
-                  false,
-                  () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const HomePage(),
-                      ),
-                    );
-                  },
-                ),
-
-                navItem(
-                  Icons.pool,
-                  'Explore',
-                  false,
-                  () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const ExplorePage(),
-                      ),
-                    );
-                  },
-                ),
-
-                navItem(
-                  Icons.map,
-                  'Peta',
-                  false,
-                  () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const PetaPage(),
-                      ),
-                    );
-                  },
-                ),
-
-                navItem(
-                  Icons.confirmation_number,
-                  'Tiket',
-                  false,
-                  () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const TiketPage(),
-                      ),
-                    );
-                  },
-                ),
-
-                navItem(
-                  Icons.rate_review,
-                  'Ulasan',
-                  true,
-                  () {},
-                ),
-              ],
-            ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 4,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFFEF476F),
+        unselectedItemColor: Colors.grey.shade400,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
+        backgroundColor: Colors.white,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const HomePage(),
+              ),
+            );
+          }
+          if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ExplorePage(),
+              ),
+            );
+          }
+          if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PetaPage(),
+              ),
+            );
+          }
+          if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const TiketPage(),
+              ),
+            );
+          }
+          if (index == 4) {
+            return;
+          }
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
+            activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
+            label: 'Home',
           ),
-        ),
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
+            activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
+            label: 'Explore',
+          ),
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
+            activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
+            label: 'Peta',
+          ),
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
+            activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
+            label: 'Tiket',
+          ),
+          BottomNavigationBarItem(
+            icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
+            activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
+            label: 'Ulasan',
+          ),
+        ],
       ),
     );
   }
@@ -1447,46 +1430,18 @@ class _ReviewPageState extends State<ReviewPage> {
   // BOTTOM NAV ITEM
   // ===========================================================
 
-  Widget navItem(
-    IconData icon,
-    String label,
-    bool active,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior:
-          HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60,
-        child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 23,
-              color: active
-                  ? const Color(0xFF0077A8)
-                  : const Color(0xFF8BA3BA),
-            ),
-
-            const SizedBox(height: 3),
-
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: active
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                color: active
-                    ? const Color(0xFF0077A8)
-                    : const Color(0xFF8BA3BA),
-              ),
-            ),
-          ],
-        ),
+  Widget _navIcon(IconData icon, Color color, bool active) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: active ? color.withOpacity(0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: active ? color : Colors.grey.shade400,
       ),
     );
   }

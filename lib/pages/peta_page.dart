@@ -725,38 +725,34 @@ class _PetaPageState extends State<PetaPage> {
           }
         },
 
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
+            icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
+            activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
             label: 'Home',
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
+            icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
+            activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
             label: 'Explore',
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
+            icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
+            activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
             label: 'Peta',
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(
-              Icons.confirmation_number_outlined,
-            ),
-            activeIcon: Icon(
-              Icons.confirmation_number,
-            ),
+            icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
+            activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
             label: 'Tiket',
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.star_border),
-            activeIcon: Icon(Icons.star),
+            icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
+            activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
             label: 'Ulasan',
           ),
         ],
@@ -964,6 +960,22 @@ class _PetaPageState extends State<PetaPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _navIcon(IconData icon, Color color, bool active) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: active ? color.withOpacity(0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: active ? color : Colors.grey.shade400,
       ),
     );
   }

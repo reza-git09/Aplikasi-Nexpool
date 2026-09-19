@@ -3241,28 +3241,49 @@ class _TiketPageState extends State<TiketPage> {
           );
         }
       },
-      items: const [
+      items: [
         BottomNavigationBarItem(
-          icon: Text('🏠'),
+          icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
+          activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Text('🏊'),
+          icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
+          activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
           label: 'Explore',
         ),
         BottomNavigationBarItem(
-          icon: Text('🗺️'),
+          icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
+          activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
           label: 'Peta',
         ),
         BottomNavigationBarItem(
-          icon: Text('🎟️'),
+          icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
+          activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
           label: 'Tiket',
         ),
         BottomNavigationBarItem(
-          icon: Text('⭐'),
+          icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
+          activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
           label: 'Ulasan',
         ),
       ],
+    );
+  }
+
+  Widget _navIcon(IconData icon, Color color, bool active) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: active ? color.withOpacity(0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: active ? color : Colors.grey.shade400,
+      ),
     );
   }
 
