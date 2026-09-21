@@ -1,21 +1,43 @@
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
 import 'home_page.dart';
 import 'explore_page.dart';
 import 'peta_page.dart';
 import 'review_page.dart';
 
+const kBlue = Color(0xff00b4d8);
+const kDarkBlue = Color(0xff0077b6);
+const kAqua = Color(0xff00a0c0);
+const kSoft = Color(0xffe8f9fc);
+const kGreen = Color(0xff06d6a0);
+const kGold = Color(0xffffd166);
+const kPurple = Color(0xff6c52d9);
+const kPurpleSoft = Color(0xffeeeaff);
+const kYellowSoft = Color(0xfffff8df);
+const kGradient = LinearGradient(colors: [kDarkBlue, kBlue]);
+const kDayShort = ['SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB', 'MIN'];
+
 class TiketPage extends StatefulWidget {
-  const TiketPage({super.key});
+  /// Pool yang dipilih.
+  ///
+  /// Default:
+  /// pool_id_01 = Tiara Park
+  const TiketPage({
+    super.key,
+    this.poolId = 'pool_id_01',
+    this.poolName = 'Tiara Park',
+  });
+
+  final String poolId;
+  final String poolName;
 
   @override
   State<TiketPage> createState() => _TiketPageState();
 }
 
 class _TiketPageState extends State<TiketPage> {
-  // ============================================================
-  // STATE
-  // ============================================================
+  // ============================ STATE ============================
 
   int currentStep = 1;
   int selectedTab = 0;
@@ -41,7 +63,12 @@ class _TiketPageState extends State<TiketPage> {
   String ticketId = '';
   String paymentTime = '';
 
-  // Data tiket simulasi
+  int weekdayPrice = 0;
+  int weekendPrice = 0;
+
+  bool isPriceLoading = true;
+  String priceError = '';
+
   List<Map<String, dynamic>> myTickets = [
     {
       'id': 'TWS-202600001',
@@ -65,145 +92,228 @@ class _TiketPageState extends State<TiketPage> {
     },
   ];
 
-  final TextEditingController namaController = TextEditingController();
-  final TextEditingController teleponController = TextEditingController();
-  final TextEditingController alamatController = TextEditingController();
-  final TextEditingController keteranganController = TextEditingController();
+  final namaController = TextEditingController();
+  final teleponController = TextEditingController();
+  final alamatController = TextEditingController();
+  final keteranganController = TextEditingController();
 
-  // ============================================================
-  // PRICE
-  // ============================================================
+  @override
+  void initState() {
+    super.initState();
 
-  int get adultPrice {
-    return isWeekend ? 20000 : 15000;
+    debugPrint('====================================');
+    debugPrint('TIKET PAGE INIT');
+    debugPrint('Pool ID   : ${widget.poolId}');
+    debugPrint('Pool Name : ${widget.poolName}');
+    debugPrint('====================================');
+
+    loadHargaTiket();
   }
+
+  @override
+  void dispose() {
+    namaController.dispose();
+    teleponController.dispose();
+    alamatController.dispose();
+    keteranganController.dispose();
+    super.dispose();
+  }
+
+  // ======================= LOAD HARGA API ========================
+
+  Future<void> loadHargaTiket() async {
+    try {
+      if (mounted) {
+        setState(() {
+          isPriceLoading = true;
+          priceError = '';
+        });
+      }
+
+      debugPrint('====================================');
+      debugPrint('MENGAMBIL HARGA TIKET DARI API');
+      debugPrint('API: ${ApiService.baseUrl}/harga-tiket');
+      debugPrint('Pool ID yang dipilih: ${widget.poolId}');
+      debugPrint('====================================');
+
+      final data = await ApiService.getHargaTiket();
+
+      debugPrint('=== DATA HARGA TIKET API ===');
+      debugPrint('$data');
+      debugPrint('Jumlah data harga: ${data.length}');
+      debugPrint('====================================');
+
+      int weekday = 0;
+      int weekend = 0;
+
+      for (final item in data) {
+        final poolId = item['pool_id']?.toString() ?? '';
+        final kategori = item['kategori']?.toString().toLowerCase() ?? '';
+        final jenisHari =
+            item['jenis_hari']?.toString().toLowerCase() ?? '';
+
+        final hargaString = item['harga']?.toString() ?? '0';
+
+        final harga = double.tryParse(hargaString)?.round() ?? 0;
+
+        debugPrint(
+          'Pool: $poolId | '
+          'Kategori: ${item['kategori']} | '
+          'Hari: ${item['jenis_hari']} | '
+          'Harga: Rp$harga',
+        );
+
+        // Hanya ambil harga untuk pool yang sedang dipilih.
+        if (poolId != widget.poolId) {
+          continue;
+        }
+
+        // Saat ini halaman tiket menggunakan harga Dewasa.
+        if (kategori != 'dewasa') {
+          continue;
+        }
+
+        if (jenisHari == 'weekday') {
+          weekday = harga;
+        }
+
+        if (jenisHari == 'weekend') {
+          weekend = harga;
+        }
+      }
+
+      debugPrint('====================================');
+      debugPrint('HASIL FILTER HARGA');
+      debugPrint('Pool      : ${widget.poolName}');
+      debugPrint('Pool ID   : ${widget.poolId}');
+      debugPrint('Weekday   : Rp$weekday');
+      debugPrint('Weekend   : Rp$weekend');
+      debugPrint('====================================');
+
+      if (!mounted) return;
+
+      setState(() {
+        weekdayPrice = weekday;
+        weekendPrice = weekend;
+        isPriceLoading = false;
+
+        if (weekday == 0 && weekend == 0) {
+          priceError =
+              'Harga tiket untuk ${widget.poolName} belum tersedia.';
+        } else {
+          priceError = '';
+        }
+      });
+    } catch (e) {
+      debugPrint('====================================');
+      debugPrint('❌ GAGAL MENGAMBIL HARGA TIKET');
+      debugPrint('$e');
+      debugPrint('====================================');
+
+      if (!mounted) return;
+
+      setState(() {
+        isPriceLoading = false;
+        priceError = 'Gagal mengambil harga tiket dari server.';
+      });
+    }
+  }
+
+  // ===================== PRICE & FORMATTER =======================
+
+  int get adultPrice => isWeekend ? weekendPrice : weekdayPrice;
 
   int get adminFee => 2000;
 
-  int get totalPrice {
-    return (qtyAdult * adultPrice) + adminFee;
-  }
-
-  // ============================================================
-  // FORMAT
-  // ============================================================
+  int get totalPrice => (qtyAdult * adultPrice) + adminFee;
 
   String rupiah(int value) {
     return 'Rp${value.toString().replaceAllMapped(
           RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (match) => '${match.group(1)}.',
+          (m) => '${m.group(1)}.',
         )}';
   }
 
-  String formatDate(DateTime date) {
-    const days = [
-      'Minggu',
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu'
-    ];
+  static const _days = [
+    'Minggu',
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+  ];
 
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember'
-    ];
+  static const _months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
 
-    return '${days[date.weekday % 7]}, '
-        '${date.day} ${months[date.month - 1]} ${date.year}';
+  String formatDate(DateTime d) {
+    return '${_days[d.weekday % 7]}, '
+        '${d.day} ${_months[d.month - 1]} ${d.year}';
   }
 
-  String formatShortDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des'
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  String formatShortDate(DateTime d) {
+    return '${d.day} ${_months[d.month - 1].substring(0, 3)} ${d.year}';
   }
 
-  // ============================================================
-  // DATE LIST
-  // ============================================================
+  bool isWeekendDate(DateTime d) {
+    return d.weekday == DateTime.saturday ||
+        d.weekday == DateTime.sunday;
+  }
 
-  List<DateTime> get dates {
-    final today = DateTime.now();
+  bool sameDay(DateTime? a, DateTime b) {
+    return a != null &&
+        a.year == b.year &&
+        a.month == b.month &&
+        a.day == b.day;
+  }
+
+  List<DateTime> datesFrom(int count, {int offset = 0}) {
+    final t = DateTime.now();
 
     return List.generate(
-      30,
-      (index) => DateTime(
-        today.year,
-        today.month,
-        today.day + index,
+      count,
+      (i) => DateTime(
+        t.year,
+        t.month,
+        t.day + i + offset,
       ),
     );
   }
 
-  // ============================================================
-  // SELECT DATE
-  // ============================================================
+  List<DateTime> get dates => datesFrom(30);
+
+  // ========================== ACTIONS ============================
 
   void selectDate(DateTime date) {
     setState(() {
       selectedDate = date;
       selectedDateLabel = formatDate(date);
-      isWeekend =
-          date.weekday == DateTime.saturday ||
-          date.weekday == DateTime.sunday;
+      isWeekend = isWeekendDate(date);
     });
   }
-
-  // ============================================================
-  // STEP
-  // ============================================================
 
   void goStep(int step) {
     setState(() {
       currentStep = step;
     });
 
-    if (step == 2) {
-      // nothing
-    }
-
-    if (step == 3) {
-      // nothing
-    }
-
-    if (step == 4) {
-      // nothing
-    }
-
     if (step == 5) {
       generateReceipt();
     }
   }
-
-  // ============================================================
-  // VALIDATE DATA
-  // ============================================================
 
   bool validateData() {
     if (namaController.text.trim().isEmpty) {
@@ -230,406 +340,213 @@ class _TiketPageState extends State<TiketPage> {
     return true;
   }
 
-  // ============================================================
-  // PAYMENT
-  // ============================================================
+  String get _newTicketId {
+    return 'TWS-${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}';
+  }
 
   void processPayment() {
-    ticketId =
-        'TWS-${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}';
+    if (adultPrice <= 0) {
+      showMessage(
+        'Harga tiket untuk ${isWeekend ? 'Weekend' : 'Weekday'} belum tersedia.',
+      );
+      return;
+    }
 
-    final now = DateTime.now();
+    ticketId = _newTicketId;
 
-    paymentTime =
-        '${now.day}/${now.month}/${now.year} '
-        '${now.hour.toString().padLeft(2, '0')}:'
-        '${now.minute.toString().padLeft(2, '0')} WIB';
+    final n = DateTime.now();
+
+    paymentTime = '${n.day}/${n.month}/${n.year} '
+        '${n.hour.toString().padLeft(2, '0')}:'
+        '${n.minute.toString().padLeft(2, '0')} WIB';
 
     goStep(5);
   }
 
   void generateReceipt() {
     if (ticketId.isEmpty) {
-      ticketId =
-          'TWS-${DateTime.now().millisecondsSinceEpoch.toString().substring(4)}';
+      ticketId = _newTicketId;
     }
   }
 
-  // ============================================================
-  // RESCHEDULE
-  // ============================================================
-
-  void openReschedule(int index) {
-    final ticket = myTickets[index];
-
-    DateTime? newDate;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final availableDates = List.generate(
-              29,
-              (i) {
-                final today = DateTime.now();
-                return DateTime(
-                  today.year,
-                  today.month,
-                  today.day + i + 1,
-                );
-              },
-            );
-
-            int newPrice = 15000;
-
-            if (newDate != null &&
-                (newDate!.weekday == DateTime.saturday ||
-                    newDate!.weekday == DateTime.sunday)) {
-              newPrice = 20000;
-            }
-
-            final currentPrice = 15000 * 2 + 2000;
-            final newTotal = newPrice * 2 + 2000;
-            final diff = newTotal - currentPrice;
-
-            return Container(
-              height: MediaQuery.of(context).size.height * .85,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '🔄 Reschedule Tiket',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-
-                      const Text(
-                        'Ubah tanggal kunjungan Anda',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // INFO TIKET
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: const Color(0xffe8f9fc),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: const Color(0xff00b4d8)
-                                .withOpacity(.25),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '🎟️ INFO TIKET',
-                              style: TextStyle(
-                                color: Color(0xff00a0c0),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            infoRow(
-                              'No. Tiket',
-                              ticket['id'].toString(),
-                            ),
-                            infoRow(
-                              'Tanggal Saat Ini',
-                              ticket['date'].toString(),
-                            ),
-                            infoRow(
-                              'Kategori',
-                              ticket['qty'].toString(),
-                            ),
-                            infoRow(
-                              'Total Terbayar',
-                              rupiah(ticket['total'] as int),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // RULES
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xfffff8df),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xffffd166)
-                                .withOpacity(.5),
-                          ),
-                        ),
-                        child: const Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '📜 Ketentuan Reschedule',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xff9a6c00),
-                              ),
-                            ),
-                            SizedBox(height: 7),
-                            Text(
-                              '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
-                              '• Maksimal H-1 dari tanggal kunjungan.\n'
-                              '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
-                              '• Tanggal baru harus memiliki kuota.\n'
-                              '• Jika harga lebih mahal, bayar selisih.\n'
-                              '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
-                              '• Sistem mencatat riwayat reschedule.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      const Text(
-                        '📅 Pilih Tanggal Baru',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      SizedBox(
-                        height: 85,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: availableDates.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final date = availableDates[i];
-
-                            final weekend =
-                                date.weekday ==
-                                        DateTime.saturday ||
-                                    date.weekday ==
-                                        DateTime.sunday;
-
-                            final selected =
-                                newDate != null &&
-                                    newDate!.year == date.year &&
-                                    newDate!.month == date.month &&
-                                    newDate!.day == date.day;
-
-                            return GestureDetector(
-                              onTap: () {
-                                setModalState(() {
-                                  newDate = date;
-                                });
-                              },
-                              child: Container(
-                                width: 58,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? const Color(0xff00b4d8)
-                                      : Colors.white,
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: selected
-                                        ? const Color(0xff00b4d8)
-                                        : Colors.grey.shade300,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      ['SEN', 'SEL', 'RAB', 'KAM',
-                                              'JUM', 'SAB', 'MIN']
-                                          [date.weekday - 1],
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: selected
-                                            ? Colors.white
-                                            : weekend
-                                                ? Colors.red
-                                                : Colors.grey,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '${date.day}',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
-                                        color: selected
-                                            ? Colors.white
-                                            : Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      if (newDate != null) ...[
-                        const SizedBox(height: 10),
-
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xffe8fff8),
-                            borderRadius:
-                                BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '📅 ${formatDate(newDate!)}\n'
-                            '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
-                            style: const TextStyle(
-                              color: Color(0xff087f65),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const Spacer(),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () =>
-                                  Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: const Text('Batal'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              onPressed: newDate == null
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        myTickets[index]['date'] =
-                                            formatShortDate(
-                                                newDate!);
-                                        myTickets[index]
-                                                ['reschedule'] =
-                                            (myTickets[index]
-                                                        ['reschedule']
-                                                    as int) +
-                                                1;
-                                      });
-
-                                      Navigator.pop(context);
-
-                                      showMessage(
-                                        'Reschedule berhasil ke ${formatShortDate(newDate!)}',
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xff00b4d8),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: const Text(
-                                '✅ Konfirmasi Reschedule',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
-  // ============================================================
-  // HELPER
-  // ============================================================
+  // ====================== SHARED WIDGETS =========================
+
+  Widget infoBox({
+    required Widget child,
+    Color color = kSoft,
+    double radius = 12,
+    double pad = 12,
+    Color? border,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(pad),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
+        border: border == null
+            ? null
+            : Border.all(color: border),
+      ),
+      child: child,
+    );
+  }
+
+  Widget pad20(
+    Widget child, {
+    double top = 0,
+    double bottom = 0,
+  }) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, top, 20, bottom),
+      child: child,
+    );
+  }
+
+  Widget sectionTitle(String title) {
+    return pad20(
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      top: 16,
+      bottom: 10,
+    );
+  }
+
+  ButtonStyle get primaryStyle {
+    return ElevatedButton.styleFrom(
+      backgroundColor: kBlue,
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: Colors.grey.shade300,
+      padding: const EdgeInsets.symmetric(vertical: 15),
+    );
+  }
+
+  Widget dateChip(
+    DateTime date,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    final weekend = isWeekendDate(date);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 58,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? kBlue : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? kBlue
+                : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              kDayShort[date.weekday - 1],
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? Colors.white
+                    : weekend
+                        ? Colors.red
+                        : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: selected
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget dateStrip({
+    required List<DateTime> list,
+    required DateTime? active,
+    required ValueChanged<DateTime> onPick,
+    double height = 92,
+    EdgeInsets padding = EdgeInsets.zero,
+  }) {
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        padding: padding,
+        scrollDirection: Axis.horizontal,
+        itemCount: list.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          return dateChip(
+            list[i],
+            sameDay(active, list[i]),
+            () => onPick(list[i]),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget navButtons(
+    int backStep,
+    String label,
+    VoidCallback? onNext,
+  ) {
+    return pad20(
+      Row(
+        children: [
+          OutlinedButton(
+            onPressed: () => goStep(backStep),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 15,
+              ),
+            ),
+            child: const Text('← Kembali'),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: onNext,
+              style: primaryStyle,
+              child: Text(label),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget infoRow(String label, String value) {
     return Padding(
@@ -657,18 +574,27 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  void showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
+  Widget recapDate() {
+    return pad20(
+      infoBox(
+        pad: 11,
+        child: Text(
+          selectedDate == null
+              ? '📅 —'
+              : '📅 $selectedDateLabel — '
+                  '${isWeekend ? 'Weekend' : 'Weekday'}',
+          style: const TextStyle(
+            color: kAqua,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
       ),
+      top: 12,
     );
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
+  // =========================== BUILD =============================
 
   @override
   Widget build(BuildContext context) {
@@ -677,7 +603,6 @@ class _TiketPageState extends State<TiketPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(
@@ -687,19 +612,12 @@ class _TiketPageState extends State<TiketPage> {
                 22,
               ),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xff0077b6),
-                    Color(0xff00b4d8),
-                  ],
-                ),
+                gradient: kGradient,
               ),
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
+                    onTap: () => Navigator.pop(context),
                     child: Container(
                       width: 40,
                       height: 40,
@@ -713,15 +631,13 @@ class _TiketPageState extends State<TiketPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment:
                           CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Reservasi Tiket 🎟️',
                           style: TextStyle(
                             color: Colors.white,
@@ -729,10 +645,10 @@ class _TiketPageState extends State<TiketPage> {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'Pesan tiket masuk Tiaraswim secara online',
-                          style: TextStyle(
+                          'Pesan tiket ${widget.poolName} secara online',
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                           ),
@@ -743,8 +659,6 @@ class _TiketPageState extends State<TiketPage> {
                 ],
               ),
             ),
-
-            // CONTENT
             Expanded(
               child: selectedTab == 0
                   ? buildBuyTicket()
@@ -753,43 +667,70 @@ class _TiketPageState extends State<TiketPage> {
           ],
         ),
       ),
-
-      // BOTTOM NAV
       bottomNavigationBar: buildBottomNavigation(),
     );
   }
 
-  // ============================================================
-  // TAB BELI TIKET
-  // ============================================================
-
   Widget buildBuyTicket() {
+    final steps = <int, Widget Function()>{
+      1: buildStep1,
+      2: buildStep2,
+      3: buildStep3,
+      4: buildStep4,
+      5: buildStep5,
+    };
+
     return SingleChildScrollView(
       child: Column(
         children: [
           buildTabs(),
-
           const SizedBox(height: 8),
-
           buildStepIndicator(),
-
-          if (currentStep == 1) buildStep1(),
-          if (currentStep == 2) buildStep2(),
-          if (currentStep == 3) buildStep3(),
-          if (currentStep == 4) buildStep4(),
-          if (currentStep == 5) buildStep5(),
-
+          steps[currentStep]!(),
           const SizedBox(height: 25),
         ],
       ),
     );
   }
 
-  // ============================================================
-  // TAB
-  // ============================================================
+  // ============================ TABS =============================
 
   Widget buildTabs() {
+    Widget tab(
+      int index,
+      String label,
+    ) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedTab = index;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration: BoxDecoration(
+              gradient: selectedTab == index
+                  ? kGradient
+                  : null,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selectedTab == index
+                    ? Colors.white
+                    : Colors.grey,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.all(4),
@@ -806,92 +747,18 @@ class _TiketPageState extends State<TiketPage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedTab = 0;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 11,
-                ),
-                decoration: BoxDecoration(
-                  gradient: selectedTab == 0
-                      ? const LinearGradient(
-                          colors: [
-                            Color(0xff0077b6),
-                            Color(0xff00b4d8),
-                          ],
-                        )
-                      : null,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '🎫 Beli Tiket',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selectedTab == 0
-                        ? Colors.white
-                        : Colors.grey,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
+          tab(0, '🎫 Beli Tiket'),
           const SizedBox(width: 4),
-
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedTab = 1;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 11,
-                ),
-                decoration: BoxDecoration(
-                  gradient: selectedTab == 1
-                      ? const LinearGradient(
-                          colors: [
-                            Color(0xff0077b6),
-                            Color(0xff00b4d8),
-                          ],
-                        )
-                      : null,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '📋 Tiket Saya',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selectedTab == 1
-                        ? Colors.white
-                        : Colors.grey,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          tab(1, '📋 Tiket Saya'),
         ],
       ),
     );
   }
 
-  // ============================================================
-  // STEP INDICATOR
-  // ============================================================
+  // ======================= STEP INDICATOR ========================
 
   Widget buildStepIndicator() {
-    final labels = [
+    const labels = [
       'Tanggal',
       'Data Diri',
       'Tiket',
@@ -902,237 +769,174 @@ class _TiketPageState extends State<TiketPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 18, 12, 8),
       child: Row(
-        children: List.generate(
-          5,
-          (index) {
-            final step = index + 1;
-            final done = currentStep > step;
-            final active = currentStep == step;
+        children: List.generate(5, (index) {
+          final step = index + 1;
+          final done = currentStep > step;
+          final active = currentStep == step;
 
-            return Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: done
-                                ? const Color(0xff06d6a0)
-                                : active
-                                    ? const Color(0xff00b4d8)
-                                    : Colors.grey.shade300,
-                            boxShadow: active
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xff00b4d8,
-                                      ).withOpacity(.25),
-                                      blurRadius: 0,
-                                      spreadRadius: 4,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              done ? '✓' : '$step',
-                              style: TextStyle(
-                                color: active || done
-                                    ? Colors.white
-                                    : Colors.grey,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
+          return Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: done
+                              ? kGreen
+                              : active
+                                  ? kBlue
+                                  : Colors.grey.shade300,
+                        ),
+                        child: Center(
+                          child: Text(
+                            done ? '✓' : '$step',
+                            style: TextStyle(
+                              color: active || done
+                                  ? Colors.white
+                                  : Colors.grey,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          labels[index],
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: active
-                                ? const Color(0xff00a0c0)
-                                : done
-                                    ? const Color(0xff06a77d)
-                                    : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  if (index < 4)
-                    Container(
-                      width: 15,
-                      height: 2,
-                      margin: const EdgeInsets.only(
-                        bottom: 17,
                       ),
-                      color: currentStep > step
-                          ? const Color(0xff00b4d8)
-                          : Colors.grey.shade300,
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // STEP 1
-  // ============================================================
-
-  Widget buildStep1() {
-    return Column(
-      children: [
-        sectionTitle('📅 Pilih Tanggal Kunjungan'),
-
-        SizedBox(
-          height: 92,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-            ),
-            scrollDirection: Axis.horizontal,
-            itemCount: dates.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final date = dates[index];
-
-              final weekend =
-                  date.weekday == DateTime.saturday ||
-                      date.weekday == DateTime.sunday;
-
-              final selected =
-                  selectedDate != null &&
-                      selectedDate!.year == date.year &&
-                      selectedDate!.month == date.month &&
-                      selectedDate!.day == date.day;
-
-              return GestureDetector(
-                onTap: () => selectDate(date),
-                child: Container(
-                  width: 58,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xff00b4d8)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: selected
-                          ? const Color(0xff00b4d8)
-                          : Colors.grey.shade300,
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.04),
-                        blurRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
-                    children: [
+                      const SizedBox(height: 5),
                       Text(
-                        [
-                          'SEN',
-                          'SEL',
-                          'RAB',
-                          'KAM',
-                          'JUM',
-                          'SAB',
-                          'MIN'
-                        ][date.weekday - 1],
+                        labels[index],
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w600,
-                          color: selected
-                              ? Colors.white
-                              : weekend
-                                  ? Colors.red
+                          color: active
+                              ? kAqua
+                              : done
+                                  ? const Color(0xff06a77d)
                                   : Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: selected
-                              ? Colors.white
-                              : Colors.black87,
                         ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+                if (index < 4)
+                  Container(
+                    width: 15,
+                    height: 2,
+                    margin: const EdgeInsets.only(
+                      bottom: 17,
+                    ),
+                    color: currentStep > step
+                        ? kBlue
+                        : Colors.grey.shade300,
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ============================ STEP 1 ===========================
+
+  Widget buildStep1() {
+    return Column(
+      children: [
+        sectionTitle('📍 Kolam Renang'),
+
+        pad20(
+          infoBox(
+            color: Colors.white,
+            radius: 16,
+            pad: 15,
+            border: Colors.grey.shade200,
+            child: Row(
+              children: [
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: kSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.pool_rounded,
+                    color: kAqua,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.poolName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Pool ID: ${widget.poolId}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.verified_rounded,
+                  color: kGreen,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+          bottom: 4,
+        ),
+
+        sectionTitle('📅 Pilih Tanggal Kunjungan'),
+
+        dateStrip(
+          list: dates,
+          active: selectedDate,
+          onPick: selectDate,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
           ),
         ),
 
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            8,
-            20,
-            15,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xffe8f9fc),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        pad20(
+          infoBox(
             child: Text(
               selectedDate == null
                   ? '📅 Pilih tanggal di atas'
-                  : '📅 $selectedDateLabel — ${isWeekend ? 'Weekend' : 'Weekday'}',
+                  : '📅 $selectedDateLabel — '
+                      '${isWeekend ? 'Weekend' : 'Weekday'}',
               style: const TextStyle(
-                color: Color(0xff00a0c0),
+                color: kAqua,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
+          top: 8,
+          bottom: 15,
         ),
 
-        // KUOTA
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.05),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
+        pad20(
+          infoBox(
+            color: Colors.white,
+            radius: 16,
+            pad: 16,
             child: Column(
               crossAxisAlignment:
                   CrossAxisAlignment.start,
@@ -1151,13 +955,13 @@ class _TiketPageState extends State<TiketPage> {
                     quotaBox(
                       '320',
                       'Kuota Tersisa',
-                      const Color(0xff06d6a0),
+                      kGreen,
                     ),
                     const SizedBox(width: 10),
                     quotaBox(
                       '500',
                       'Total Kuota',
-                      const Color(0xff00b4d8),
+                      kBlue,
                     ),
                     const SizedBox(width: 10),
                     quotaBox(
@@ -1174,28 +978,22 @@ class _TiketPageState extends State<TiketPage> {
 
         const SizedBox(height: 18),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: SizedBox(
+        pad20(
+          SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: selectedDate == null
                   ? null
                   : () => goStep(2),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xff00b4d8),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    Colors.grey.shade300,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
+              style: primaryStyle.copyWith(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 16),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(14),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(14),
+                  ),
                 ),
               ),
               child: const Text(
@@ -1252,9 +1050,7 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // STEP 2 DATA DIRI
-  // ============================================================
+  // ============================ STEP 2 ===========================
 
   Widget buildStep2() {
     return Column(
@@ -1263,19 +1059,12 @@ class _TiketPageState extends State<TiketPage> {
 
         sectionTitle('👤 Data Diri Pemesan'),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey.shade200,
-              ),
-            ),
+        pad20(
+          infoBox(
+            color: Colors.white,
+            radius: 20,
+            pad: 18,
+            border: Colors.grey.shade200,
             child: Column(
               children: [
                 buildTextField(
@@ -1284,9 +1073,7 @@ class _TiketPageState extends State<TiketPage> {
                   hint: 'Masukkan nama lengkap',
                   icon: Icons.person_outline,
                 ),
-
                 const SizedBox(height: 14),
-
                 buildTextField(
                   controller: teleponController,
                   label: 'No. Telepon',
@@ -1294,9 +1081,7 @@ class _TiketPageState extends State<TiketPage> {
                   prefix: '+62',
                   keyboardType: TextInputType.phone,
                 ),
-
                 const SizedBox(height: 14),
-
                 buildTextField(
                   controller: alamatController,
                   label: 'Alamat',
@@ -1310,22 +1095,12 @@ class _TiketPageState extends State<TiketPage> {
           ),
         ),
 
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            10,
-            20,
-            0,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xffe8f9fc),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        pad20(
+          infoBox(
             child: const Text(
-              '🔒 Data diri Anda hanya digunakan untuk keperluan reservasi tiket dan tidak akan dibagikan kepada pihak ketiga.',
+              '🔒 Data diri Anda hanya digunakan untuk keperluan '
+              'reservasi tiket dan tidak akan dibagikan kepada '
+              'pihak ketiga.',
               style: TextStyle(
                 fontSize: 11,
                 color: Colors.grey,
@@ -1333,75 +1108,122 @@ class _TiketPageState extends State<TiketPage> {
               ),
             ),
           ),
+          top: 10,
         ),
 
         const SizedBox(height: 16),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: () => goStep(1),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 15,
-                  ),
-                ),
-                child: const Text('← Kembali'),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (validateData()) {
-                      goStep(3);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xff00b4d8),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                    ),
-                  ),
-                  child: const Text(
-                    'Lanjut Pilih Tiket →',
-                  ),
-                ),
-              ),
-            ],
-          ),
+        navButtons(
+          1,
+          'Lanjut Pilih Tiket →',
+          () {
+            if (validateData()) {
+              goStep(3);
+            }
+          },
         ),
       ],
     );
   }
 
-  // ============================================================
-  // STEP 3
-  // ============================================================
+  // ============================ STEP 3 ===========================
 
   Widget buildStep3() {
+    final hargaTersedia = adultPrice > 0;
+
     return Column(
       children: [
         recapDate(),
 
         sectionTitle('🎫 Kategori Tiket'),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
+        if (isPriceLoading)
+          pad20(
+            const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Mengambil harga tiket dari server...',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            top: 8,
+            bottom: 8,
           ),
-          child: Row(
+
+        if (!isPriceLoading && priceError.isNotEmpty)
+          pad20(
+            infoBox(
+              color: Colors.red.shade50,
+              radius: 10,
+              pad: 10,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red.shade700,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      priceError,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            top: 8,
+            bottom: 8,
+          ),
+
+        if (!isPriceLoading &&
+            priceError.isEmpty &&
+            !hargaTersedia)
+          pad20(
+            infoBox(
+              color: Colors.orange.shade50,
+              radius: 10,
+              pad: 10,
+              child: const Text(
+                '⚠️ Harga tiket untuk tanggal yang dipilih '
+                'belum tersedia di server.',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xff9a6c00),
+                ),
+              ),
+            ),
+            top: 8,
+            bottom: 8,
+          ),
+
+        pad20(
+          Row(
             children: [
               categoryCard(
                 '🏊',
                 'Dewasa',
-                rupiah(adultPrice),
+                isPriceLoading
+                    ? 'Memuat...'
+                    : adultPrice > 0
+                        ? rupiah(adultPrice)
+                        : 'Belum tersedia',
                 'Tinggi > 100cm',
                 category == 'dewasa',
                 () {
@@ -1427,28 +1249,22 @@ class _TiketPageState extends State<TiketPage> {
           ),
         ),
 
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            10,
-            20,
-            0,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xfffff8df),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text(
-              '⚠️ Harga weekday & weekend berbeda. Anak ≤ 100cm gratis.',
-              style: TextStyle(
+        pad20(
+          infoBox(
+            color: kYellowSoft,
+            radius: 10,
+            pad: 10,
+            child: Text(
+              '⚠️ Harga ${isWeekend ? 'weekend' : 'weekday'} '
+              'untuk ${widget.poolName} mengikuti data server. '
+              'Anak ≤100cm gratis.',
+              style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xff7a5800),
               ),
             ),
           ),
+          top: 10,
         ),
 
         sectionTitle('👥 Jumlah Tiket'),
@@ -1457,10 +1273,10 @@ class _TiketPageState extends State<TiketPage> {
           'Dewasa',
           'Tinggi > 100cm',
           qtyAdult,
-          (value) {
+          (v) {
             setState(() {
               qtyAdult =
-                  (qtyAdult + value).clamp(0, 20);
+                  (qtyAdult + v).clamp(0, 20);
             });
           },
         ),
@@ -1469,48 +1285,32 @@ class _TiketPageState extends State<TiketPage> {
           'Anak-anak',
           'Tinggi ≤ 100cm (Gratis)',
           qtyChild,
-          (value) {
+          (v) {
             setState(() {
               qtyChild =
-                  (qtyChild + value).clamp(0, 20);
+                  (qtyChild + v).clamp(0, 20);
             });
           },
         ),
 
-        sectionTitle(
-          '📝 Keterangan Tiket (Opsional)',
-        ),
+        sectionTitle('📝 Keterangan Tiket (Opsional)'),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: TextField(
+        pad20(
+          TextField(
             controller: keteranganController,
             maxLength: 200,
             maxLines: 4,
-            onChanged: (value) {
-              keterangan = value;
+            onChanged: (v) {
+              keterangan = v;
             },
             decoration: InputDecoration(
               hintText:
-                  'Contoh: Kunjungan ulang tahun, grup keluarga, atau catatan khusus...',
+                  'Contoh: Kunjungan ulang tahun, grup keluarga, '
+                  'atau catatan khusus...',
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: Colors.grey.shade300,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: Colors.grey.shade300,
-                ),
-              ),
+              border: fieldBorder(),
+              enabledBorder: fieldBorder(),
             ),
           ),
         ),
@@ -1519,44 +1319,15 @@ class _TiketPageState extends State<TiketPage> {
 
         buildSummary(),
 
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            0,
-          ),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: () => goStep(2),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 15,
-                  ),
-                ),
-                child: const Text('← Kembali'),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => goStep(4),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xff00b4d8),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                    ),
-                  ),
-                  child: const Text(
-                    'Lanjut Pembayaran →',
-                  ),
-                ),
-              ),
-            ],
-          ),
+        navButtons(
+          2,
+          'Lanjut Pembayaran →',
+          isPriceLoading ||
+                  priceError.isNotEmpty ||
+                  adultPrice <= 0 ||
+                  qtyAdult <= 0
+              ? null
+              : () => goStep(4),
         ),
       ],
     );
@@ -1576,13 +1347,11 @@ class _TiketPageState extends State<TiketPage> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xffe8f9fc)
-                : Colors.white,
+            color: selected ? kSoft : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected
-                  ? const Color(0xff00b4d8)
+                  ? kBlue
                   : Colors.grey.shade300,
               width: 2,
             ),
@@ -1591,9 +1360,7 @@ class _TiketPageState extends State<TiketPage> {
             children: [
               Text(
                 icon,
-                style: const TextStyle(
-                  fontSize: 27,
-                ),
+                style: const TextStyle(fontSize: 27),
               ),
               const SizedBox(height: 5),
               Text(
@@ -1606,9 +1373,10 @@ class _TiketPageState extends State<TiketPage> {
               const SizedBox(height: 3),
               Text(
                 price,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
-                  color: Color(0xff00a0c0),
+                  color: kAqua,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1630,27 +1398,13 @@ class _TiketPageState extends State<TiketPage> {
     String title,
     String subtitle,
     int value,
-    Function(int) onChange,
+    ValueChanged<int> onChange,
   ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        10,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.04),
-              blurRadius: 7,
-            ),
-          ],
-        ),
+    return pad20(
+      infoBox(
+        color: Colors.white,
+        radius: 14,
+        pad: 14,
         child: Row(
           children: [
             Expanded(
@@ -1676,32 +1430,29 @@ class _TiketPageState extends State<TiketPage> {
                 ],
               ),
             ),
-            Row(
-              children: [
-                quantityButton(
-                  '−',
-                  () => onChange(-1),
+            quantityButton(
+              '−',
+              () => onChange(-1),
+            ),
+            SizedBox(
+              width: 38,
+              child: Text(
+                '$value',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
-                SizedBox(
-                  width: 38,
-                  child: Text(
-                    '$value',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                quantityButton(
-                  '+',
-                  () => onChange(1),
-                ),
-              ],
+              ),
+            ),
+            quantityButton(
+              '+',
+              () => onChange(1),
             ),
           ],
         ),
       ),
+      bottom: 10,
     );
   }
 
@@ -1726,7 +1477,7 @@ class _TiketPageState extends State<TiketPage> {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xff00a0c0),
+              color: kAqua,
             ),
           ),
         ),
@@ -1734,27 +1485,18 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // SUMMARY
-  // ============================================================
+  // =========================== SUMMARY ===========================
 
   Widget buildSummary() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 16,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Container(
         margin: const EdgeInsets.symmetric(
           horizontal: 20,
         ),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xff0077b6),
-              Color(0xff00b4d8),
-            ],
-          ),
+          gradient: kGradient,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -1770,7 +1512,6 @@ class _TiketPageState extends State<TiketPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
 
             summaryRow(
@@ -1783,6 +1524,11 @@ class _TiketPageState extends State<TiketPage> {
                 'Tiket Anak × $qtyChild',
                 'Gratis',
               ),
+
+            summaryRow(
+              'Kolam',
+              widget.poolName,
+            ),
 
             summaryRow(
               'Tanggal',
@@ -1824,21 +1570,23 @@ class _TiketPageState extends State<TiketPage> {
         mainAxisAlignment:
             MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: total ? 14 : 12,
-              fontWeight:
-                  total ? FontWeight.w700 : null,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: total ? 14 : 12,
+                fontWeight:
+                    total ? FontWeight.w700 : null,
+              ),
             ),
           ),
+          const SizedBox(width: 10),
           Text(
             value,
+            textAlign: TextAlign.right,
             style: TextStyle(
-              color: total
-                  ? const Color(0xffffd166)
-                  : Colors.white,
+              color: total ? kGold : Colors.white,
               fontSize: total ? 20 : 12,
               fontWeight: FontWeight.w800,
             ),
@@ -1848,36 +1596,30 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // STEP 4 PAYMENT
-  // ============================================================
+  // ============================ STEP 4 ===========================
 
   Widget buildStep4() {
+    final isBank = payMethod == 'bank';
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            0,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: const Color(0xffe8f9fc),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        pad20(
+          infoBox(
+            pad: 11,
             child: Text(
-              '📅 ${selectedDateLabel.isEmpty ? '—' : selectedDateLabel}  |  🎟️ $qtyAdult Dewasa${qtyChild > 0 ? ', $qtyChild Anak' : ''}  |  💰 ${rupiah(totalPrice)}',
+              '📍 ${widget.poolName}  |  '
+              '📅 ${selectedDateLabel.isEmpty ? '—' : selectedDateLabel}  |  '
+              '🎟️ $qtyAdult Dewasa'
+              '${qtyChild > 0 ? ', $qtyChild Anak' : ''}  |  '
+              '💰 ${rupiah(totalPrice)}',
               style: const TextStyle(
-                color: Color(0xff00a0c0),
+                color: kAqua,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
+          top: 12,
         ),
 
         sectionTitle('💳 Metode Pembayaran'),
@@ -1896,61 +1638,49 @@ class _TiketPageState extends State<TiketPage> {
           'qris',
         ),
 
-        if (payMethod == 'bank') ...[
-          sectionTitle('Pilih Bank'),
+        sectionTitle(
+          isBank
+              ? 'Pilih Bank'
+              : 'Pilih Dompet Digital',
+        ),
 
-          buildPaymentGrid([
-            'BRI',
-            'BCA',
-            'Mandiri',
-            'BNI',
-            'BTN',
-            'Permata',
-          ]),
-        ] else ...[
-          sectionTitle('Pilih Dompet Digital'),
+        buildPaymentGrid(
+          isBank
+              ? [
+                  'BRI',
+                  'BCA',
+                  'Mandiri',
+                  'BNI',
+                  'BTN',
+                  'Permata',
+                ]
+              : [
+                  'GoPay',
+                  'OVO',
+                  'ShopeePay',
+                  'DANA',
+                  'LinkAja',
+                  'AstraPay',
+                ],
+        ),
 
-          buildPaymentGrid([
-            'GoPay',
-            'OVO',
-            'ShopeePay',
-            'DANA',
-            'LinkAja',
-            'AstraPay',
-          ]),
-        ],
-
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            10,
-            20,
-            0,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: const Color(0xffe8f9fc),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0xff00b4d8)
-                    .withOpacity(.25),
-              ),
-            ),
+        pad20(
+          infoBox(
+            radius: 14,
+            pad: 15,
             child: Column(
               children: [
                 const Text(
                   '📋 Nomor Virtual Account / Kode Bayar',
                   style: TextStyle(
-                    color: Color(0xff00a0c0),
+                    color: kAqua,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  payMethod == 'bank'
+                  isBank
                       ? '$selectedBank — 5678123456789012'
                       : '📱 Scan QRIS',
                   textAlign: TextAlign.center,
@@ -1962,7 +1692,7 @@ class _TiketPageState extends State<TiketPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  payMethod == 'bank'
+                  isBank
                       ? 'Bayar tepat sesuai nominal termasuk kode unik.'
                       : 'Total: ${rupiah(totalPrice)}',
                   textAlign: TextAlign.center,
@@ -1973,7 +1703,8 @@ class _TiketPageState extends State<TiketPage> {
                 ),
                 const SizedBox(height: 7),
                 const Text(
-                  'Selesaikan pembayaran dalam 60 menit setelah konfirmasi.',
+                  'Selesaikan pembayaran dalam 60 menit '
+                  'setelah konfirmasi.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey,
@@ -1983,45 +1714,15 @@ class _TiketPageState extends State<TiketPage> {
               ],
             ),
           ),
+          top: 10,
         ),
 
         buildSummary(),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: () => goStep(3),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 15,
-                  ),
-                ),
-                child: const Text('← Kembali'),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: processPayment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xff00b4d8),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                    ),
-                  ),
-                  child: const Text(
-                    '✅ Konfirmasi Pembayaran',
-                  ),
-                ),
-              ),
-            ],
-          ),
+        navButtons(
+          3,
+          '✅ Konfirmasi Pembayaran',
+          adultPrice <= 0 ? null : processPayment,
         ),
       ],
     );
@@ -2035,14 +1736,8 @@ class _TiketPageState extends State<TiketPage> {
   ) {
     final selected = payMethod == value;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        10,
-      ),
-      child: GestureDetector(
+    return pad20(
+      GestureDetector(
         onTap: () {
           setState(() {
             payMethod = value;
@@ -2051,13 +1746,11 @@ class _TiketPageState extends State<TiketPage> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xffe8f9fc)
-                : Colors.white,
+            color: selected ? kSoft : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected
-                  ? const Color(0xff00b4d8)
+                  ? kBlue
                   : Colors.grey.shade300,
               width: 2,
             ),
@@ -2068,9 +1761,8 @@ class _TiketPageState extends State<TiketPage> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xffe8f9fc),
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  color: kSoft,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
@@ -2111,11 +1803,11 @@ class _TiketPageState extends State<TiketPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: selected
-                      ? const Color(0xff00b4d8)
+                      ? kBlue
                       : Colors.transparent,
                   border: Border.all(
                     color: selected
-                        ? const Color(0xff00b4d8)
+                        ? kBlue
                         : Colors.grey.shade300,
                     width: 2,
                   ),
@@ -2132,15 +1824,17 @@ class _TiketPageState extends State<TiketPage> {
           ),
         ),
       ),
+      bottom: 10,
     );
   }
 
-  Widget buildPaymentGrid(List<String> items) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-      ),
-      child: GridView.builder(
+  Widget buildPaymentGrid(
+    List<String> items,
+  ) {
+    final isBank = payMethod == 'bank';
+
+    return pad20(
+      GridView.builder(
         shrinkWrap: true,
         physics:
             const NeverScrollableScrollPhysics(),
@@ -2152,17 +1846,17 @@ class _TiketPageState extends State<TiketPage> {
           mainAxisSpacing: 8,
           childAspectRatio: 1.25,
         ),
-        itemBuilder: (context, index) {
+        itemBuilder: (_, index) {
           final item = items[index];
 
-          final selected = payMethod == 'bank'
+          final selected = isBank
               ? selectedBank == item
               : selectedWallet == item;
 
           return GestureDetector(
             onTap: () {
               setState(() {
-                if (payMethod == 'bank') {
+                if (isBank) {
                   selectedBank = item;
                 } else {
                   selectedWallet = item;
@@ -2172,13 +1866,13 @@ class _TiketPageState extends State<TiketPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xffe8f9fc)
+                    ? kSoft
                     : Colors.white,
                 borderRadius:
                     BorderRadius.circular(14),
                 border: Border.all(
                   color: selected
-                      ? const Color(0xff00b4d8)
+                      ? kBlue
                       : Colors.grey.shade300,
                   width: 1.5,
                 ),
@@ -2188,9 +1882,7 @@ class _TiketPageState extends State<TiketPage> {
                     MainAxisAlignment.center,
                 children: [
                   Text(
-                    payMethod == 'bank'
-                        ? '🏦'
-                        : '📱',
+                    isBank ? '🏦' : '📱',
                     style: const TextStyle(
                       fontSize: 21,
                     ),
@@ -2205,9 +1897,7 @@ class _TiketPageState extends State<TiketPage> {
                     ),
                   ),
                   Text(
-                    payMethod == 'bank'
-                        ? 'VA'
-                        : 'QRIS',
+                    isBank ? 'VA' : 'QRIS',
                     style: const TextStyle(
                       fontSize: 8,
                       color: Colors.grey,
@@ -2222,9 +1912,7 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // STEP 5 RECEIPT
-  // ============================================================
+  // ======================= STEP 5 RECEIPT ========================
 
   Widget buildStep5() {
     final via = payMethod == 'bank'
@@ -2237,9 +1925,7 @@ class _TiketPageState extends State<TiketPage> {
 
         const Text(
           '🎉',
-          style: TextStyle(
-            fontSize: 55,
-          ),
+          style: TextStyle(fontSize: 55),
         ),
 
         const SizedBox(height: 5),
@@ -2265,34 +1951,22 @@ class _TiketPageState extends State<TiketPage> {
         const SizedBox(height: 18),
 
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius:
                   BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.12),
-                  blurRadius: 25,
-                ),
-              ],
             ),
             child: Column(
               children: [
-                // RECEIPT HEADER
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(22),
+                  padding:
+                      const EdgeInsets.all(22),
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xff0077b6),
-                        Color(0xff00b4d8),
-                      ],
-                    ),
+                    gradient: kGradient,
                     borderRadius:
                         BorderRadius.vertical(
                       top: Radius.circular(24),
@@ -2302,16 +1976,16 @@ class _TiketPageState extends State<TiketPage> {
                     children: [
                       const Text(
                         '🌊',
-                        style: TextStyle(
-                          fontSize: 32,
-                        ),
+                        style:
+                            TextStyle(fontSize: 32),
                       ),
-                      const Text(
-                        'Tiaraswim',
-                        style: TextStyle(
+                      Text(
+                        widget.poolName,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 17,
-                          fontWeight: FontWeight.w800,
+                          fontWeight:
+                              FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2330,18 +2004,18 @@ class _TiketPageState extends State<TiketPage> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xff06d6a0,
-                          ).withOpacity(.2),
+                          color:
+                              kGreen.withOpacity(.2),
                           borderRadius:
                               BorderRadius.circular(50),
                         ),
                         child: const Text(
                           '✅ PEMBAYARAN BERHASIL',
                           style: TextStyle(
-                            color: Color(0xff06d6a0),
+                            color: kGreen,
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            fontWeight:
+                                FontWeight.w800,
                           ),
                         ),
                       ),
@@ -2349,9 +2023,9 @@ class _TiketPageState extends State<TiketPage> {
                   ),
                 ),
 
-                // RECEIPT BODY
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding:
+                      const EdgeInsets.all(20),
                   child: Column(
                     children: [
                       const Text(
@@ -2359,7 +2033,8 @@ class _TiketPageState extends State<TiketPage> {
                         style: TextStyle(
                           fontSize: 9,
                           color: Colors.grey,
-                          fontWeight: FontWeight.w700,
+                          fontWeight:
+                              FontWeight.w700,
                           letterSpacing: 1,
                         ),
                       ),
@@ -2370,7 +2045,8 @@ class _TiketPageState extends State<TiketPage> {
                         ticketId,
                         style: const TextStyle(
                           fontSize: 21,
-                          fontWeight: FontWeight.w800,
+                          fontWeight:
+                              FontWeight.w800,
                           letterSpacing: 2,
                         ),
                       ),
@@ -2378,6 +2054,16 @@ class _TiketPageState extends State<TiketPage> {
                       const SizedBox(height: 10),
 
                       const Divider(),
+
+                      receiptRow(
+                        'Kolam Renang',
+                        widget.poolName,
+                      ),
+
+                      receiptRow(
+                        'Pool ID',
+                        widget.poolId,
+                      ),
 
                       receiptRow(
                         'Nama Pemesan',
@@ -2393,7 +2079,9 @@ class _TiketPageState extends State<TiketPage> {
 
                       receiptRow(
                         'Alamat',
-                        alamat.isEmpty ? '-' : alamat,
+                        alamat.isEmpty
+                            ? '-'
+                            : alamat,
                       ),
 
                       receiptRow(
@@ -2428,6 +2116,11 @@ class _TiketPageState extends State<TiketPage> {
                         ),
 
                       receiptRow(
+                        'Harga Tiket',
+                        rupiah(adultPrice),
+                      ),
+
+                      receiptRow(
                         'Biaya Admin',
                         rupiah(adminFee),
                       ),
@@ -2438,15 +2131,11 @@ class _TiketPageState extends State<TiketPage> {
                         padding:
                             const EdgeInsets.all(15),
                         decoration: BoxDecoration(
-                          gradient:
-                              const LinearGradient(
-                            colors: [
-                              Color(0xff0077b6),
-                              Color(0xff00b4d8),
-                            ],
-                          ),
+                          gradient: kGradient,
                           borderRadius:
-                              BorderRadius.circular(14),
+                              BorderRadius.circular(
+                            14,
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment:
@@ -2456,16 +2145,17 @@ class _TiketPageState extends State<TiketPage> {
                             const Text(
                               'Total Dibayarkan',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color:
+                                    Colors.white70,
                                 fontWeight:
                                     FontWeight.w700,
                               ),
                             ),
                             Text(
                               rupiah(totalPrice),
-                              style: const TextStyle(
-                                color:
-                                    Color(0xffffd166),
+                              style:
+                                  const TextStyle(
+                                color: kGold,
                                 fontSize: 21,
                                 fontWeight:
                                     FontWeight.w800,
@@ -2498,22 +2188,25 @@ class _TiketPageState extends State<TiketPage> {
                   ),
                 ),
 
-                // FOOTER
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(15),
+                  padding:
+                      const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: const Color(0xffe8f9fc)
-                        .withOpacity(.5),
+                    color:
+                        kSoft.withOpacity(.5),
                     borderRadius:
                         const BorderRadius.vertical(
                       bottom: Radius.circular(24),
                     ),
                   ),
                   child: const Text(
-                    '⚠️ Tunjukkan struk ini kepada petugas di pintu masuk.\n'
-                    'Tiket berlaku pada tanggal kunjungan yang tertera.\n'
-                    'Hubungi kami di 0812-3456-7890 jika ada kendala.',
+                    '⚠️ Tunjukkan struk ini kepada petugas '
+                    'di pintu masuk.\n'
+                    'Tiket berlaku pada tanggal kunjungan '
+                    'yang tertera.\n'
+                    'Hubungi kami di 0812-3456-7890 '
+                    'jika ada kendala.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 10,
@@ -2530,9 +2223,8 @@ class _TiketPageState extends State<TiketPage> {
         const SizedBox(height: 15),
 
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               Expanded(
@@ -2545,7 +2237,8 @@ class _TiketPageState extends State<TiketPage> {
                   icon: const Icon(
                     Icons.download_outlined,
                   ),
-                  label: const Text('Unduh Struk'),
+                  label:
+                      const Text('Unduh Struk'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -2559,11 +2252,13 @@ class _TiketPageState extends State<TiketPage> {
                   icon: const Icon(
                     Icons.share_outlined,
                   ),
-                  label: const Text('Bagikan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xff00b4d8),
-                    foregroundColor: Colors.white,
+                  label:
+                      const Text('Bagikan'),
+                  style:
+                      ElevatedButton.styleFrom(
+                    backgroundColor: kBlue,
+                    foregroundColor:
+                        Colors.white,
                   ),
                 ),
               ),
@@ -2574,9 +2269,8 @@ class _TiketPageState extends State<TiketPage> {
         const SizedBox(height: 10),
 
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -2585,13 +2279,13 @@ class _TiketPageState extends State<TiketPage> {
                   openReschedule(0);
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xffeeeaff),
-                foregroundColor:
-                    const Color(0xff6c52d9),
+              style:
+                  ElevatedButton.styleFrom(
+                backgroundColor: kPurpleSoft,
+                foregroundColor: kPurple,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(
+                padding:
+                    const EdgeInsets.symmetric(
                   vertical: 14,
                 ),
               ),
@@ -2610,9 +2304,8 @@ class _TiketPageState extends State<TiketPage> {
     String value,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-      ),
+      padding:
+          const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -2650,15 +2343,12 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // TIKET SAYA
-  // ============================================================
+  // ========================= TIKET SAYA ==========================
 
   Widget buildMyTickets() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(
-        bottom: 25,
-      ),
+      padding:
+          const EdgeInsets.only(bottom: 25),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
@@ -2666,12 +2356,8 @@ class _TiketPageState extends State<TiketPage> {
           buildTabs(),
 
           const Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              12,
-            ),
+            padding:
+                EdgeInsets.fromLTRB(20, 20, 20, 12),
             child: Text(
               '📋 Tiket Saya',
               style: TextStyle(
@@ -2683,12 +2369,10 @@ class _TiketPageState extends State<TiketPage> {
 
           ...List.generate(
             myTickets.length,
-            (index) {
-              return buildTicketCard(
-                index,
-                myTickets[index],
-              );
-            },
+            (i) => buildTicketCard(
+              i,
+              myTickets[i],
+            ),
           ),
         ],
       ),
@@ -2699,30 +2383,18 @@ class _TiketPageState extends State<TiketPage> {
     int index,
     Map<String, dynamic> ticket,
   ) {
-    final active = ticket['status'] == 'Aktif';
+    final active =
+        ticket['status'] == 'Aktif';
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        12,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.grey.shade200,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.04),
-              blurRadius: 10,
-            ),
-          ],
-        ),
+    final resched =
+        ticket['reschedule'] as int;
+
+    return pad20(
+      infoBox(
+        color: Colors.white,
+        radius: 18,
+        pad: 16,
+        border: Colors.grey.shade200,
         child: Column(
           crossAxisAlignment:
               CrossAxisAlignment.start,
@@ -2741,7 +2413,8 @@ class _TiketPageState extends State<TiketPage> {
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontWeight:
+                              FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2749,62 +2422,35 @@ class _TiketPageState extends State<TiketPage> {
                         ticket['name'].toString(),
                         style: const TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontWeight:
+                              FontWeight.w800,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: active
-                        ? const Color(0xffe3fff7)
-                        : Colors.grey.shade100,
-                    borderRadius:
-                        BorderRadius.circular(50),
-                  ),
-                  child: Text(
-                    active
-                        ? '✅ Aktif'
-                        : '⬛ Terpakai',
-                    style: TextStyle(
-                      color: active
-                          ? const Color(0xff087f65)
-                          : Colors.grey,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                badge(
+                  active
+                      ? '✅ Aktif'
+                      : '⬛ Terpakai',
+                  active
+                      ? const Color(0xff087f65)
+                      : Colors.grey,
+                  active
+                      ? const Color(0xffe3fff7)
+                      : Colors.grey.shade100,
+                  fontSize: 10,
                 ),
               ],
             ),
 
-            if ((ticket['reschedule'] as int) > 0) ...[
+            if (resched > 0) ...[
               const SizedBox(height: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xffeeeaff),
-                  borderRadius:
-                      BorderRadius.circular(50),
-                ),
-                child: Text(
-                  '🔄 Pernah Reschedule ${ticket['reschedule']}×',
-                  style: const TextStyle(
-                    color: Color(0xff6c52d9),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              badge(
+                '🔄 Pernah Reschedule $resched×',
+                kPurple,
+                kPurpleSoft,
+                fontSize: 9,
               ),
             ],
 
@@ -2840,23 +2486,27 @@ class _TiketPageState extends State<TiketPage> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      showReceiptFromTicket(ticket);
-                    },
+                    onPressed: () =>
+                        showReceiptFromTicket(
+                      ticket,
+                    ),
                     icon: const Icon(
                       Icons.receipt_long,
                       size: 17,
                     ),
                     label: const Text(
                       'Lihat Struk',
-                      style: TextStyle(fontSize: 11),
+                      style:
+                          TextStyle(fontSize: 11),
                     ),
                   ),
                 ),
+
                 if (active) ...[
                   const SizedBox(width: 8),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child:
+                        ElevatedButton.icon(
                       onPressed: () =>
                           openReschedule(index),
                       icon: const Icon(
@@ -2865,16 +2515,15 @@ class _TiketPageState extends State<TiketPage> {
                       ),
                       label: const Text(
                         'Reschedule',
-                        style: TextStyle(
-                          fontSize: 11,
-                        ),
+                        style:
+                            TextStyle(fontSize: 11),
                       ),
                       style:
                           ElevatedButton.styleFrom(
                         backgroundColor:
-                            const Color(0xffeeeaff),
+                            kPurpleSoft,
                         foregroundColor:
-                            const Color(0xff6c52d9),
+                            kPurple,
                         elevation: 0,
                       ),
                     ),
@@ -2883,6 +2532,35 @@ class _TiketPageState extends State<TiketPage> {
               ],
             ),
           ],
+        ),
+      ),
+      bottom: 12,
+    );
+  }
+
+  Widget badge(
+    String text,
+    Color fg,
+    Color bg, {
+    double fontSize = 10,
+  }) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius:
+            BorderRadius.circular(50),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: fg,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -2894,16 +2572,14 @@ class _TiketPageState extends State<TiketPage> {
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 5,
-      ),
+      padding:
+          const EdgeInsets.only(bottom: 5),
       child: Row(
         children: [
           Text(
             icon,
-            style: const TextStyle(
-              fontSize: 12,
-            ),
+            style:
+                const TextStyle(fontSize: 12),
           ),
           const SizedBox(width: 5),
           Text(
@@ -2918,7 +2594,8 @@ class _TiketPageState extends State<TiketPage> {
               value,
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight:
+                    FontWeight.w700,
               ),
             ),
           ),
@@ -2927,9 +2604,7 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // RECEIPT TICKET
-  // ============================================================
+  // ====================== RECEIPT BOTTOM SHEET ===================
 
   void showReceiptFromTicket(
     Map<String, dynamic> ticket,
@@ -2939,148 +2614,444 @@ class _TiketPageState extends State<TiketPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height:
-              MediaQuery.of(context).size.height * .75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(25),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius:
-                        BorderRadius.circular(10),
-                  ),
+        return sheetShell(
+          height: .75,
+          radius: 25,
+          child: Column(
+            children: [
+              sheetHandle(),
+              const SizedBox(height: 20),
+
+              const Text(
+                '🧾 Struk Pembayaran',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  '🧾 Struk Pembayaran',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+              ),
+
+              const SizedBox(height: 20),
+
+              receiptRow(
+                'Nomor Tiket',
+                ticket['id'].toString(),
+              ),
+
+              receiptRow(
+                'Kategori',
+                ticket['name'].toString(),
+              ),
+
+              receiptRow(
+                'Tanggal',
+                ticket['date'].toString(),
+              ),
+
+              receiptRow(
+                'Jumlah',
+                ticket['qty'].toString(),
+              ),
+
+              receiptRow(
+                'Pembayaran',
+                ticket['payment'].toString(),
+              ),
+
+              receiptRow(
+                'Total',
+                rupiah(ticket['total'] as int),
+              ),
+
+              const Spacer(),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.pop(context),
+                  style: primaryStyle,
+                  child:
+                      const Text('Tutup'),
                 ),
-                const SizedBox(height: 20),
-                receiptRow(
-                  'Nomor Tiket',
-                  ticket['id'].toString(),
-                ),
-                receiptRow(
-                  'Kategori',
-                  ticket['name'].toString(),
-                ),
-                receiptRow(
-                  'Tanggal',
-                  ticket['date'].toString(),
-                ),
-                receiptRow(
-                  'Jumlah',
-                  ticket['qty'].toString(),
-                ),
-                receiptRow(
-                  'Pembayaran',
-                  ticket['payment'].toString(),
-                ),
-                receiptRow(
-                  'Total',
-                  rupiah(ticket['total'] as int),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          const Color(0xff00b4d8),
-                      foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(
-                        vertical: 15,
-                      ),
-                    ),
-                    child: const Text('Tutup'),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  // ============================================================
-  // RECAP DATE
-  // ============================================================
-
-  Widget recapDate() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        0,
-      ),
+  Widget sheetHandle() {
+    return Center(
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(11),
+        width: 40,
+        height: 4,
         decoration: BoxDecoration(
-          color: const Color(0xffe8f9fc),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          selectedDate == null
-              ? '📅 —'
-              : '📅 $selectedDateLabel — ${isWeekend ? 'Weekend' : 'Weekday'}',
-          style: const TextStyle(
-            color: Color(0xff00a0c0),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
+          color: Colors.grey.shade300,
+          borderRadius:
+              BorderRadius.circular(10),
         ),
       ),
     );
   }
 
-  // ============================================================
-  // SECTION TITLE
-  // ============================================================
+  Widget sheetShell({
+    required Widget child,
+    required double height,
+    double radius = 28,
+    bool safeArea = false,
+  }) {
+    final content = Padding(
+      padding: const EdgeInsets.all(20),
+      child: child,
+    );
 
-  Widget sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        10,
-      ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-          ),
+    return Container(
+      height:
+          MediaQuery.of(context).size.height *
+              height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.vertical(
+          top: Radius.circular(radius),
         ),
       ),
+      child: safeArea
+          ? SafeArea(child: content)
+          : content,
     );
   }
 
-  // ============================================================
-  // FORM FIELD
-  // ============================================================
+  // ========================= RESCHEDULE ==========================
+
+  void openReschedule(int index) {
+    final ticket = myTickets[index];
+
+    DateTime? newDate;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (
+            context,
+            setModalState,
+          ) {
+            final availableDates =
+                datesFrom(
+              29,
+              offset: 1,
+            );
+
+            final baseWeekday =
+                weekdayPrice > 0
+                    ? weekdayPrice
+                    : 15000;
+
+            final baseWeekend =
+                weekendPrice > 0
+                    ? weekendPrice
+                    : 20000;
+
+            final newPrice =
+                newDate != null &&
+                        isWeekendDate(
+                          newDate!,
+                        )
+                    ? baseWeekend
+                    : baseWeekday;
+
+            final diff =
+                (newPrice * 2 + adminFee) -
+                    (baseWeekday * 2 +
+                        adminFee);
+
+            return sheetShell(
+              height: .85,
+              safeArea: true,
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  sheetHandle(),
+
+                  const SizedBox(height: 18),
+
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment
+                            .spaceBetween,
+                    children: [
+                      const Text(
+                        '🔄 Reschedule Tiket',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight:
+                              FontWeight.w800,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            Navigator.pop(
+                          context,
+                        ),
+                        icon: const Icon(
+                          Icons.close,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Text(
+                    'Ubah tanggal kunjungan Anda',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  infoBox(
+                    radius: 15,
+                    pad: 15,
+                    border:
+                        kBlue.withOpacity(.25),
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '🎟️ INFO TIKET',
+                          style: TextStyle(
+                            color: kAqua,
+                            fontWeight:
+                                FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        infoRow(
+                          'Kolam',
+                          widget.poolName,
+                        ),
+
+                        infoRow(
+                          'No. Tiket',
+                          ticket['id'].toString(),
+                        ),
+
+                        infoRow(
+                          'Tanggal Saat Ini',
+                          ticket['date']
+                              .toString(),
+                        ),
+
+                        infoRow(
+                          'Kategori',
+                          ticket['qty'].toString(),
+                        ),
+
+                        infoRow(
+                          'Total Terbayar',
+                          rupiah(
+                            ticket['total']
+                                as int,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  infoBox(
+                    color: kYellowSoft,
+                    radius: 14,
+                    pad: 14,
+                    border:
+                        kGold.withOpacity(.5),
+                    child: const Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '📜 Ketentuan Reschedule',
+                          style: TextStyle(
+                            fontWeight:
+                                FontWeight.w800,
+                            color:
+                                Color(0xff9a6c00),
+                          ),
+                        ),
+                        SizedBox(height: 7),
+                        Text(
+                          '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
+                          '• Maksimal H-1 dari tanggal kunjungan.\n'
+                          '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
+                          '• Tanggal baru harus memiliki kuota.\n'
+                          '• Jika harga lebih mahal, bayar selisih.\n'
+                          '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
+                          '• Sistem mencatat riwayat reschedule.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    '📅 Pilih Tanggal Baru',
+                    style: TextStyle(
+                      fontWeight:
+                          FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  dateStrip(
+                    list: availableDates,
+                    active: newDate,
+                    height: 85,
+                    onPick: (d) {
+                      setModalState(() {
+                        newDate = d;
+                      });
+                    },
+                  ),
+
+                  if (newDate != null) ...[
+                    const SizedBox(height: 10),
+
+                    infoBox(
+                      color:
+                          const Color(0xffe8fff8),
+                      child: Text(
+                        '📅 ${formatDate(newDate!)}\n'
+                        '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
+                        style: const TextStyle(
+                          color:
+                              Color(0xff087f65),
+                          fontSize: 12,
+                          fontWeight:
+                              FontWeight.w700,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const Spacer(),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.pop(
+                            context,
+                          ),
+                          style:
+                              OutlinedButton
+                                  .styleFrom(
+                            padding:
+                                const EdgeInsets
+                                    .symmetric(
+                              vertical: 15,
+                            ),
+                          ),
+                          child:
+                              const Text(
+                            'Batal',
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        flex: 2,
+                        child:
+                            ElevatedButton(
+                          onPressed:
+                              newDate == null
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        myTickets[
+                                                index]
+                                            [
+                                            'date'] =
+                                            formatShortDate(
+                                          newDate!,
+                                        );
+
+                                        myTickets[
+                                                index]
+                                            [
+                                            'reschedule'] =
+                                            (myTickets[index]
+                                                    [
+                                                    'reschedule']
+                                                as int) +
+                                                1;
+                                      });
+
+                                      Navigator.pop(
+                                        context,
+                                      );
+
+                                      showMessage(
+                                        'Reschedule berhasil ke '
+                                        '${formatShortDate(newDate!)}',
+                                      );
+                                    },
+                          style:
+                              primaryStyle,
+                          child:
+                              const Text(
+                            '✅ Konfirmasi Reschedule',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ========================== FORM FIELD =========================
+
+  OutlineInputBorder fieldBorder({
+    Color? color,
+    double width = 1,
+  }) {
+    return OutlineInputBorder(
+      borderRadius:
+          BorderRadius.circular(14),
+      borderSide: BorderSide(
+        color:
+            color ?? Colors.grey.shade300,
+        width: width,
+      ),
+    );
+  }
 
   Widget buildTextField({
     required TextEditingController controller,
@@ -3141,7 +3112,8 @@ class _TiketPageState extends State<TiketPage> {
                         ),
                         child: Text(
                           prefix,
-                          style: const TextStyle(
+                          style:
+                              const TextStyle(
                             fontWeight:
                                 FontWeight.w700,
                           ),
@@ -3162,29 +3134,12 @@ class _TiketPageState extends State<TiketPage> {
               horizontal: 14,
               vertical: 13,
             ),
-            border: OutlineInputBorder(
-              borderRadius:
-                  BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: Colors.grey.shade300,
-              ),
-            ),
+            border: fieldBorder(),
             enabledBorder:
-                OutlineInputBorder(
-              borderRadius:
-                  BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: Colors.grey.shade300,
-              ),
-            ),
-            focusedBorder:
-                OutlineInputBorder(
-              borderRadius:
-                  BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: Color(0xff00b4d8),
-                width: 1.5,
-              ),
+                fieldBorder(),
+            focusedBorder: fieldBorder(
+              color: kBlue,
+              width: 1.5,
             ),
           ),
         ),
@@ -3192,112 +3147,107 @@ class _TiketPageState extends State<TiketPage> {
     );
   }
 
-  // ============================================================
-  // BOTTOM NAVIGATION
-  // ============================================================
+  // ====================== BOTTOM NAVIGATION ======================
 
   Widget buildBottomNavigation() {
     return BottomNavigationBar(
       currentIndex: 3,
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xff00a0c0),
+      selectedItemColor: kAqua,
       unselectedItemColor: Colors.grey,
       selectedFontSize: 10,
       unselectedFontSize: 10,
       onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const HomePage(),
-            ),
-          );
-        }
+        final pages = <int, Widget>{
+          0: const HomePage(),
+          1: const ExplorePage(),
+          2: const PetaPage(),
+          4: const ReviewPage(),
+        };
 
-        if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const ExplorePage(),
-            ),
-          );
-        }
+        final page = pages[index];
 
-        if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const PetaPage(),
-            ),
-          );
-        }
+        if (page == null) return;
 
-        if (index == 4) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const ReviewPage(),
-            ),
-          );
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => page,
+          ),
+        );
       },
       items: [
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
-          activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
-          label: 'Home',
+        _navItem(
+          Icons.home_rounded,
+          const Color(0xFF00B4D8),
+          'Home',
         ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
-          activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
-          label: 'Explore',
+        _navItem(
+          Icons.pool_rounded,
+          const Color(0xFF7B61FF),
+          'Explore',
         ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
-          activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
-          label: 'Peta',
+        _navItem(
+          Icons.map_rounded,
+          const Color(0xFF06D6A0),
+          'Peta',
         ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
-          activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
-          label: 'Tiket',
+        _navItem(
+          Icons.confirmation_number_rounded,
+          const Color(0xFFFFB703),
+          'Tiket',
         ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
-          activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
-          label: 'Ulasan',
+        _navItem(
+          Icons.star_rounded,
+          const Color(0xFFEF476F),
+          'Ulasan',
         ),
       ],
     );
   }
 
-  Widget _navIcon(IconData icon, Color color, bool active) {
+  BottomNavigationBarItem _navItem(
+    IconData icon,
+    Color color,
+    String label,
+  ) {
+    return BottomNavigationBarItem(
+      icon: _navIcon(
+        icon,
+        color,
+        false,
+      ),
+      activeIcon: _navIcon(
+        icon,
+        color,
+        true,
+      ),
+      label: label,
+    );
+  }
+
+  Widget _navIcon(
+    IconData icon,
+    Color color,
+    bool active,
+  ) {
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: active ? color.withOpacity(0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: active
+            ? color.withOpacity(0.15)
+            : Colors.transparent,
+        borderRadius:
+            BorderRadius.circular(10),
       ),
       child: Icon(
         icon,
         size: 22,
-        color: active ? color : Colors.grey.shade400,
+        color: active
+            ? color
+            : Colors.grey.shade400,
       ),
     );
-  }
-
-  // ============================================================
-  // DISPOSE
-  // ============================================================
-
-  @override
-  void dispose() {
-    namaController.dispose();
-    teleponController.dispose();
-    alamatController.dispose();
-    keteranganController.dispose();
-
-    super.dispose();
   }
 }

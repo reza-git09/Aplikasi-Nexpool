@@ -1,7 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../services/api_service.dart';
 
 import 'explore_page.dart';
 import 'tiket_page.dart';
@@ -18,30 +16,22 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ==========================================================
-  // API LARAVEL
-  // ==========================================================
-
-  static const String apiUrl =
-      'http://172.20.10.13:8000/api/kolam-renang';
-
-  // ==========================================================
+  // ============================================================
   // KOLAM YANG DIPILIH
-  // 0 = Semua Kolam
+  // 0 = Semua
   // 1 = Tiara
   // 2 = Kebon Agung
   // 3 = Annasya
   // 4 = Dira Park
   // 5 = Jati Park
-  // ==========================================================
-
+  // ============================================================
   int selectedPool = 0;
 
-  // ==========================================================
-  // DATA KOLAM
-  // DATA INI MENJADI DATA CADANGAN
-  // ==========================================================
-
+  // ============================================================
+  // DATA KOLAM CADANGAN
+  // Digunakan untuk gambar, rating, harga, jam, dll
+  // yang belum tersedia dari API.
+  // ============================================================
   List<Map<String, dynamic>> pools = [
     {
       'name': 'Tiara Jember Park',
@@ -120,118 +110,77 @@ class _HomePageState extends State<HomePage> {
     },
   ];
 
-  // ==========================================================
-  // INIT STATE
-  // ==========================================================
-
   @override
   void initState() {
     super.initState();
 
-    print('🔥 HOME PAGE INIT JALAN');
+    debugPrint('🔥 HOME PAGE INIT JALAN');
 
     _loadPools();
   }
 
-  // ==========================================================
-  // AMBIL DATA DARI API LARAVEL
-  // ==========================================================
-
+  // ============================================================
+  // AMBIL DATA KOLAM DARI API LARAVEL
+  // ============================================================
   Future<void> _loadPools() async {
     try {
       debugPrint('====================================');
-      debugPrint('Mengambil data dari API...');
-      debugPrint('URL: $apiUrl');
+      debugPrint('Mengambil data dari API lewat ApiService...');
+      debugPrint('API: ${ApiService.baseUrl}/kolam-renang');
       debugPrint('⏳ Mengirim request ke API...');
       debugPrint('====================================');
 
-      final response = await http
-          .get(Uri.parse(apiUrl))
-          .timeout(
-            const Duration(seconds: 30),
-          );
-
-      debugPrint('✅ Response diterima!');
-      debugPrint('Status API: ${response.statusCode}');
-      debugPrint('Body: ${response.body}');
-
-      // ======================================================
-      // CEK STATUS RESPONSE
-      // ======================================================
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'Gagal mengambil data. HTTP ${response.statusCode}',
-        );
-      }
-
-      // ======================================================
-      // DECODE JSON
-      // ======================================================
-
-      final Map<String, dynamic> jsonData =
-          jsonDecode(response.body);
-
+      // Ambil data melalui ApiService
       final List<dynamic> data =
-          jsonData['data'] is List
-              ? jsonData['data']
-              : [];
+          await ApiService.getKolamRenang();
 
-      print('====================================');
-      print('=== DATA API NEXPOOL ===');
-      print(data);
-      print('Jumlah data API: ${data.length}');
-      print('====================================');
+      debugPrint('====================================');
+      debugPrint('=== DATA API NEXPOOL ===');
+      debugPrint(data.toString());
+      debugPrint('Jumlah data API: ${data.length}');
+      debugPrint('====================================');
 
-      // ======================================================
-      // KALAU DATA API KOSONG
-      // DATA LOKAL TETAP DIGUNAKAN
-      // ======================================================
-
+      // Jika API berhasil tetapi data kosong,
+      // gunakan data lokal.
       if (data.isEmpty) {
-        debugPrint(
-          '⚠️ API berhasil tetapi data kosong.',
-        );
-
+        debugPrint('⚠️ API berhasil tetapi data kosong.');
+        debugPrint('Data lokal tetap digunakan.');
         return;
       }
 
-      // ======================================================
-      // BUAT DATA KOLAM DARI API
-      // ======================================================
-
+      // Menampung data hasil API + data lokal
       final List<Map<String, dynamic>> apiPools = [];
 
       for (int i = 0; i < data.length; i++) {
         final Map<String, dynamic> item =
             Map<String, dynamic>.from(data[i]);
 
-        // ----------------------------------------------------
-        // DATA LOKAL SEBAGAI CADANGAN
-        // ----------------------------------------------------
-
+        // Ambil data lokal berdasarkan urutan.
+        // Data lokal dipakai untuk data yang belum tersedia di API.
         final Map<String, dynamic> local =
             pools[i < pools.length ? i : 0];
 
-        // ----------------------------------------------------
+        // ======================================================
         // NAMA KOLAM DARI API
-        // ----------------------------------------------------
-
+        // ======================================================
         final String namaKolam =
             item['nama_kolam'] != null &&
                     item['nama_kolam']
                         .toString()
                         .trim()
                         .isNotEmpty
-                ? item['nama_kolam']
-                    .toString()
-                    .trim()
+                ? item['nama_kolam'].toString().trim()
                 : local['name'].toString();
 
-        // ----------------------------------------------------
-        // ALAMAT DARI API
-        // ----------------------------------------------------
+        // ======================================================
+        // POOL ID
+        // ======================================================
+        final String poolId =
+            item['pool_id']?.toString() ?? '';
 
+        // ======================================================
+        // LOKASI
+        // ======================================================
         String location =
             local['location']?.toString() ??
                 'Kabupaten Jember';
@@ -242,20 +191,17 @@ class _HomePageState extends State<HomePage> {
         final String kota =
             item['kota']?.toString() ?? '';
 
-        if (alamat.isNotEmpty &&
-            alamat != '-') {
-          if (kota.isNotEmpty &&
-              kota != '-') {
+        if (alamat.isNotEmpty && alamat != '-') {
+          if (kota.isNotEmpty && kota != '-') {
             location = '$alamat, $kota';
           } else {
             location = alamat;
           }
         }
 
-        // ----------------------------------------------------
-        // DESKRIPSI DARI API
-        // ----------------------------------------------------
-
+        // ======================================================
+        // DESKRIPSI
+        // ======================================================
         String sub =
             local['sub']?.toString() ??
                 'Wisata kolam renang';
@@ -268,31 +214,32 @@ class _HomePageState extends State<HomePage> {
           sub = deskripsi;
         }
 
-        // ----------------------------------------------------
+        // ======================================================
         // GAMBAR
-        // API GAMBAR KOSONG -> PAKAI ASSET LOKAL
-        // ----------------------------------------------------
-
+        // ======================================================
         String image =
             local['image']?.toString() ?? '';
 
         final String gambar =
             item['gambar']?.toString() ?? '';
 
+        // Jika API memiliki gambar,
+        // gunakan gambar dari API.
+        // Jika kosong/null, gunakan asset lokal.
         if (gambar.isNotEmpty &&
             gambar != 'null') {
           image = gambar;
         }
 
-        // ----------------------------------------------------
+        // ======================================================
         // GABUNG DATA API + DATA LOKAL
-        // ----------------------------------------------------
-
+        // ======================================================
         apiPools.add({
           ...local,
 
+          // Data dari API
           'id': item['id'],
-          'pool_id': item['pool_id'],
+          'pool_id': poolId,
           'name': namaKolam,
           'fullName': namaKolam,
           'image': image,
@@ -301,53 +248,34 @@ class _HomePageState extends State<HomePage> {
           'maps_url': item['maps_url'],
           'status': item['status'],
         });
+
+        debugPrint(
+          'Kolam: $namaKolam | Pool ID: $poolId',
+        );
       }
 
-      // ======================================================
-      // CEK WIDGET MASIH ADA
-      // ======================================================
+      // Pastikan widget masih aktif
+      if (!mounted) return;
 
-      if (!mounted) {
-        return;
-      }
-
-      // ======================================================
-      // UPDATE DATA DI UI
-      // ======================================================
-
+      // Masukkan data API ke Home Page
       setState(() {
         pools = apiPools;
 
+        // Jika pilihan kolam tidak valid,
+        // kembali ke Semua Kolam.
         if (selectedPool > pools.length) {
           selectedPool = 0;
         }
       });
 
-      // ======================================================
-      // DEBUG HASIL API
-      // ======================================================
-
       debugPrint('====================================');
       debugPrint(
-        '✅ API BERHASIL: '
-        '${apiPools.length} kolam diterima.',
+        '✅ API BERHASIL: ${apiPools.length} kolam diterima.',
       );
       debugPrint('====================================');
-
-      for (final pool in apiPools) {
-        debugPrint(
-          'Kolam: ${pool['name']} '
-          '| Pool ID: ${pool['pool_id']}',
-        );
-      }
-
-      debugPrint('====================================');
     } catch (e) {
-      // ======================================================
-      // JIKA API GAGAL
-      // DATA LOKAL TETAP DIGUNAKAN
-      // ======================================================
-
+      // Jika API gagal,
+      // data lokal tetap digunakan.
       debugPrint('====================================');
       debugPrint('❌ GAGAL MENGAMBIL API');
       debugPrint('Error: $e');
@@ -355,10 +283,6 @@ class _HomePageState extends State<HomePage> {
       debugPrint('====================================');
     }
   }
-
-  // ==========================================================
-  // BUILD
-  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +304,8 @@ class _HomePageState extends State<HomePage> {
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               _buildHero(selected),
 
@@ -413,27 +338,21 @@ class _HomePageState extends State<HomePage> {
 
               if (!allPool) ...[
                 const SizedBox(height: 28),
-
                 _buildPriceSection(detailPool),
 
                 const SizedBox(height: 28),
-
                 _buildWahanaSection(),
 
                 const SizedBox(height: 28),
-
                 _buildFacilitySection(),
 
                 const SizedBox(height: 28),
-
                 _buildOperationalSection(detailPool),
 
                 const SizedBox(height: 28),
-
                 _buildLocationSection(detailPool),
 
                 const SizedBox(height: 28),
-
                 _buildRatingSection(detailPool),
               ],
 
@@ -442,15 +361,17 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
+      bottomNavigationBar:
+          _buildBottomNavigation(),
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // HERO
-  // ==========================================================
-
-  Widget _buildHero(Map<String, dynamic>? pool) {
+  // ============================================================
+  Widget _buildHero(
+    Map<String, dynamic>? pool,
+  ) {
     final bool allPool = pool == null;
 
     final String image = allPool
@@ -460,7 +381,8 @@ class _HomePageState extends State<HomePage> {
 
     final String title = allPool
         ? 'Selamat Datang di\nNexPool! 🏊'
-        : (pool['fullName']?.toString() ?? 'NEXPOOL');
+        : (pool['fullName']?.toString() ??
+            'NEXPOOL');
 
     final String subtitle = allPool
         ? 'Pilih kolam renang favoritmu di bawah'
@@ -516,12 +438,12 @@ class _HomePageState extends State<HomePage> {
                   child: Image.asset(
                     'assets/images/LOGO_NEXPOOL.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) {
-                      return const Icon(
-                        Icons.pool,
-                        color: Colors.white,
-                      );
-                    },
+                    errorBuilder:
+                        (_, __, ___) =>
+                            const Icon(
+                      Icons.pool,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
 
@@ -667,10 +589,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // IMAGE HELPER
-  // ==========================================================
-
+  // ============================================================
   Widget _buildImage(
     String image, {
     BoxFit fit = BoxFit.cover,
@@ -680,18 +601,16 @@ class _HomePageState extends State<HomePage> {
       return Image.network(
         image,
         fit: fit,
-        errorBuilder: (_, __, ___) {
-          return _imageFallback();
-        },
+        errorBuilder:
+            (_, __, ___) => _imageFallback(),
       );
     }
 
     return Image.asset(
       image,
       fit: fit,
-      errorBuilder: (_, __, ___) {
-        return _imageFallback();
-      },
+      errorBuilder:
+          (_, __, ___) => _imageFallback(),
     );
   }
 
@@ -715,10 +634,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // PILIH KOLAM
-  // ==========================================================
-
+  // ============================================================
   Widget _buildPoolSelector() {
     return Column(
       crossAxisAlignment:
@@ -750,7 +668,9 @@ class _HomePageState extends State<HomePage> {
           height: 125,
           child: ListView.builder(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(
+              horizontal: 20,
+            ),
             scrollDirection: Axis.horizontal,
             itemCount: pools.length + 1,
             itemBuilder: (context, index) {
@@ -769,10 +689,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // SEMUA KOLAM CARD
-  // ==========================================================
-
+  // ============================================================
   Widget _allPoolCard() {
     final bool selected =
         selectedPool == 0;
@@ -853,10 +772,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // POOL CARD
-  // ==========================================================
-
+  // ============================================================
   Widget _poolCard(
     int index,
     Map<String, dynamic> pool,
@@ -873,9 +791,6 @@ class _HomePageState extends State<HomePage> {
 
     final String rating =
         pool['rating']?.toString() ?? '-';
-
-    // ignore: unused_local_variable (icon disimpan untuk referensi UI ke depan)
-    // final String icon = pool['icon']?.toString() ?? '🏊';
 
     return GestureDetector(
       onTap: () {
@@ -944,7 +859,8 @@ class _HomePageState extends State<HomePage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.w800,
+                  fontWeight:
+                      FontWeight.w800,
                   color: selected
                       ? Colors.white
                       : const Color(0xff172B4D),
@@ -986,10 +902,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // SELECTED POOL
-  // ==========================================================
-
+  // ============================================================
   Widget _buildSelectedPool(
     Map<String, dynamic> pool,
   ) {
@@ -1006,8 +921,14 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       margin:
-          const EdgeInsets.fromLTRB(20, 15, 20, 0),
-      padding: const EdgeInsets.all(14),
+          const EdgeInsets.fromLTRB(
+        20,
+        15,
+        20,
+        0,
+      ),
+      padding:
+          const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -1052,7 +973,8 @@ class _HomePageState extends State<HomePage> {
                   maxLines: 1,
                   overflow:
                       TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style:
+                      const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
                     fontWeight:
@@ -1068,8 +990,8 @@ class _HomePageState extends State<HomePage> {
                   overflow:
                       TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white
-                        .withOpacity(0.78),
+                    color:
+                        Colors.white.withOpacity(0.78),
                     fontSize: 9.5,
                   ),
                 ),
@@ -1098,29 +1020,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // MENU CEPAT
-  // ==========================================================
-
+  // ============================================================
   Widget _buildQuickMenu() {
     return Padding(
       padding:
-          const EdgeInsets.symmetric(horizontal: 20),
+          const EdgeInsets.symmetric(
+        horizontal: 20,
+      ),
       child: Row(
         children: [
           Expanded(
             child: _quickMenu(
               Icons.confirmation_number_outlined,
               'Beli Tiket',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const TiketPage(),
-                  ),
-                );
-              },
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const TiketPage(),
+                ),
+              ),
             ),
           ),
 
@@ -1130,15 +1051,13 @@ class _HomePageState extends State<HomePage> {
             child: _quickMenu(
               Icons.local_offer_outlined,
               'Promo',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const PromoPage(),
-                  ),
-                );
-              },
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const PromoPage(),
+                ),
+              ),
             ),
           ),
 
@@ -1148,15 +1067,13 @@ class _HomePageState extends State<HomePage> {
             child: _quickMenu(
               Icons.explore_outlined,
               'Explore',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const ExplorePage(),
-                  ),
-                );
-              },
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const ExplorePage(),
+                ),
+              ),
             ),
           ),
 
@@ -1166,15 +1083,13 @@ class _HomePageState extends State<HomePage> {
             child: _quickMenu(
               Icons.map_outlined,
               'Peta',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const PetaPage(),
-                  ),
-                );
-              },
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const PetaPage(),
+                ),
+              ),
             ),
           ),
         ],
@@ -1230,10 +1145,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // PROMO
-  // ==========================================================
-
+  // ============================================================
   Widget _buildPromoSection() {
     final List<Map<String, dynamic>> promos = [
       {
@@ -1241,40 +1155,50 @@ class _HomePageState extends State<HomePage> {
         'place':
             'Tiara Jember Park Waterboom · Sep 2026',
         'discount': 'Hemat 30%',
-        'color1': const Color(0xff0077A8),
-        'color2': const Color(0xff00B4D8),
+        'color1':
+            const Color(0xff0077A8),
+        'color2':
+            const Color(0xff00B4D8),
       },
       {
         'title': 'Diskon Weekday',
         'place':
             'Pemandian Kebon Agung · Senin–Rabu',
         'discount': 'Gratis 1',
-        'color1': const Color(0xff06D6A0),
-        'color2': const Color(0xff0077A8),
+        'color1':
+            const Color(0xff06D6A0),
+        'color2':
+            const Color(0xff0077A8),
       },
       {
         'title': 'Flash Sale Weekend',
         'place':
             'Annasya Waterpark · Sabtu–Minggu',
         'discount': 'Diskon 25%',
-        'color1': const Color(0xffEF476F),
-        'color2': const Color(0xff7B61FF),
+        'color1':
+            const Color(0xffEF476F),
+        'color2':
+            const Color(0xff7B61FF),
       },
       {
         'title': 'Paket Grup 10+',
         'place':
             'Dira Park · Min. 10 orang',
         'discount': 'Diskon 20%',
-        'color1': const Color(0xff7B61FF),
-        'color2': const Color(0xff4A36C8),
+        'color1':
+            const Color(0xff7B61FF),
+        'color2':
+            const Color(0xff4A36C8),
       },
       {
         'title': 'Early Bird Masuk',
         'place':
             'Jati Park · Sebelum pukul 09.00',
         'discount': 'Hemat 15%',
-        'color1': const Color(0xffF7B731),
-        'color2': const Color(0xffEF476F),
+        'color1':
+            const Color(0xffF7B731),
+        'color2':
+            const Color(0xffEF476F),
       },
     ];
 
@@ -1287,15 +1211,14 @@ class _HomePageState extends State<HomePage> {
           Icons.local_offer,
           const Color(0xffD4960A),
           action: 'Lihat Semua',
-          onAction: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const PromoPage(),
-              ),
-            );
-          },
+          onAction: () =>
+              Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  const PromoPage(),
+            ),
+          ),
         ),
 
         const SizedBox(height: 12),
@@ -1304,14 +1227,19 @@ class _HomePageState extends State<HomePage> {
           height: 125,
           child: ListView.separated(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(
+              horizontal: 20,
+            ),
             scrollDirection:
                 Axis.horizontal,
             itemCount: promos.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final promo = promos[index];
+            separatorBuilder:
+                (_, __) =>
+                    const SizedBox(width: 10),
+            itemBuilder:
+                (context, index) {
+              final promo =
+                  promos[index];
 
               final String title =
                   promo['title']?.toString() ??
@@ -1327,37 +1255,45 @@ class _HomePageState extends State<HomePage> {
 
               final Color color1 =
                   promo['color1'] is Color
-                      ? promo['color1'] as Color
-                      : const Color(0xff0077A8);
+                      ? promo['color1']
+                          as Color
+                      : const Color(
+                          0xff0077A8,
+                        );
 
               final Color color2 =
                   promo['color2'] is Color
-                      ? promo['color2'] as Color
-                      : const Color(0xff00B4D8);
+                      ? promo['color2']
+                          as Color
+                      : const Color(
+                          0xff00B4D8,
+                        );
 
               return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const PromoPage(),
-                    ),
-                  );
-                },
+                onTap: () =>
+                    Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const PromoPage(),
+                  ),
+                ),
                 child: Container(
                   width: 250,
                   padding:
                       const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    gradient:
+                        LinearGradient(
                       colors: [
                         color1,
                         color2,
                       ],
                     ),
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(
+                      18,
+                    ),
                   ),
                   child: Stack(
                     children: [
@@ -1371,10 +1307,12 @@ class _HomePageState extends State<HomePage> {
                             title,
                             maxLines: 1,
                             overflow:
-                                TextOverflow.ellipsis,
+                                TextOverflow
+                                    .ellipsis,
                             style:
                                 const TextStyle(
-                              color: Colors.white,
+                              color:
+                                  Colors.white,
                               fontSize: 14,
                               fontWeight:
                                   FontWeight.w900,
@@ -1387,10 +1325,14 @@ class _HomePageState extends State<HomePage> {
                             place,
                             maxLines: 2,
                             overflow:
-                                TextOverflow.ellipsis,
+                                TextOverflow
+                                    .ellipsis,
                             style: TextStyle(
-                              color: Colors.white
-                                  .withOpacity(0.78),
+                              color: Colors
+                                  .white
+                                  .withOpacity(
+                                0.78,
+                              ),
                               fontSize: 9,
                             ),
                           ),
@@ -1402,22 +1344,31 @@ class _HomePageState extends State<HomePage> {
                         right: 0,
                         child: Container(
                           padding:
-                              const EdgeInsets.symmetric(
+                              const EdgeInsets
+                                  .symmetric(
                             horizontal: 9,
                             vertical: 5,
                           ),
-                          decoration: BoxDecoration(
+                          decoration:
+                              BoxDecoration(
                             color:
-                                const Color(0xffFFD166),
+                                const Color(
+                              0xffFFD166,
+                            ),
                             borderRadius:
-                                BorderRadius.circular(20),
+                                BorderRadius
+                                    .circular(
+                              20,
+                            ),
                           ),
                           child: Text(
                             discount,
                             style:
                                 const TextStyle(
                               color:
-                                  Color(0xff5A3A00),
+                                  Color(
+                                0xff5A3A00,
+                              ),
                               fontSize: 9,
                               fontWeight:
                                   FontWeight.w900,
@@ -1436,10 +1387,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // EVENT
-  // ==========================================================
-
+  // ============================================================
   Widget _buildEventSection() {
     final List<Map<String, String>> events = [
       {
@@ -1502,14 +1452,19 @@ class _HomePageState extends State<HomePage> {
           height: 140,
           child: ListView.separated(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(
+              horizontal: 20,
+            ),
             scrollDirection:
                 Axis.horizontal,
             itemCount: events.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final event = events[index];
+            separatorBuilder:
+                (_, __) =>
+                    const SizedBox(width: 10),
+            itemBuilder:
+                (context, index) {
+              final event =
+                  events[index];
 
               return GestureDetector(
                 onTap: _eventMessage,
@@ -1517,7 +1472,8 @@ class _HomePageState extends State<HomePage> {
                   width: 260,
                   padding:
                       const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
+                  decoration:
+                      BoxDecoration(
                     gradient:
                         const LinearGradient(
                       colors: [
@@ -1526,11 +1482,14 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                     borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(
+                      18,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        CrossAxisAlignment
+                            .start,
                     mainAxisAlignment:
                         MainAxisAlignment.end,
                     children: [
@@ -1538,14 +1497,17 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Expanded(
                             child: Text(
-                              '${event['date'] ?? '-'} · '
-                              '${event['place'] ?? '-'}',
+                              '${event['date'] ?? '-'} · ${event['place'] ?? '-'}',
                               maxLines: 1,
                               overflow:
-                                  TextOverflow.ellipsis,
+                                  TextOverflow
+                                      .ellipsis,
                               style: TextStyle(
-                                color: Colors.white
-                                    .withOpacity(0.72),
+                                color: Colors
+                                    .white
+                                    .withOpacity(
+                                  0.72,
+                                ),
                                 fontSize: 8.5,
                                 fontWeight:
                                     FontWeight.w700,
@@ -1555,22 +1517,31 @@ class _HomePageState extends State<HomePage> {
 
                           Container(
                             padding:
-                                const EdgeInsets.symmetric(
+                                const EdgeInsets
+                                    .symmetric(
                               horizontal: 7,
                               vertical: 4,
                             ),
                             decoration:
                                 BoxDecoration(
-                              color: Colors.white
-                                  .withOpacity(0.15),
+                              color: Colors
+                                  .white
+                                  .withOpacity(
+                                0.15,
+                              ),
                               borderRadius:
-                                  BorderRadius.circular(15),
+                                  BorderRadius
+                                      .circular(
+                                15,
+                              ),
                             ),
                             child: Text(
-                              event['badge'] ?? '-',
+                              event['badge'] ??
+                                  '-',
                               style:
                                   const TextStyle(
-                                color: Colors.white,
+                                color:
+                                    Colors.white,
                                 fontSize: 8,
                                 fontWeight:
                                     FontWeight.w800,
@@ -1586,7 +1557,8 @@ class _HomePageState extends State<HomePage> {
                         event['title'] ?? '-',
                         style:
                             const TextStyle(
-                          color: Colors.white,
+                          color:
+                              Colors.white,
                           fontSize: 14,
                           fontWeight:
                               FontWeight.w900,
@@ -1599,10 +1571,14 @@ class _HomePageState extends State<HomePage> {
                         event['desc'] ?? '-',
                         maxLines: 2,
                         overflow:
-                            TextOverflow.ellipsis,
+                            TextOverflow
+                                .ellipsis,
                         style: TextStyle(
-                          color: Colors.white
-                              .withOpacity(0.78),
+                          color: Colors
+                              .white
+                              .withOpacity(
+                            0.78,
+                          ),
                           fontSize: 9.5,
                         ),
                       ),
@@ -1618,7 +1594,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _eventMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
       const SnackBar(
         content: Text(
           'Halaman Event akan kita buat berikutnya.',
@@ -1627,10 +1604,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // HARGA TIKET
-  // ==========================================================
-
+  // ============================================================
   Widget _buildPriceSection(
     Map<String, dynamic> pool,
   ) {
@@ -1655,22 +1631,23 @@ class _HomePageState extends State<HomePage> {
           Icons.payments_outlined,
           const Color(0xffD4960A),
           action: 'Beli Tiket',
-          onAction: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const TiketPage(),
-              ),
-            );
-          },
+          onAction: () =>
+              Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  const TiketPage(),
+            ),
+          ),
         ),
 
         const SizedBox(height: 12),
 
         Container(
           margin:
-              const EdgeInsets.symmetric(horizontal: 20),
+              const EdgeInsets.symmetric(
+            horizontal: 20,
+          ),
           padding:
               const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1695,8 +1672,11 @@ class _HomePageState extends State<HomePage> {
                   overflow:
                       TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white
-                        .withOpacity(0.75),
+                    color: Colors
+                        .white
+                        .withOpacity(
+                      0.75,
+                    ),
                     fontSize: 10,
                     fontWeight:
                         FontWeight.w700,
@@ -1714,27 +1694,36 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           'Weekday',
                           style: TextStyle(
-                            color: Colors.white
-                                .withOpacity(0.7),
+                            color: Colors
+                                .white
+                                .withOpacity(
+                              0.7,
+                            ),
                             fontSize: 10,
                           ),
                         ),
 
-                        const SizedBox(height: 4),
+                        const SizedBox(
+                          height: 4,
+                        ),
 
                         Text(
                           weekday,
                           style:
                               const TextStyle(
                             color:
-                                Color(0xffFFD166),
+                                Color(
+                              0xffFFD166,
+                            ),
                             fontSize: 19,
                             fontWeight:
                                 FontWeight.w900,
                           ),
                         ),
 
-                        const SizedBox(height: 2),
+                        const SizedBox(
+                          height: 2,
+                        ),
 
                         const Text(
                           'Senin – Jumat',
@@ -1752,7 +1741,8 @@ class _HomePageState extends State<HomePage> {
                   Container(
                     width: 1,
                     height: 55,
-                    color: Colors.white24,
+                    color:
+                        Colors.white24,
                   ),
 
                   Expanded(
@@ -1761,27 +1751,36 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           'Weekend',
                           style: TextStyle(
-                            color: Colors.white
-                                .withOpacity(0.7),
+                            color: Colors
+                                .white
+                                .withOpacity(
+                              0.7,
+                            ),
                             fontSize: 10,
                           ),
                         ),
 
-                        const SizedBox(height: 4),
+                        const SizedBox(
+                          height: 4,
+                        ),
 
                         Text(
                           weekend,
                           style:
                               const TextStyle(
                             color:
-                                Color(0xffFFD166),
+                                Color(
+                              0xffFFD166,
+                            ),
                             fontSize: 19,
                             fontWeight:
                                 FontWeight.w900,
                           ),
                         ),
 
-                        const SizedBox(height: 2),
+                        const SizedBox(
+                          height: 2,
+                        ),
 
                         const Text(
                           'Sabtu – Minggu',
@@ -1804,16 +1803,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // WAHANA & KOLAM
-  // ==========================================================
-
+  // ============================================================
   Widget _buildWahanaSection() {
     final List<Map<String, String>> wahana = [
       {
         'name': 'Kolam Utama',
         'desc': 'Kedalaman 1,2m – 1,5m',
-        'image': 'assets/images/pool_main.png',
+        'image':
+            'assets/images/pool_main.png',
         'emoji': '🏊',
       },
       {
@@ -1848,15 +1847,14 @@ class _HomePageState extends State<HomePage> {
           Icons.pool,
           const Color(0xff00A4C6),
           action: 'Explore',
-          onAction: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const ExplorePage(),
-              ),
-            );
-          },
+          onAction: () =>
+              Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExplorePage(),
+            ),
+          ),
         ),
 
         const SizedBox(height: 12),
@@ -1865,17 +1863,23 @@ class _HomePageState extends State<HomePage> {
           height: 165,
           child: ListView.separated(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(
+              horizontal: 20,
+            ),
             scrollDirection:
                 Axis.horizontal,
             itemCount: wahana.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final item = wahana[index];
+            separatorBuilder:
+                (_, __) =>
+                    const SizedBox(width: 10),
+            itemBuilder:
+                (context, index) {
+              final item =
+                  wahana[index];
 
               final String name =
-                  item['name'] ?? 'Wahana';
+                  item['name'] ??
+                      'Wahana';
 
               final String desc =
                   item['desc'] ?? '';
@@ -1887,25 +1891,31 @@ class _HomePageState extends State<HomePage> {
                   item['emoji'] ?? '🏊';
 
               return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const ExplorePage(),
-                    ),
-                  );
-                },
+                onTap: () =>
+                    Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const ExplorePage(),
+                  ),
+                ),
                 child: Container(
                   width: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                  decoration:
+                      BoxDecoration(
+                    color:
+                        Colors.white,
                     borderRadius:
-                        BorderRadius.circular(17),
+                        BorderRadius.circular(
+                      17,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black
-                            .withOpacity(0.05),
+                        color: Colors
+                            .black
+                            .withOpacity(
+                          0.05,
+                        ),
                         blurRadius: 9,
                       ),
                     ],
@@ -1914,7 +1924,8 @@ class _HomePageState extends State<HomePage> {
                       Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        CrossAxisAlignment
+                            .start,
                     children: [
                       if (image.isNotEmpty)
                         Image.asset(
@@ -1924,11 +1935,10 @@ class _HomePageState extends State<HomePage> {
                           height: 92,
                           fit: BoxFit.cover,
                           errorBuilder:
-                              (_, __, ___) {
-                            return _wahanaPlaceholder(
-                              emoji,
-                            );
-                          },
+                              (_, __, ___) =>
+                                  _wahanaPlaceholder(
+                            emoji,
+                          ),
                         )
                       else
                         _wahanaPlaceholder(
@@ -1937,34 +1947,42 @@ class _HomePageState extends State<HomePage> {
 
                       Padding(
                         padding:
-                            const EdgeInsets.all(10),
+                            const EdgeInsets
+                                .all(10),
                         child: Column(
                           crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              CrossAxisAlignment
+                                  .start,
                           children: [
                             Text(
                               name,
                               maxLines: 1,
                               overflow:
-                                  TextOverflow.ellipsis,
+                                  TextOverflow
+                                      .ellipsis,
                               style:
                                   const TextStyle(
                                 fontSize: 11,
                                 fontWeight:
-                                    FontWeight.w900,
+                                    FontWeight
+                                        .w900,
                               ),
                             ),
 
-                            const SizedBox(height: 3),
+                            const SizedBox(
+                              height: 3,
+                            ),
 
                             Text(
                               desc,
                               maxLines: 2,
                               overflow:
-                                  TextOverflow.ellipsis,
+                                  TextOverflow
+                                      .ellipsis,
                               style:
                                   const TextStyle(
-                                color: Colors.grey,
+                                color:
+                                    Colors.grey,
                                 fontSize: 8.5,
                               ),
                             ),
@@ -2002,53 +2020,68 @@ class _HomePageState extends State<HomePage> {
         child: Text(
           emoji,
           style:
-              const TextStyle(fontSize: 34),
+              const TextStyle(
+            fontSize: 34,
+          ),
         ),
       ),
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // FASILITAS
-  // ==========================================================
-
+  // ============================================================
   Widget _buildFacilitySection() {
-    final List<Map<String, dynamic>> facilities = [
+    final List<Map<String, dynamic>>
+        facilities = [
       {
         'name': 'Gazebo',
-        'desc': 'Berbagai pilihan gazebo',
+        'desc':
+            'Berbagai pilihan gazebo',
         'icon': Icons.deck,
-        'color': const Color(0xff06D6A0),
+        'color':
+            const Color(0xff06D6A0),
       },
       {
         'name': 'Mushola',
-        'desc': 'Tersedia untuk beribadah',
+        'desc':
+            'Tersedia untuk beribadah',
         'icon': Icons.mosque,
-        'color': const Color(0xff8BC34A),
+        'color':
+            const Color(0xff8BC34A),
       },
       {
         'name': 'Kantin',
-        'desc': 'Makanan & minuman',
+        'desc':
+            'Makanan & minuman',
         'icon': Icons.restaurant,
-        'color': const Color(0xffff9800),
+        'color':
+            const Color(0xffff9800),
       },
       {
         'name': 'Ruang Bilas',
-        'desc': 'Bersih & nyaman',
+        'desc':
+            'Bersih & nyaman',
         'icon': Icons.shower,
-        'color': const Color(0xff00B4D8),
+        'color':
+            const Color(0xff00B4D8),
       },
       {
         'name': 'Parkir',
-        'desc': 'Luas & aman',
-        'icon': Icons.local_parking,
-        'color': const Color(0xff3F51B5),
+        'desc':
+            'Luas & aman',
+        'icon':
+            Icons.local_parking,
+        'color':
+            const Color(0xff3F51B5),
       },
       {
         'name': 'Wi-Fi',
-        'desc': 'Internet gratis',
+        'desc':
+            'Internet gratis',
         'icon': Icons.wifi,
-        'color': const Color(0xff7B61FF),
+        'color':
+            const Color(0xff7B61FF),
       },
     ];
 
@@ -2061,15 +2094,14 @@ class _HomePageState extends State<HomePage> {
           Icons.apartment,
           const Color(0xff7B61FF),
           action: 'Lihat Semua',
-          onAction: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const ExplorePage(),
-              ),
-            );
-          },
+          onAction: () =>
+              Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ExplorePage(),
+            ),
+          ),
         ),
 
         const SizedBox(height: 12),
@@ -2078,13 +2110,16 @@ class _HomePageState extends State<HomePage> {
           height: 132,
           child: ListView.separated(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(
+              horizontal: 20,
+            ),
             scrollDirection:
                 Axis.horizontal,
             itemCount:
                 facilities.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(width: 10),
+            separatorBuilder:
+                (_, __) =>
+                    const SizedBox(width: 10),
             itemBuilder:
                 (context, index) {
               final item =
@@ -2100,33 +2135,45 @@ class _HomePageState extends State<HomePage> {
 
               final IconData icon =
                   item['icon'] is IconData
-                      ? item['icon'] as IconData
+                      ? item['icon']
+                          as IconData
                       : Icons.info;
 
               final Color color =
                   item['color'] is Color
-                      ? item['color'] as Color
-                      : const Color(0xff00B4D8);
+                      ? item['color']
+                          as Color
+                      : const Color(
+                          0xff00B4D8,
+                        );
 
               return Container(
                 width: 125,
                 padding:
                     const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
+                decoration:
+                    BoxDecoration(
+                  color:
+                      Colors.white,
                   borderRadius:
-                      BorderRadius.circular(16),
+                      BorderRadius.circular(
+                    16,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black
-                          .withOpacity(0.05),
+                      color: Colors
+                          .black
+                          .withOpacity(
+                        0.05,
+                      ),
                       blurRadius: 9,
                     ),
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      CrossAxisAlignment
+                          .start,
                   children: [
                     Container(
                       width: 42,
@@ -2134,9 +2181,14 @@ class _HomePageState extends State<HomePage> {
                       decoration:
                           BoxDecoration(
                         color: color
-                            .withOpacity(0.12),
+                            .withOpacity(
+                          0.12,
+                        ),
                         borderRadius:
-                            BorderRadius.circular(12),
+                            BorderRadius
+                                .circular(
+                          12,
+                        ),
                       ),
                       child: Icon(
                         icon,
@@ -2145,7 +2197,9 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(
+                      height: 8,
+                    ),
 
                     Text(
                       name,
@@ -2153,20 +2207,25 @@ class _HomePageState extends State<HomePage> {
                           const TextStyle(
                         fontSize: 11,
                         fontWeight:
-                            FontWeight.w900,
+                            FontWeight
+                                .w900,
                       ),
                     ),
 
-                    const SizedBox(height: 2),
+                    const SizedBox(
+                      height: 2,
+                    ),
 
                     Text(
                       desc,
                       maxLines: 2,
                       overflow:
-                          TextOverflow.ellipsis,
+                          TextOverflow
+                              .ellipsis,
                       style:
                           const TextStyle(
-                        color: Colors.grey,
+                        color:
+                            Colors.grey,
                         fontSize: 8.5,
                       ),
                     ),
@@ -2180,10 +2239,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // JAM OPERASIONAL
-  // ==========================================================
-
+  // ============================================================
   Widget _buildOperationalSection(
     Map<String, dynamic> pool,
   ) {
@@ -2205,17 +2263,22 @@ class _HomePageState extends State<HomePage> {
 
         Container(
           margin:
-              const EdgeInsets.symmetric(horizontal: 20),
+              const EdgeInsets.symmetric(
+            horizontal: 20,
+          ),
           padding:
               const EdgeInsets.all(15),
-          decoration: BoxDecoration(
+          decoration:
+              BoxDecoration(
             color: Colors.white,
             borderRadius:
                 BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color:
-                    Colors.black.withOpacity(0.05),
+                    Colors.black.withOpacity(
+                  0.05,
+                ),
                 blurRadius: 9,
               ),
             ],
@@ -2225,13 +2288,20 @@ class _HomePageState extends State<HomePage> {
               Container(
                 width: 46,
                 height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xff06D6A0)
-                      .withOpacity(0.12),
+                decoration:
+                    BoxDecoration(
+                  color:
+                      const Color(0xff06D6A0)
+                          .withOpacity(
+                    0.12,
+                  ),
                   borderRadius:
-                      BorderRadius.circular(13),
+                      BorderRadius.circular(
+                    13,
+                  ),
                 ),
-                child: const Icon(
+                child:
+                    const Icon(
                   Icons.check_circle,
                   color:
                       Color(0xff06A87E),
@@ -2244,7 +2314,8 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      CrossAxisAlignment
+                          .start,
                   children: [
                     const Text(
                       'Sedang Buka',
@@ -2257,7 +2328,9 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 3),
+                    const SizedBox(
+                      height: 3,
+                    ),
 
                     Text(
                       hours,
@@ -2269,12 +2342,16 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 2),
+                    const SizedBox(
+                      height: 2,
+                    ),
 
                     const Text(
                       'Buka setiap hari',
-                      style: TextStyle(
-                        color: Colors.grey,
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.grey,
                         fontSize: 9,
                       ),
                     ),
@@ -2283,46 +2360,55 @@ class _HomePageState extends State<HomePage> {
               ),
 
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const PetaPage(),
-                    ),
-                  );
-                },
+                onTap: () =>
+                    Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const PetaPage(),
+                  ),
+                ),
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(
+                      const EdgeInsets
+                          .symmetric(
                     horizontal: 11,
                     vertical: 9,
                   ),
                   decoration:
                       BoxDecoration(
                     color:
-                        const Color(0xff00B4D8),
+                        const Color(
+                      0xff00B4D8,
+                    ),
                     borderRadius:
-                        BorderRadius.circular(11),
+                        BorderRadius
+                            .circular(
+                      11,
+                    ),
                   ),
-                  child: const Row(
+                  child:
+                      const Row(
                     children: [
                       Icon(
                         Icons.location_on,
-                        color: Colors.white,
+                        color:
+                            Colors.white,
                         size: 14,
                       ),
-
-                      SizedBox(width: 3),
-
+                      SizedBox(
+                        width: 3,
+                      ),
                       Text(
                         'Lokasi',
                         style:
                             TextStyle(
-                          color: Colors.white,
+                          color:
+                              Colors.white,
                           fontSize: 9,
                           fontWeight:
-                              FontWeight.w800,
+                              FontWeight
+                                  .w800,
                         ),
                       ),
                     ],
@@ -2336,10 +2422,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // LOKASI
-  // ==========================================================
-
+  // ============================================================
   Widget _buildLocationSection(
     Map<String, dynamic> pool,
   ) {
@@ -2365,15 +2450,20 @@ class _HomePageState extends State<HomePage> {
 
         Container(
           margin:
-              const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
+              const EdgeInsets.symmetric(
+            horizontal: 20,
+          ),
+          decoration:
+              BoxDecoration(
             color: Colors.white,
             borderRadius:
                 BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color:
-                    Colors.black.withOpacity(0.05),
+                    Colors.black.withOpacity(
+                  0.05,
+                ),
                 blurRadius: 9,
               ),
             ],
@@ -2410,13 +2500,15 @@ class _HomePageState extends State<HomePage> {
                     const EdgeInsets.all(15),
                 child: Column(
                   crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                      CrossAxisAlignment
+                          .start,
                   children: [
                     Text(
                       fullName,
                       maxLines: 2,
                       overflow:
-                          TextOverflow.ellipsis,
+                          TextOverflow
+                              .ellipsis,
                       style:
                           const TextStyle(
                         fontSize: 14,
@@ -2425,11 +2517,14 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(
+                      height: 6,
+                    ),
 
                     Row(
                       crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                          CrossAxisAlignment
+                              .start,
                       children: [
                         const Icon(
                           Icons.location_on,
@@ -2438,12 +2533,13 @@ class _HomePageState extends State<HomePage> {
                               Color(0xffEF476F),
                         ),
 
-                        const SizedBox(width: 4),
+                        const SizedBox(
+                          width: 4,
+                        ),
 
                         Expanded(
                           child: Text(
-                            '$location\n'
-                            'Jawa Timur, Indonesia',
+                            '$location\nJawa Timur, Indonesia',
                             style:
                                 const TextStyle(
                               color:
@@ -2456,39 +2552,46 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
 
-                    const SizedBox(height: 11),
+                    const SizedBox(
+                      height: 11,
+                    ),
 
                     SizedBox(
-                      width: double.infinity,
+                      width:
+                          double.infinity,
                       child:
                           ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const PetaPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(
+                        onPressed: () =>
+                            Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const PetaPage(),
+                          ),
+                        ),
+                        icon:
+                            const Icon(
                           Icons.map,
                           size: 15,
                         ),
-                        label: const Text(
+                        label:
+                            const Text(
                           'Buka Peta',
                           style:
                               TextStyle(
                             fontSize: 10,
                             fontWeight:
-                                FontWeight.w800,
+                                FontWeight
+                                    .w800,
                           ),
                         ),
                         style:
-                            ElevatedButton.styleFrom(
+                            ElevatedButton
+                                .styleFrom(
                           backgroundColor:
                               const Color(
-                                  0xff00B4D8),
+                            0xff00B4D8,
+                          ),
                           foregroundColor:
                               Colors.white,
                           elevation: 0,
@@ -2502,7 +2605,8 @@ class _HomePageState extends State<HomePage> {
                             borderRadius:
                                 BorderRadius
                                     .circular(
-                                        11),
+                              11,
+                            ),
                           ),
                         ),
                       ),
@@ -2517,15 +2621,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // RATING
-  // ==========================================================
-
+  // ============================================================
   Widget _buildRatingSection(
     Map<String, dynamic> pool,
   ) {
     final String rating =
-        pool['rating']?.toString() ?? '0.0';
+        pool['rating']?.toString() ??
+            '0.0';
 
     final String ratingCount =
         pool['ratingCount']?.toString() ??
@@ -2538,7 +2642,8 @@ class _HomePageState extends State<HomePage> {
           (pool['bar5'] as num).toDouble();
     }
 
-    bar5 = bar5.clamp(0.0, 1.0);
+    bar5 =
+        bar5.clamp(0.0, 1.0);
 
     final String namaKolam =
         pool['fullName']?.toString() ??
@@ -2546,7 +2651,8 @@ class _HomePageState extends State<HomePage> {
             'Kolam Renang';
 
     final String gambarKolam =
-        pool['image']?.toString() ?? '';
+        pool['image']?.toString() ??
+            '';
 
     return Column(
       crossAxisAlignment:
@@ -2559,28 +2665,32 @@ class _HomePageState extends State<HomePage> {
           action: 'Beri Review',
           onAction: () {
             if (selectedPool == 0) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(
                 const SnackBar(
                   content: Text(
                     'Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.',
                   ),
                   behavior:
-                      SnackBarBehavior.floating,
+                      SnackBarBehavior
+                          .floating,
                   duration:
                       Duration(seconds: 2),
                 ),
               );
-
               return;
             }
 
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ReviewPage(
-                  namaKolam: namaKolam,
-                  gambarKolam: gambarKolam,
+                builder: (_) =>
+                    ReviewPage(
+                  namaKolam:
+                      namaKolam,
+                  gambarKolam:
+                      gambarKolam,
                 ),
               ),
             );
@@ -2591,17 +2701,22 @@ class _HomePageState extends State<HomePage> {
 
         Container(
           margin:
-              const EdgeInsets.symmetric(horizontal: 20),
+              const EdgeInsets.symmetric(
+            horizontal: 20,
+          ),
           padding:
               const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+          decoration:
+              BoxDecoration(
             color: Colors.white,
             borderRadius:
                 BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color:
-                    Colors.black.withOpacity(0.05),
+                    Colors.black.withOpacity(
+                  0.05,
+                ),
                 blurRadius: 9,
               ),
             ],
@@ -2624,7 +2739,8 @@ class _HomePageState extends State<HomePage> {
 
                     const Text(
                       '★★★★★',
-                      style: TextStyle(
+                      style:
+                          TextStyle(
                         color:
                             Color(0xffFFD166),
                         fontSize: 14,
@@ -2632,13 +2748,16 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 3),
+                    const SizedBox(
+                      height: 3,
+                    ),
 
                     Text(
                       ratingCount,
                       style:
                           const TextStyle(
-                        color: Colors.grey,
+                        color:
+                            Colors.grey,
                         fontSize: 9,
                       ),
                     ),
@@ -2681,10 +2800,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // RATING BAR
-  // ==========================================================
-
+  // ============================================================
   Widget _ratingBar(
     String number,
     double value,
@@ -2694,7 +2812,9 @@ class _HomePageState extends State<HomePage> {
 
     return Padding(
       padding:
-          const EdgeInsets.only(bottom: 7),
+          const EdgeInsets.only(
+        bottom: 7,
+      ),
       child: Row(
         children: [
           SizedBox(
@@ -2720,7 +2840,9 @@ class _HomePageState extends State<HomePage> {
                 value: safeValue,
                 minHeight: 6,
                 backgroundColor:
-                    const Color(0xffEEEEEE),
+                    const Color(
+                  0xffEEEEEE,
+                ),
                 valueColor:
                     const AlwaysStoppedAnimation<
                         Color>(
@@ -2750,10 +2872,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // TITLE
-  // ==========================================================
-
+  // ============================================================
   Widget _buildTitle(
     String title,
     IconData icon,
@@ -2763,7 +2884,9 @@ class _HomePageState extends State<HomePage> {
   }) {
     return Padding(
       padding:
-          const EdgeInsets.symmetric(horizontal: 20),
+          const EdgeInsets.symmetric(
+        horizontal: 20,
+      ),
       child: Row(
         children: [
           Icon(
@@ -2780,7 +2903,8 @@ class _HomePageState extends State<HomePage> {
               style:
                   const TextStyle(
                 fontSize: 17,
-                fontWeight: FontWeight.w900,
+                fontWeight:
+                    FontWeight.w900,
                 color:
                     Color(0xff172B4D),
               ),
@@ -2807,28 +2931,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // BOTTOM NAVIGATION
-  // ==========================================================
-
+  // ============================================================
   Widget _buildBottomNavigation() {
     return BottomNavigationBar(
       currentIndex: 0,
-      type: BottomNavigationBarType.fixed,
-
+      type:
+          BottomNavigationBarType.fixed,
       selectedItemColor:
           const Color(0xff00a0c0),
-
       unselectedItemColor:
           Colors.grey,
-
       selectedFontSize: 10,
       unselectedFontSize: 10,
-
       onTap: (index) {
-        if (index == 0) {
-          return;
-        }
+        if (index == 0) return;
 
         if (index == 1) {
           Navigator.pushReplacement(
@@ -2862,87 +2980,145 @@ class _HomePageState extends State<HomePage> {
 
         if (index == 4) {
           if (selectedPool == 0) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(
               const SnackBar(
                 content: Text(
                   'Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.',
                 ),
                 behavior:
-                    SnackBarBehavior.floating,
+                    SnackBarBehavior
+                        .floating,
                 duration:
                     Duration(seconds: 2),
               ),
             );
-
             return;
           }
 
-          final Map<String, dynamic> pool =
+          final Map<String, dynamic>
+              pool =
               pools[selectedPool - 1];
 
           final String namaKolam =
-              pool['fullName']?.toString() ??
-                  pool['name']?.toString() ??
+              pool['fullName']
+                      ?.toString() ??
+                  pool['name']
+                      ?.toString() ??
                   'Kolam Renang';
 
           final String gambarKolam =
-              pool['image']?.toString() ?? '';
+              pool['image']
+                      ?.toString() ??
+                  '';
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => ReviewPage(
-                namaKolam: namaKolam,
-                gambarKolam: gambarKolam,
+              builder: (_) =>
+                  ReviewPage(
+                namaKolam:
+                    namaKolam,
+                gambarKolam:
+                    gambarKolam,
               ),
             ),
           );
         }
       },
-
       items: [
         BottomNavigationBarItem(
-          icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
-          activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
+          icon: _navIcon(
+            Icons.home_rounded,
+            const Color(0xFF00B4D8),
+            false,
+          ),
+          activeIcon: _navIcon(
+            Icons.home_rounded,
+            const Color(0xFF00B4D8),
+            true,
+          ),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
-          activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
+          icon: _navIcon(
+            Icons.pool_rounded,
+            const Color(0xFF7B61FF),
+            false,
+          ),
+          activeIcon: _navIcon(
+            Icons.pool_rounded,
+            const Color(0xFF7B61FF),
+            true,
+          ),
           label: 'Explore',
         ),
         BottomNavigationBarItem(
-          icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
-          activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
+          icon: _navIcon(
+            Icons.map_rounded,
+            const Color(0xFF06D6A0),
+            false,
+          ),
+          activeIcon: _navIcon(
+            Icons.map_rounded,
+            const Color(0xFF06D6A0),
+            true,
+          ),
           label: 'Peta',
         ),
         BottomNavigationBarItem(
-          icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
-          activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
+          icon: _navIcon(
+            Icons.confirmation_number_rounded,
+            const Color(0xFFFFB703),
+            false,
+          ),
+          activeIcon: _navIcon(
+            Icons.confirmation_number_rounded,
+            const Color(0xFFFFB703),
+            true,
+          ),
           label: 'Tiket',
         ),
         BottomNavigationBarItem(
-          icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
-          activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
+          icon: _navIcon(
+            Icons.star_rounded,
+            const Color(0xFFEF476F),
+            false,
+          ),
+          activeIcon: _navIcon(
+            Icons.star_rounded,
+            const Color(0xFFEF476F),
+            true,
+          ),
           label: 'Ulasan',
         ),
       ],
     );
   }
 
-  Widget _navIcon(IconData icon, Color color, bool active) {
+  Widget _navIcon(
+    IconData icon,
+    Color color,
+    bool active,
+  ) {
     return Container(
       width: 36,
       height: 36,
-      decoration: BoxDecoration(
-        color: active ? color.withOpacity(0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+      decoration:
+          BoxDecoration(
+        color: active
+            ? color.withOpacity(0.15)
+            : Colors.transparent,
+        borderRadius:
+            BorderRadius.circular(10),
       ),
       child: Icon(
         icon,
         size: 22,
-        color: active ? color : Colors.grey.shade400,
+        color: active
+            ? color
+            : Colors.grey.shade400,
       ),
     );
   }
