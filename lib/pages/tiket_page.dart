@@ -303,322 +303,335 @@ class _TiketPageState extends State<TiketPage> {
                   top: Radius.circular(28),
                 ),
               ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '🔄 Reschedule Tiket',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
+              child: Column(
+                children: [
+                  // Header (fixed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-
-                      const Text(
-                        'Ubah tanggal kunjungan Anda',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
                         ),
-                      ),
-
-                      const SizedBox(height: 18),
-
-                      // INFO TIKET
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: const Color(0xffe8f9fc),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: const Color(0xff00b4d8)
-                                .withOpacity(.25),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                        const SizedBox(height: 18),
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '🎟️ INFO TIKET',
+                              '🔄 Reschedule Tiket',
                               style: TextStyle(
-                                color: Color(0xff00a0c0),
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 11,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            infoRow(
-                              'No. Tiket',
-                              ticket['id'].toString(),
-                            ),
-                            infoRow(
-                              'Tanggal Saat Ini',
-                              ticket['date'].toString(),
-                            ),
-                            infoRow(
-                              'Kategori',
-                              ticket['qty'].toString(),
-                            ),
-                            infoRow(
-                              'Total Terbayar',
-                              rupiah(ticket['total'] as int),
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close),
                             ),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // RULES
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xfffff8df),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xffffd166)
-                                .withOpacity(.5),
+                        const Text(
+                          'Ubah tanggal kunjungan Anda',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
                           ),
                         ),
-                        child: const Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '📜 Ketentuan Reschedule',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xff9a6c00),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // INFO TIKET
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: const Color(0xffe8f9fc),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(
+                                color: const Color(0xff00b4d8)
+                                    .withOpacity(.25),
                               ),
                             ),
-                            SizedBox(height: 7),
-                            Text(
-                              '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
-                              '• Maksimal H-1 dari tanggal kunjungan.\n'
-                              '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
-                              '• Tanggal baru harus memiliki kuota.\n'
-                              '• Jika harga lebih mahal, bayar selisih.\n'
-                              '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
-                              '• Sistem mencatat riwayat reschedule.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      const Text(
-                        '📅 Pilih Tanggal Baru',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      SizedBox(
-                        height: 85,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: availableDates.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final date = availableDates[i];
-
-                            final weekend =
-                                date.weekday ==
-                                        DateTime.saturday ||
-                                    date.weekday ==
-                                        DateTime.sunday;
-
-                            final selected =
-                                newDate != null &&
-                                    newDate!.year == date.year &&
-                                    newDate!.month == date.month &&
-                                    newDate!.day == date.day;
-
-                            return GestureDetector(
-                              onTap: () {
-                                setModalState(() {
-                                  newDate = date;
-                                });
-                              },
-                              child: Container(
-                                width: 58,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? const Color(0xff00b4d8)
-                                      : Colors.white,
-                                  borderRadius:
-                                      BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: selected
-                                        ? const Color(0xff00b4d8)
-                                        : Colors.grey.shade300,
-                                    width: 1.5,
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '🎟️ INFO TIKET',
+                                  style: TextStyle(
+                                    color: Color(0xff00a0c0),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
                                   ),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      ['SEN', 'SEL', 'RAB', 'KAM',
-                                              'JUM', 'SAB', 'MIN']
-                                          [date.weekday - 1],
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
+                                const SizedBox(height: 8),
+                                infoRow(
+                                  'No. Tiket',
+                                  ticket['id'].toString(),
+                                ),
+                                infoRow(
+                                  'Tanggal Saat Ini',
+                                  ticket['date'].toString(),
+                                ),
+                                infoRow(
+                                  'Kategori',
+                                  ticket['qty'].toString(),
+                                ),
+                                infoRow(
+                                  'Total Terbayar',
+                                  rupiah(ticket['total'] as int),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // RULES
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xfffff8df),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xffffd166)
+                                    .withOpacity(.5),
+                              ),
+                            ),
+                            child: const Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '📜 Ketentuan Reschedule',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xff9a6c00),
+                                  ),
+                                ),
+                                SizedBox(height: 7),
+                                Text(
+                                  '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
+                                  '• Maksimal H-1 dari tanggal kunjungan.\n'
+                                  '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
+                                  '• Tanggal baru harus memiliki kuota.\n'
+                                  '• Jika harga lebih mahal, bayar selisih.\n'
+                                  '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
+                                  '• Sistem mencatat riwayat reschedule.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          const Text(
+                            '📅 Pilih Tanggal Baru',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          SizedBox(
+                            height: 85,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: availableDates.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (context, i) {
+                                final date = availableDates[i];
+
+                                final weekend =
+                                    date.weekday ==
+                                            DateTime.saturday ||
+                                        date.weekday ==
+                                            DateTime.sunday;
+
+                                final selected =
+                                    newDate != null &&
+                                        newDate!.year == date.year &&
+                                        newDate!.month == date.month &&
+                                        newDate!.day == date.day;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      newDate = date;
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 58,
+                                    padding:
+                                        const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? const Color(0xff00b4d8)
+                                          : Colors.white,
+                                      borderRadius:
+                                          BorderRadius.circular(14),
+                                      border: Border.all(
                                         color: selected
-                                            ? Colors.white
-                                            : weekend
-                                                ? Colors.red
-                                                : Colors.grey,
+                                            ? const Color(0xff00b4d8)
+                                            : Colors.grey.shade300,
+                                        width: 1.5,
                                       ),
                                     ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '${date.day}',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
-                                        color: selected
-                                            ? Colors.white
-                                            : Colors.black87,
-                                      ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          ['SEN', 'SEL', 'RAB', 'KAM',
+                                                  'JUM', 'SAB', 'MIN']
+                                              [date.weekday - 1],
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: selected
+                                                ? Colors.white
+                                                : weekend
+                                                    ? Colors.red
+                                                    : Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '${date.day}',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: selected
+                                                ? Colors.white
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          if (newDate != null) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xffe8fff8),
+                                borderRadius:
+                                    BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '📅 ${formatDate(newDate!)}\n'
+                                '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
+                                style: const TextStyle(
+                                  color: Color(0xff087f65),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.5,
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 16),
+                        ],
                       ),
+                    ),
+                  ),
 
-                      if (newDate != null) ...[
-                        const SizedBox(height: 10),
-
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xffe8fff8),
-                            borderRadius:
-                                BorderRadius.circular(12),
+                  // Action buttons (fixed at bottom)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                vertical: 15,
+                              ),
+                            ),
+                            child: const Text('Batal'),
                           ),
-                          child: Text(
-                            '📅 ${formatDate(newDate!)}\n'
-                            '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
-                            style: const TextStyle(
-                              color: Color(0xff087f65),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              height: 1.5,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: newDate == null
+                                ? null
+                                : () {
+                                    setState(() {
+                                      myTickets[index]['date'] =
+                                          formatShortDate(
+                                              newDate!);
+                                      myTickets[index]
+                                              ['reschedule'] =
+                                          (myTickets[index]
+                                                      ['reschedule']
+                                                  as int) +
+                                              1;
+                                    });
+
+                                    Navigator.pop(context);
+
+                                    showMessage(
+                                      'Reschedule berhasil ke ${formatShortDate(newDate!)}',
+                                    );
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xff00b4d8),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                vertical: 15,
+                              ),
+                            ),
+                            child: const Text(
+                              '✅ Konfirmasi Reschedule',
                             ),
                           ),
                         ),
                       ],
-
-                      const Spacer(),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () =>
-                                  Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: const Text('Batal'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              onPressed: newDate == null
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        myTickets[index]['date'] =
-                                            formatShortDate(
-                                                newDate!);
-                                        myTickets[index]
-                                                ['reschedule'] =
-                                            (myTickets[index]
-                                                        ['reschedule']
-                                                    as int) +
-                                                1;
-                                      });
-
-                                      Navigator.pop(context);
-
-                                      showMessage(
-                                        'Reschedule berhasil ke ${formatShortDate(newDate!)}',
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xff00b4d8),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ),
-                              ),
-                              child: const Text(
-                                '✅ Konfirmasi Reschedule',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             );
           },

@@ -9,6 +9,7 @@ import 'promo_page.dart';
 import 'peta_page.dart';
 import 'review_page.dart';
 import 'notifikasi_page.dart';
+import 'event_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -1103,12 +1104,14 @@ class _HomePageState extends State<HomePage> {
   // ==========================================================
 
   Widget _buildQuickMenu() {
-    return Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+    return SizedBox(
+      height: 90,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
         children: [
-          Expanded(
+          SizedBox(
+            width: 72,
             child: _quickMenu(
               Icons.confirmation_number_outlined,
               'Beli Tiket',
@@ -1126,7 +1129,8 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(width: 10),
 
-          Expanded(
+          SizedBox(
+            width: 72,
             child: _quickMenu(
               Icons.local_offer_outlined,
               'Promo',
@@ -1144,7 +1148,8 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(width: 10),
 
-          Expanded(
+          SizedBox(
+            width: 72,
             child: _quickMenu(
               Icons.explore_outlined,
               'Explore',
@@ -1162,7 +1167,8 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(width: 10),
 
-          Expanded(
+          SizedBox(
+            width: 72,
             child: _quickMenu(
               Icons.map_outlined,
               'Peta',
@@ -1172,6 +1178,25 @@ class _HomePageState extends State<HomePage> {
                   MaterialPageRoute(
                     builder: (_) =>
                         const PetaPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          SizedBox(
+            width: 72,
+            child: _quickMenu(
+              Icons.event_outlined,
+              'Event',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const EventPage(),
                   ),
                 );
               },
