@@ -208,13 +208,22 @@ class _TiketPageState extends State<TiketPage> {
       debugPrint('====================================');
       debugPrint('❌ GAGAL MENGAMBIL HARGA TIKET');
       debugPrint('$e');
+      debugPrint('Menggunakan harga default lokal...');
       debugPrint('====================================');
 
       if (!mounted) return;
 
+      // Gunakan harga default lokal sebagai fallback
       setState(() {
         isPriceLoading = false;
-        priceError = 'Gagal mengambil harga tiket dari server.';
+        // Harga default Tiara Park (pool_id_01)
+        // ApiService sudah otomatis return _defaultHarga saat server mati
+        // tapi kalau error di luar ApiService, set manual
+        if (weekdayPrice == 0 && weekendPrice == 0) {
+          weekdayPrice = 15000;
+          weekendPrice = 20000;
+        }
+        priceError = '';
       });
     }
   }
@@ -2740,67 +2749,47 @@ class _TiketPageState extends State<TiketPage> {
             context,
             setModalState,
           ) {
-            final availableDates =
-                datesFrom(
+            final availableDates = datesFrom(
               29,
               offset: 1,
             );
 
-            final baseWeekday =
-                weekdayPrice > 0
-                    ? weekdayPrice
-                    : 15000;
+            final baseWeekday = weekdayPrice > 0 ? weekdayPrice : 15000;
+            final baseWeekend = weekendPrice > 0 ? weekendPrice : 20000;
 
-            final baseWeekend =
-                weekendPrice > 0
-                    ? weekendPrice
-                    : 20000;
+            final newPrice = newDate != null && isWeekendDate(newDate!)
+                ? baseWeekend
+                : baseWeekday;
 
-            final newPrice =
-                newDate != null &&
-                        isWeekendDate(
-                          newDate!,
-                        )
-                    ? baseWeekend
-                    : baseWeekday;
+            final currentPrice =
+                (ticket['total'] as num?)?.toInt() ?? baseWeekday;
 
-            final diff =
-                (newPrice * 2 + adminFee) -
-                    (baseWeekday * 2 +
-                        adminFee);
+            final diff = newPrice - currentPrice;
 
             return sheetShell(
-              height: .85,
+              height: .88,
               safeArea: true,
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Fixed header ──────────────────────────
                   sheetHandle(),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
 
                   Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment
-                            .spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         '🔄 Reschedule Tiket',
                         style: TextStyle(
                           fontSize: 20,
-                          fontWeight:
-                              FontWeight.w800,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       IconButton(
-                        onPressed: () =>
-                            Navigator.pop(
-                          context,
-                        ),
-                        icon: const Icon(
-                          Icons.close,
-                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
@@ -2813,168 +2802,155 @@ class _TiketPageState extends State<TiketPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
 
-                  infoBox(
-                    radius: 15,
-                    pad: 15,
-                    border:
-                        kBlue.withOpacity(.25),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '🎟️ INFO TIKET',
-                          style: TextStyle(
-                            color: kAqua,
-                            fontWeight:
-                                FontWeight.w800,
-                            fontSize: 11,
+                  // ── Scrollable content ────────────────────
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          infoBox(
+                            radius: 15,
+                            pad: 15,
+                            border: kBlue.withOpacity(.25),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '🎟️ INFO TIKET',
+                                  style: TextStyle(
+                                    color: kAqua,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                infoRow(
+                                  'Kolam',
+                                  widget.poolName,
+                                ),
+                                infoRow(
+                                  'No. Tiket',
+                                  ticket['id'].toString(),
+                                ),
+                                infoRow(
+                                  'Tanggal Saat Ini',
+                                  ticket['date'].toString(),
+                                ),
+                                infoRow(
+                                  'Kategori',
+                                  ticket['qty'].toString(),
+                                ),
+                                infoRow(
+                                  'Total Terbayar',
+                                  rupiah(
+                                    ticket['total'] as int,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        const SizedBox(height: 8),
+                          const SizedBox(height: 14),
 
-                        infoRow(
-                          'Kolam',
-                          widget.poolName,
-                        ),
-
-                        infoRow(
-                          'No. Tiket',
-                          ticket['id'].toString(),
-                        ),
-
-                        infoRow(
-                          'Tanggal Saat Ini',
-                          ticket['date']
-                              .toString(),
-                        ),
-
-                        infoRow(
-                          'Kategori',
-                          ticket['qty'].toString(),
-                        ),
-
-                        infoRow(
-                          'Total Terbayar',
-                          rupiah(
-                            ticket['total']
-                                as int,
+                          infoBox(
+                            color: kYellowSoft,
+                            radius: 14,
+                            pad: 14,
+                            border: kGold.withOpacity(.5),
+                            child: const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '📜 Ketentuan Reschedule',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xff9a6c00),
+                                  ),
+                                ),
+                                SizedBox(height: 7),
+                                Text(
+                                  '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
+                                  '• Maksimal H-1 dari tanggal kunjungan.\n'
+                                  '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
+                                  '• Tanggal baru harus memiliki kuota.\n'
+                                  '• Jika harga lebih mahal, bayar selisih.\n'
+                                  '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
+                                  '• Sistem mencatat riwayat reschedule.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  const SizedBox(height: 14),
+                          const SizedBox(height: 16),
 
-                  infoBox(
-                    color: kYellowSoft,
-                    radius: 14,
-                    pad: 14,
-                    border:
-                        kGold.withOpacity(.5),
-                    child: const Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '📜 Ketentuan Reschedule',
-                          style: TextStyle(
-                            fontWeight:
-                                FontWeight.w800,
-                            color:
-                                Color(0xff9a6c00),
+                          const Text(
+                            '📅 Pilih Tanggal Baru',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 7),
-                        Text(
-                          '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
-                          '• Maksimal H-1 dari tanggal kunjungan.\n'
-                          '• Tiket yang sudah digunakan tidak dapat di-reschedule.\n'
-                          '• Tanggal baru harus memiliki kuota.\n'
-                          '• Jika harga lebih mahal, bayar selisih.\n'
-                          '• Jika lebih murah, selisih dikembalikan sesuai kebijakan.\n'
-                          '• Sistem mencatat riwayat reschedule.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1.5,
+
+                          const SizedBox(height: 10),
+
+                          dateStrip(
+                            list: availableDates,
+                            active: newDate,
+                            height: 85,
+                            onPick: (d) {
+                              setModalState(() {
+                                newDate = d;
+                              });
+                            },
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  const SizedBox(height: 16),
+                          if (newDate != null) ...[
+                            const SizedBox(height: 10),
 
-                  const Text(
-                    '📅 Pilih Tanggal Baru',
-                    style: TextStyle(
-                      fontWeight:
-                          FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
+                            infoBox(
+                              color: const Color(0xffe8fff8),
+                              child: Text(
+                                '📅 ${formatDate(newDate!)}\n'
+                                '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
+                                style: const TextStyle(
+                                  color: Color(0xff087f65),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
 
-                  const SizedBox(height: 10),
-
-                  dateStrip(
-                    list: availableDates,
-                    active: newDate,
-                    height: 85,
-                    onPick: (d) {
-                      setModalState(() {
-                        newDate = d;
-                      });
-                    },
-                  ),
-
-                  if (newDate != null) ...[
-                    const SizedBox(height: 10),
-
-                    infoBox(
-                      color:
-                          const Color(0xffe8fff8),
-                      child: Text(
-                        '📅 ${formatDate(newDate!)}\n'
-                        '${diff > 0 ? '⬆️ Harga lebih mahal ${rupiah(diff)}' : diff < 0 ? '⬇️ Harga lebih murah ${rupiah(diff.abs())}' : '✅ Harga sama'}',
-                        style: const TextStyle(
-                          color:
-                              Color(0xff087f65),
-                          fontSize: 12,
-                          fontWeight:
-                              FontWeight.w700,
-                          height: 1.5,
-                        ),
+                          const SizedBox(height: 12),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
 
-                  const Spacer(),
+                  // ── Fixed action buttons ──────────────────
+                  const SizedBox(height: 8),
 
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () =>
-                              Navigator.pop(
-                            context,
-                          ),
-                          style:
-                              OutlinedButton
-                                  .styleFrom(
-                            padding:
-                                const EdgeInsets
-                                    .symmetric(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
                               vertical: 15,
                             ),
                           ),
-                          child:
-                              const Text(
-                            'Batal',
-                          ),
+                          child: const Text('Batal'),
                         ),
                       ),
 
@@ -2982,45 +2958,31 @@ class _TiketPageState extends State<TiketPage> {
 
                       Expanded(
                         flex: 2,
-                        child:
-                            ElevatedButton(
-                          onPressed:
-                              newDate == null
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        myTickets[
-                                                index]
-                                            [
-                                            'date'] =
-                                            formatShortDate(
-                                          newDate!,
-                                        );
+                        child: ElevatedButton(
+                          onPressed: newDate == null
+                              ? null
+                              : () {
+                                  setState(() {
+                                    myTickets[index]['date'] =
+                                        formatShortDate(
+                                      newDate!,
+                                    );
 
-                                        myTickets[
-                                                index]
-                                            [
-                                            'reschedule'] =
-                                            (myTickets[index]
-                                                    [
-                                                    'reschedule']
-                                                as int) +
-                                                1;
-                                      });
+                                    myTickets[index]['reschedule'] =
+                                        (myTickets[index]['reschedule']
+                                            as int) +
+                                            1;
+                                  });
 
-                                      Navigator.pop(
-                                        context,
-                                      );
+                                  Navigator.pop(context);
 
-                                      showMessage(
-                                        'Reschedule berhasil ke '
-                                        '${formatShortDate(newDate!)}',
-                                      );
-                                    },
-                          style:
-                              primaryStyle,
-                          child:
-                              const Text(
+                                  showMessage(
+                                    'Reschedule berhasil ke '
+                                    '${formatShortDate(newDate!)}',
+                                  );
+                                },
+                          style: primaryStyle,
+                          child: const Text(
                             '✅ Konfirmasi Reschedule',
                           ),
                         ),
