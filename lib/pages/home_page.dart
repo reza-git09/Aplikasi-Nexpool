@@ -701,6 +701,8 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           selectedPool = 0;
         });
+        TiketPage.globalSelectedPoolId = 'pool_id_01';
+        TiketPage.globalSelectedPoolName = 'Tiara Jember Park Waterboom';
       },
       child: Container(
         width: 120,
@@ -798,14 +800,17 @@ class _HomePageState extends State<HomePage> {
           selectedPool = index;
         });
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
+        final pId = pool['pool_id']?.toString() ?? 'pool_id_0$index';
+        final pName = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
+        TiketPage.globalSelectedPoolId = pId;
+        TiketPage.globalSelectedPoolName = pName;
+
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '📍 ${pool['fullName']?.toString() ?? name} dipilih',
+              '📍 $pName dipilih',
             ),
-            duration:
-                const Duration(milliseconds: 1200),
+            duration: const Duration(milliseconds: 1200),
           ),
         );
       },
@@ -1035,13 +1040,21 @@ class _HomePageState extends State<HomePage> {
             child: _quickMenu(
               Icons.confirmation_number_outlined,
               'Beli Tiket',
-              () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const TiketPage(),
-                ),
-              ),
+              () {
+                String pId = 'pool_id_01';
+                String pName = 'Tiara Jember Park Waterboom';
+                if (selectedPool > 0 && selectedPool <= pools.length) {
+                  final p = pools[selectedPool - 1];
+                  pId = p['pool_id']?.toString() ?? 'pool_id_0$selectedPool';
+                  pName = p['fullName']?.toString() ?? p['name']?.toString() ?? 'Tiara Jember Park Waterboom';
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TiketPage(poolId: pId, poolName: pName),
+                  ),
+                );
+              },
             ),
           ),
 
