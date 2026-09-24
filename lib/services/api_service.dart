@@ -1,9 +1,10 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class ApiService {
   // Alamat API Laravel
-  static const String baseUrl = 'http://192.168.1.202:8000/api';
+  static const String baseUrl = 'http:// 10.10.185.190:8000/api';
 
   // Timeout request
   static const Duration _timeout = Duration(seconds: 10);
@@ -14,20 +15,70 @@ class ApiService {
   // ==============================
   static const List<Map<String, dynamic>> _defaultHarga = [
     // Tiara Park — pool_id_01
-    {'pool_id': 'pool_id_01', 'kategori': 'Dewasa', 'jenis_hari': 'weekday', 'harga': '15000'},
-    {'pool_id': 'pool_id_01', 'kategori': 'Dewasa', 'jenis_hari': 'weekend', 'harga': '20000'},
+    {
+      'pool_id': 'pool_id_01',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekday',
+      'harga': '15000',
+    },
+    {
+      'pool_id': 'pool_id_01',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekend',
+      'harga': '20000',
+    },
     // Kebon Agung — pool_id_02
-    {'pool_id': 'pool_id_02', 'kategori': 'Dewasa', 'jenis_hari': 'weekday', 'harga': '10000'},
-    {'pool_id': 'pool_id_02', 'kategori': 'Dewasa', 'jenis_hari': 'weekend', 'harga': '15000'},
+    {
+      'pool_id': 'pool_id_02',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekday',
+      'harga': '10000',
+    },
+    {
+      'pool_id': 'pool_id_02',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekend',
+      'harga': '15000',
+    },
     // Annasya — pool_id_03
-    {'pool_id': 'pool_id_03', 'kategori': 'Dewasa', 'jenis_hari': 'weekday', 'harga': '12000'},
-    {'pool_id': 'pool_id_03', 'kategori': 'Dewasa', 'jenis_hari': 'weekend', 'harga': '18000'},
+    {
+      'pool_id': 'pool_id_03',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekday',
+      'harga': '12000',
+    },
+    {
+      'pool_id': 'pool_id_03',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekend',
+      'harga': '18000',
+    },
     // Dira Park — pool_id_04
-    {'pool_id': 'pool_id_04', 'kategori': 'Dewasa', 'jenis_hari': 'weekday', 'harga': '15000'},
-    {'pool_id': 'pool_id_04', 'kategori': 'Dewasa', 'jenis_hari': 'weekend', 'harga': '22000'},
+    {
+      'pool_id': 'pool_id_04',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekday',
+      'harga': '15000',
+    },
+    {
+      'pool_id': 'pool_id_04',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekend',
+      'harga': '22000',
+    },
     // Jati Park — pool_id_05
-    {'pool_id': 'pool_id_05', 'kategori': 'Dewasa', 'jenis_hari': 'weekday', 'harga': '12000'},
-    {'pool_id': 'pool_id_05', 'kategori': 'Dewasa', 'jenis_hari': 'weekend', 'harga': '18000'},
+    {
+      'pool_id': 'pool_id_05',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekday',
+      'harga': '12000',
+    },
+    {
+      'pool_id': 'pool_id_05',
+      'kategori': 'Dewasa',
+      'jenis_hari': 'weekend',
+      'harga': '18000',
+    },
   ];
 
   // ==============================
