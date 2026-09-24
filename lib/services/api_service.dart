@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Alamat API Laravel
-  static const String baseUrl = 'http:// 10.10.185.190:8000/api';
+  static const String baseUrl = 'http://10.10.185.190:8000/api';
 
   // Timeout request
   static const Duration _timeout = Duration(seconds: 10);
@@ -27,6 +27,7 @@ class ApiService {
       'jenis_hari': 'weekend',
       'harga': '20000',
     },
+
     // Kebon Agung — pool_id_02
     {
       'pool_id': 'pool_id_02',
@@ -40,6 +41,7 @@ class ApiService {
       'jenis_hari': 'weekend',
       'harga': '15000',
     },
+
     // Annasya — pool_id_03
     {
       'pool_id': 'pool_id_03',
@@ -53,6 +55,7 @@ class ApiService {
       'jenis_hari': 'weekend',
       'harga': '18000',
     },
+
     // Dira Park — pool_id_04
     {
       'pool_id': 'pool_id_04',
@@ -66,6 +69,7 @@ class ApiService {
       'jenis_hari': 'weekend',
       'harga': '22000',
     },
+
     // Jati Park — pool_id_05
     {
       'pool_id': 'pool_id_05',
