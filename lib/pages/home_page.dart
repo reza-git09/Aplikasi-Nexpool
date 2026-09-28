@@ -662,7 +662,7 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         children: [
           Expanded(
-            child: _quickMenu(Icons.confirmation_number_outlined, 'Beli Tiket', () {
+            child: _quickMenu(Icons.add_shopping_cart_rounded, 'Beli Tiket', () {
               String pId = 'pool_id_01';
               String pName = 'Tiara Jember Park Waterboom';
               if (selectedPool > 0 && selectedPool <= pools.length) {
@@ -670,20 +670,26 @@ class _HomePageState extends State<HomePage> {
                 pId = p['pool_id']?.toString() ?? 'pool_id_0$selectedPool';
                 pName = p['fullName']?.toString() ?? p['name']?.toString() ?? 'Tiara Jember Park Waterboom';
               }
-              Navigator.push(context, MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName)));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName, initialTab: 0)));
             }),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _quickMenu(Icons.confirmation_number_rounded, 'Tiket Saya', () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const TiketPage(initialTab: 1)));
+            }),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: _quickMenu(Icons.local_offer_outlined, 'Promo',
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage()))),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: _quickMenu(Icons.explore_outlined, 'Explore',
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage()))),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: _quickMenu(Icons.map_outlined, 'Peta',
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetaPage()))),

@@ -217,14 +217,20 @@ class TiketPage extends StatefulWidget {
   static String globalSelectedPoolId = 'pool_id_01';
   static String globalSelectedPoolName = 'Tiara Jember Park Waterboom';
 
+  /// List simpanan tiket yang sudah dipesan pengguna (dimulai dari kosong [])
+  /// Tiket hanya akan muncul di Tiket Saya setelah pengguna melakukan pemesanan.
+  static List<Map<String, dynamic>> savedTickets = [];
+
   const TiketPage({
     super.key,
     this.poolId,
     this.poolName,
+    this.initialTab = 0,
   });
 
   final String? poolId;
   final String? poolName;
+  final int initialTab;
 
   @override
   State<TiketPage> createState() => _TiketPageState();
@@ -234,7 +240,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   // ============================ STATE ============================
 
   int currentStep = 1;
-  int selectedTab = 0;
+  late int selectedTab;
 
   late String selectedPoolId;
   late String selectedPoolName;
@@ -278,38 +284,8 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   late Animation<double> _pulseAnimation;
 
   // ── Tiket Saya ──────────────────────────────────────────────────
-  List<Map<String, dynamic>> myTickets = [
-    {
-      'orderId': 'NXP-202600001',
-      'ticketId': 'pool_id_02_20260001',
-      'poolId': 'POOL-02',
-      'rawPoolId': 'pool_id_02',
-      'poolName': 'Pemandian Kebon Agung',
-      'name': 'Tiket Dewasa — Weekday',
-      'date': '20 Sep 2026',
-      'qty': '2 Dewasa',
-      'payment': 'Transfer Bank (BRI)',
-      'total': 32000,
-      'status': 'paid',
-      'paidAt': '20/09/2026 09:15 WIB',
-      'reschedule': 1,
-    },
-    {
-      'orderId': 'NXP-202600000',
-      'ticketId': 'pool_id_01_20260000',
-      'poolId': 'POOL-01',
-      'rawPoolId': 'pool_id_01',
-      'poolName': 'Tiara Jember Park Waterboom',
-      'name': 'Tiket Dewasa — Weekend',
-      'date': '14 Sep 2026',
-      'qty': '1 Dewasa, 2 Anak',
-      'payment': 'QRIS (GoPay)',
-      'total': 22000,
-      'status': 'paid',
-      'paidAt': '13/09/2026 14:30 WIB',
-      'reschedule': 0,
-    },
-  ];
+  // Mengacu ke list global savedTickets. Dimulai kosong (0).
+  List<Map<String, dynamic>> get myTickets => TiketPage.savedTickets;
 
   final namaController = TextEditingController();
   final teleponController = TextEditingController();
@@ -319,6 +295,8 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+
+    selectedTab = widget.initialTab;
 
     // Otomatis sinkronkan dengan pilihan kolam dari dashboard jika ada
     selectedPoolId = widget.poolId ?? TiketPage.globalSelectedPoolId;
@@ -956,9 +934,9 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
-        title: const Text(
-          'Pesan Tiket Nexpool',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        title: Text(
+          selectedTab == 1 ? 'Tiket Saya' : 'Pesan Tiket Nexpool',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         centerTitle: true,
         flexibleSpace: Container(
@@ -966,10 +944,19 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
         ),
         foregroundColor: Colors.white,
         elevation: 0,
+        // Tombol kembali ke Pesan Tiket saat di tab Tiket Saya
+        leading: selectedTab == 1
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => selectedTab = 0),
+              )
+            : null,
       ),
       body: SafeArea(
         child: Column(
           children: [
+            // Tab switcher hanya tampil di Tiket Saya agar bisa kembali
+            if (selectedTab == 1) buildTabs(),
             Expanded(
               child: selectedTab == 0
                   ? SingleChildScrollView(
@@ -1261,6 +1248,98 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
             ),
           ),
         ),
+
+        const SizedBox(height: 12),
+
+        // ── Tombol Lihat Tiket Saya ─────────────────────────────────
+        pad20(
+          GestureDetector(
+            onTap: () => setState(() => selectedTab = 1),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: kGold.withOpacity(0.7),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: kGold.withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: kYellowSoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.confirmation_number_rounded,
+                      color: kOrange,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Lihat Tiket Saya',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff172B4D),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${myTickets.length} tiket tersimpan · Tap untuk lihat detail',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: kOrange,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${myTickets.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -3375,27 +3454,80 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildEmptyTickets() {
-    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: Center(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            colorfulIcon(
-              icon: Icons.confirmation_number_rounded,
-              color: kAqua,
-              bgColor: kSoft,
-              boxSize: 70,
-              size: 36,
+            // Ilustrasi ikon
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: kSoft,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: kBlue.withOpacity(0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.confirmation_number_rounded,
+                color: kAqua,
+                size: 48,
+              ),
             ),
-            const SizedBox(height: 14),
+
+            const SizedBox(height: 20),
+
             const Text(
               'Belum Ada Tiket',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xff172B4D),
+              ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Pesan tiket kolam renang impian Anda sekarang!',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+
+            const SizedBox(height: 8),
+
+            Text(
+              'Kamu belum punya tiket.\nPesan tiket sekarang untuk mulai berwisata!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 13,
+                height: 1.55,
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // Tombol Pesan Tiket
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => selectedTab = 0),
+                icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                label: const Text(
+                  'Pesan Tiket Sekarang',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                style: primaryStyle.copyWith(
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
