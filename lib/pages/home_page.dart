@@ -30,6 +30,7 @@ class _HomePageState extends State<HomePage> {
     {
       'name': 'Tiara Jember Park',
       'fullName': 'Tiara Jember Park Waterboom',
+      'pool_id': 'pool_id_01',
       'image': 'assets/images/tiara_park.jpeg',
       'rating': '4.9',
       'reviews': '1.2k',
@@ -45,6 +46,7 @@ class _HomePageState extends State<HomePage> {
     {
       'name': 'Kebon Agung',
       'fullName': 'Pemandian Kebon Agung',
+      'pool_id': 'pool_id_02',
       'image': 'assets/images/kebon agung_park.jpeg',
       'rating': '4.7',
       'reviews': '980',
@@ -60,6 +62,7 @@ class _HomePageState extends State<HomePage> {
     {
       'name': 'Annasya Waterpark',
       'fullName': 'Annasya Waterpark',
+      'pool_id': 'pool_id_03',
       'image': 'assets/images/annasya_park.jpeg',
       'rating': '4.8',
       'reviews': '756',
@@ -75,6 +78,7 @@ class _HomePageState extends State<HomePage> {
     {
       'name': 'Dira Park',
       'fullName': 'Dira Park',
+      'pool_id': 'pool_id_04',
       'image': 'assets/images/dira_park.jpeg',
       'rating': '4.6',
       'reviews': '612',
@@ -90,6 +94,7 @@ class _HomePageState extends State<HomePage> {
     {
       'name': 'Jati Park',
       'fullName': 'Jati Park',
+      'pool_id': 'pool_id_05',
       'image': 'assets/images/jati_park.jpeg',
       'rating': '4.8',
       'reviews': '890',

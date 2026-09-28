@@ -72,10 +72,19 @@ class _ReviewPageState extends State<ReviewPage> {
   // =========================================================
 
   bool get hasSelectedPool {
-    return widget.poolId != null &&
-        widget.poolId!.trim().isNotEmpty &&
-        widget.namaKolam != null &&
+    // Cukup namaKolam yang wajib ada agar halaman ulasan bisa dibuka.
+    // poolId boleh kosong — API mungkin belum selesai load saat navigasi.
+    return widget.namaKolam != null &&
         widget.namaKolam!.trim().isNotEmpty;
+  }
+
+  // poolId efektif yang dipakai untuk request API
+  String get effectivePoolId {
+    if (widget.poolId != null && widget.poolId!.trim().isNotEmpty) {
+      return widget.poolId!.trim();
+    }
+    // Fallback: gunakan namaKolam sebagai identifier
+    return widget.namaKolam?.trim() ?? '';
   }
 
   // =========================================================
@@ -111,8 +120,7 @@ class _ReviewPageState extends State<ReviewPage> {
   // =========================================================
 
   Future<void> loadReviews() async {
-    if (widget.poolId == null ||
-        widget.poolId!.trim().isEmpty) {
+    if (effectivePoolId.isEmpty) {
       return;
     }
 
@@ -124,7 +132,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
     try {
       final data = await ApiService.getReviewsByPool(
-        widget.poolId!,
+        effectivePoolId,
       );
 
       if (!mounted) return;
@@ -141,7 +149,7 @@ class _ReviewPageState extends State<ReviewPage> {
         'REVIEW BERHASIL DIAMBIL',
       );
       debugPrint(
-        'POOL ID: ${widget.poolId}',
+        'POOL ID: $effectivePoolId',
       );
       debugPrint(
         'JUMLAH REVIEW: ${reviewsFromApi.length}',
@@ -339,8 +347,7 @@ class _ReviewPageState extends State<ReviewPage> {
     // VALIDASI POOL ID
     // =======================================================
 
-    if (widget.poolId == null ||
-        widget.poolId!.trim().isEmpty) {
+    if (effectivePoolId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -390,7 +397,7 @@ class _ReviewPageState extends State<ReviewPage> {
       );
 
       debugPrint(
-        'POOL ID       : ${widget.poolId}',
+        'POOL ID       : $effectivePoolId',
       );
 
       debugPrint(
@@ -423,7 +430,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
       final Map<String, dynamic> result =
           await ApiService.submitReview(
-        poolId: widget.poolId!,
+        poolId: effectivePoolId,
         namaPengunjung: 'Reza',
         rating: overallRating,
         komentar: comment,
