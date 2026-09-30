@@ -144,7 +144,6 @@ class _PromoPageState extends State<PromoPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
@@ -709,67 +708,6 @@ class _PromoPageState extends State<PromoPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      currentIndex: 3,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF0077A8),
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.popUntil(
-            context,
-            (route) => route.isFirst,
-          );
-        } else if (index == 1) {
-          Navigator.pop(context);
-        } else if (index == 2) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const TiketPage(),
-            ),
-          );
-        } else if (index == 3) {
-          // Sudah berada di halaman Promo
-        } else if (index == 4) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Halaman Profil akan dibuat berikutnya.'),
-            ),
-          );
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.explore_outlined),
-          activeIcon: Icon(Icons.explore),
-          label: 'Explore',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.confirmation_number_outlined),
-          activeIcon: Icon(Icons.confirmation_number),
-          label: 'Tiket',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.local_offer_outlined),
-          activeIcon: Icon(Icons.local_offer),
-          label: 'Promo',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
-          label: 'Profil',
-        ),
-      ],
     );
   }
 }

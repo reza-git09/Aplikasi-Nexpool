@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'explore_page.dart';
-import 'peta_page.dart';
 import 'tiket_page.dart';
 import 'review_page.dart';
 import 'promo_page.dart';
@@ -305,44 +302,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     );
   }
 
-  void navigateMenu(int index) {
-    if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const HomePage(),
-        ),
-      );
-    } else if (index == 1) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ExplorePage(),
-        ),
-      );
-    } else if (index == 2) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PetaPage(),
-        ),
-      );
-    } else if (index == 3) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const TiketPage(),
-        ),
-      );
-    } else if (index == 4) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ReviewPage(),
-        ),
-      );
-    }
-  }
+
 
   Widget buildDateGroup(String title) {
     return Padding(
@@ -734,51 +694,6 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
         ),
       ),
 
-      // =========================
-      // BOTTOM NAVIGATION
-      // =========================
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xff1565C0),
-        unselectedItemColor: Colors.grey,
-        onTap: navigateMenu,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
-            label: 'Peta',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.confirmation_number_outlined,
-            ),
-            activeIcon: Icon(
-              Icons.confirmation_number,
-            ),
-            label: 'Tiket',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Ulasan',
-          ),
-        ],
-      ),
     );
   }
 }

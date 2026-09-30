@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import 'explore_page.dart';
-import 'peta_page.dart';
-import 'tiket_page.dart';
-import 'review_page.dart';
 import 'paket_page.dart';
 
 class FavoritPage extends StatefulWidget {
@@ -194,92 +190,6 @@ class _FavoritPageState extends State<FavoritPage> {
         ),
       ),
 
-      // ==============================
-      // BOTTOM NAVIGATION
-      // ==============================
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xff123c73),
-        unselectedItemColor: Colors.grey,
-
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomePage(),
-              ),
-              (route) => false,
-            );
-          }
-
-          if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ExplorePage(),
-              ),
-            );
-          }
-
-          if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const PetaPage(),
-              ),
-            );
-          }
-
-          if (index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const TiketPage(),
-              ),
-            );
-          }
-
-          if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ReviewPage(),
-              ),
-            );
-          }
-        },
-
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
-            label: 'Peta',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_number_outlined),
-            activeIcon: Icon(Icons.confirmation_number),
-            label: 'Tiket',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star_border),
-            activeIcon: Icon(Icons.star),
-            label: 'Ulasan',
-          ),
-        ],
-      ),
     );
   }
 
@@ -482,11 +392,12 @@ class _FavoritPageState extends State<FavoritPage> {
 
       child: GestureDetector(
         onTap: () {
-          Navigator.push(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => const ExplorePage(),
+              builder: (context) => const HomePage(),
             ),
+            (route) => false,
           );
         },
 

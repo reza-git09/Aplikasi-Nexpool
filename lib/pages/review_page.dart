@@ -6,9 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 
 import 'home_page.dart';
-import 'explore_page.dart';
-import 'peta_page.dart';
-import 'tiket_page.dart';
 
 class ReviewPage extends StatefulWidget {
   // =========================================================
@@ -806,7 +803,7 @@ class _ReviewPageState extends State<ReviewPage> {
                       newlyUploadedSection(),
 
                       const SizedBox(
-                        height: 10,
+                        height: 88, // Clearance for floating bubble navbar
                       ),
                     ],
                   ),
@@ -815,137 +812,6 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
           ],
         ),
-      ),
-
-      // =======================================================
-      // BOTTOM NAVIGATION
-      // =======================================================
-
-      bottomNavigationBar:
-          BottomNavigationBar(
-        currentIndex: 4,
-        type:
-            BottomNavigationBarType.fixed,
-        selectedItemColor:
-            const Color(0xFFEF476F),
-        unselectedItemColor:
-            Colors.grey.shade400,
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        backgroundColor:
-            Colors.white,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const HomePage(),
-              ),
-            );
-          }
-
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const ExplorePage(),
-              ),
-            );
-          }
-
-          if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const PetaPage(),
-              ),
-            );
-          }
-
-          if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    const TiketPage(),
-              ),
-            );
-          }
-
-          if (index == 4) {
-            return;
-          }
-        },
-        items: [
-          BottomNavigationBarItem(
-            icon: _navIcon(
-              Icons.home_rounded,
-              const Color(0xFF00B4D8),
-              false,
-            ),
-            activeIcon: _navIcon(
-              Icons.home_rounded,
-              const Color(0xFF00B4D8),
-              true,
-            ),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: _navIcon(
-              Icons.pool_rounded,
-              const Color(0xFF7B61FF),
-              false,
-            ),
-            activeIcon: _navIcon(
-              Icons.pool_rounded,
-              const Color(0xFF7B61FF),
-              true,
-            ),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
-            icon: _navIcon(
-              Icons.map_rounded,
-              const Color(0xFF06D6A0),
-              false,
-            ),
-            activeIcon: _navIcon(
-              Icons.map_rounded,
-              const Color(0xFF06D6A0),
-              true,
-            ),
-            label: 'Peta',
-          ),
-          BottomNavigationBarItem(
-            icon: _navIcon(
-              Icons.confirmation_number_rounded,
-              const Color(0xFFFFB703),
-              false,
-            ),
-            activeIcon: _navIcon(
-              Icons.confirmation_number_rounded,
-              const Color(0xFFFFB703),
-              true,
-            ),
-            label: 'Tiket',
-          ),
-          BottomNavigationBarItem(
-            icon: _navIcon(
-              Icons.star_rounded,
-              const Color(0xFFEF476F),
-              false,
-            ),
-            activeIcon: _navIcon(
-              Icons.star_rounded,
-              const Color(0xFFEF476F),
-              true,
-            ),
-            label: 'Ulasan',
-          ),
-        ],
       ),
     );
   }
@@ -2531,35 +2397,6 @@ class _ReviewPageState extends State<ReviewPage> {
   // BOTTOM NAV ITEM
   // ===========================================================
 
-  Widget _navIcon(
-    IconData icon,
-    Color color,
-    bool active,
-  ) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration:
-          BoxDecoration(
-        color: active
-            ? color.withOpacity(
-                0.15,
-              )
-            : Colors.transparent,
-        borderRadius:
-            BorderRadius.circular(
-          10,
-        ),
-      ),
-      child: Icon(
-        icon,
-        size: 22,
-        color: active
-            ? color
-            : Colors.grey.shade400,
-      ),
-    );
-  }
 }
 
 // =============================================================

@@ -17,6 +17,9 @@ dependencies:
   image_picker: ^1.2.1
   http: ^1.6.0
 
+  # Untuk membuka URL eksternal (Google Maps)
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

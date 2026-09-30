@@ -4,9 +4,6 @@ import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import 'home_page.dart';
-import 'explore_page.dart';
-import 'peta_page.dart';
-import 'review_page.dart';
 
 const kBlue = Color(0xff00b4d8);
 const kDarkBlue = Color(0xff0077b6);
@@ -823,6 +820,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
                           if (currentStep == 3) buildStep3(),
                           if (currentStep == 4) buildStep4(),
                           if (currentStep == 5) buildStep5(),
+                          const SizedBox(height: 88), // Clearance for floating navbar
                         ],
                       ),
                     )
@@ -831,7 +829,6 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
           ],
         ),
       ),
-      bottomNavigationBar: buildBottomNavigation(),
     );
   }
 
@@ -2596,7 +2593,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
   Widget buildMyTickets() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 25),
+      padding: const EdgeInsets.only(bottom: 88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3274,57 +3271,6 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
           ),
         ),
       ],
-    );
-  }
-
-  Widget buildBottomNavigation() {
-    return BottomNavigationBar(
-      currentIndex: 3,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: kAqua,
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      onTap: (index) {
-        final pages = <int, Widget>{
-          0: const HomePage(),
-          1: const ExplorePage(),
-          2: const PetaPage(),
-          4: const ReviewPage(),
-        };
-
-        final page = pages[index];
-        if (page == null) return;
-
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page));
-      },
-      items: [
-        _navItem(Icons.home_rounded, const Color(0xFF00B4D8), 'Home'),
-        _navItem(Icons.pool_rounded, const Color(0xFF7B61FF), 'Explore'),
-        _navItem(Icons.map_rounded, const Color(0xFF06D6A0), 'Peta'),
-        _navItem(Icons.confirmation_number_rounded, const Color(0xFFFFB703), 'Tiket'),
-        _navItem(Icons.star_rounded, const Color(0xFFEF476F), 'Ulasan'),
-      ],
-    );
-  }
-
-  BottomNavigationBarItem _navItem(IconData icon, Color color, String label) {
-    return BottomNavigationBarItem(
-      icon: _navIcon(icon, color, false),
-      activeIcon: _navIcon(icon, color, true),
-      label: label,
-    );
-  }
-
-  Widget _navIcon(IconData icon, Color color, bool active) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: active ? color.withOpacity(.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: active ? color : Colors.grey, size: 22),
     );
   }
 }

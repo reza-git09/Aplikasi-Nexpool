@@ -1,21 +1,30 @@
-import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'dart:async';
 
-import 'explore_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../services/api_service.dart';
 import 'tiket_page.dart';
 import 'promo_page.dart';
-import 'peta_page.dart';
 import 'review_page.dart';
 import 'notifikasi_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    this.onPoolChanged,
+  });
+
+  /// Called whenever user changes pool selection.
+  /// poolIndex: 0 = semua, 1..n = kolam tertentu
+  final void Function(int poolIndex, String poolId, String poolName, String poolGambar)? onPoolChanged;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   // ============================================================
   // KOLAM YANG DIPILIH
   // 0 = Semua, 1 = Tiara, 2 = Kebon Agung, 3 = Annasya, 4 = Dira Park, 5 = Jati Park
@@ -42,6 +51,7 @@ class _HomePageState extends State<HomePage> {
       'bar5': 0.85,
       'location': 'Jl. Taman Air No.1, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Tiara+Jember+Park+Waterboom+Jember',
     },
     {
       'name': 'Kebon Agung',
@@ -58,6 +68,7 @@ class _HomePageState extends State<HomePage> {
       'bar5': 0.75,
       'location': 'Jl. Kebon Agung, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Pemandian+Kebon+Agung+Jember',
     },
     {
       'name': 'Annasya Waterpark',
@@ -74,6 +85,7 @@ class _HomePageState extends State<HomePage> {
       'bar5': 0.82,
       'location': 'Jl. Annasya Water Park, Kabupaten Jember',
       'hours': '07.00 – 16.30 WIB',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Annasya+Waterpark+Jember',
     },
     {
       'name': 'Dira Park',
@@ -90,6 +102,7 @@ class _HomePageState extends State<HomePage> {
       'bar5': 0.70,
       'location': 'Jl. Dira Park, Kabupaten Jember',
       'hours': '08.00 – 17.00 WIB',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Dira+Park+Jember',
     },
     {
       'name': 'Jati Park',
@@ -106,6 +119,7 @@ class _HomePageState extends State<HomePage> {
       'bar5': 0.83,
       'location': 'Jl. Jati Park, Kabupaten Jember',
       'hours': '07.30 – 17.00 WIB',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Jati+Park+Jember',
     },
   ];
 
@@ -190,6 +204,13 @@ class _HomePageState extends State<HomePage> {
           image = gambar;
         }
 
+        // MAPS URL — gunakan dari API jika tersedia, fallback ke data lokal
+        String mapsUrl = local['mapsUrl']?.toString() ?? '';
+        final String apiMapsUrl = item['maps_url']?.toString() ?? '';
+        if (apiMapsUrl.isNotEmpty && apiMapsUrl != 'null') {
+          mapsUrl = apiMapsUrl;
+        }
+
         // GABUNG DATA API + DATA LOKAL
         apiPools.add({
           ...local,
@@ -201,7 +222,7 @@ class _HomePageState extends State<HomePage> {
           'image': image,
           'location': location,
           'sub': sub,
-          'maps_url': item['maps_url'],
+          'mapsUrl': mapsUrl,
           'status': item['status'],
         });
 
@@ -231,6 +252,224 @@ class _HomePageState extends State<HomePage> {
       debugPrint('Data lokal tetap digunakan.');
       debugPrint('====================================');
     }
+  }
+
+  // ============================================================
+  // BUKA GOOGLE MAPS
+  // ============================================================
+  Future<void> _openMaps(String mapsUrl, String poolName) async {
+    if (mapsUrl.isEmpty) {
+      // Fallback jika URL kosong
+      mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(poolName)}';
+    }
+    final Uri uri = Uri.parse(mapsUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak dapat membuka Maps. Pastikan aplikasi Maps sudah terpasang.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuka Maps: $e')),
+      );
+    }
+  }
+
+  // ============================================================
+  // WAHANA BOTTOM SHEET
+  // ============================================================
+  void _showWahanaDetail(Map<String, String> item) {
+    // Lock body scroll
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useSafeArea: true,
+      builder: (sheetCtx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.35,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (_, scrollController) {
+            final String name = item['name'] ?? 'Wahana';
+            final String desc = item['desc'] ?? '';
+            final String image = item['image'] ?? '';
+            final String emoji = item['emoji'] ?? '🏊';
+            final String detail1 = item['detail1'] ?? '';
+            final String detail2 = item['detail2'] ?? '';
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 4),
+                    child: Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Close button row
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 12, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF172B4D)),
+                            maxLines: 2,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(sheetCtx),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEEF2F8),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF172B4D)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Image or placeholder
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: image.isNotEmpty
+                                ? Image.asset(
+                                    image,
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
+                                  )
+                                : _wahanaSheetPlaceholder(emoji),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Description
+                          Text(
+                            desc,
+                            style: TextStyle(fontSize: 13.5, height: 1.65, color: Colors.grey.shade700),
+                          ),
+
+                          if (detail1.isNotEmpty || detail2.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0FAFE),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFB3E8F5)),
+                              ),
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                children: [
+                                  if (detail1.isNotEmpty)
+                                    _sheetDetailRow('📐', 'Info', detail1),
+                                  if (detail1.isNotEmpty && detail2.isNotEmpty)
+                                    const Divider(height: 16, color: Color(0xFFD0EFF8)),
+                                  if (detail2.isNotEmpty)
+                                    _sheetDetailRow('👥', 'Pengunjung', detail2),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 22),
+
+                          // Close button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => Navigator.pop(sheetCtx),
+                              icon: const Icon(Icons.check_circle_rounded, size: 18),
+                              label: const Text('Tutup', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00B4D8),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _wahanaSheetPlaceholder(String emoji) {
+    return Container(
+      width: double.infinity,
+      height: 180,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xff90E0EF), Color(0xff00B4D8)]),
+      ),
+      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 54))),
+    );
+  }
+
+  Widget _sheetDetailRow(String icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 17)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF7EB5CA))),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF172B4D))),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -276,12 +515,11 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 28),
                 _buildRatingSection(detailPool),
               ],
-              const SizedBox(height: 40),
+              const SizedBox(height: 100), // clearance for floating navbar
             ],
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
@@ -478,47 +716,60 @@ class _HomePageState extends State<HomePage> {
 
     return GestureDetector(
       onTap: () {
+        HapticFeedback.selectionClick();
         setState(() {
           selectedPool = 0;
         });
         TiketPage.globalSelectedPoolId = 'pool_id_01';
         TiketPage.globalSelectedPoolName = 'Tiara Jember Park Waterboom';
+        widget.onPoolChanged?.call(0, 'pool_id_01', 'Tiara Jember Park Waterboom', '');
       },
-      child: Container(
-        width: 120,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xff123C73) : Colors.white,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 55,
-              height: 55,
-              decoration: BoxDecoration(
-                color: selected ? Colors.white.withOpacity(0.15) : const Color(0xffE8F7FB),
-                shape: BoxShape.circle,
+      child: AnimatedScale(
+        scale: selected ? 1.03 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          width: 120,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xff123C73) : Colors.white,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: selected ? const Color(0xFF378ADD) : Colors.transparent,
+              width: 2,
+            ),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white.withOpacity(0.15) : const Color(0xffE8F7FB),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.waves, color: selected ? Colors.white : const Color(0xff00A4C6), size: 28),
               ),
-              child: Icon(Icons.waves, color: selected ? Colors.white : const Color(0xff00A4C6), size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Semua Kolam',
-              style: TextStyle(
-                color: selected ? Colors.white : const Color(0xff172B4D),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+              const SizedBox(height: 8),
+              Text(
+                'Semua Kolam',
+                style: TextStyle(
+                  color: selected ? Colors.white : const Color(0xff172B4D),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${pools.length} Wisata',
-              style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 9),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                '${pools.length} Wisata',
+                style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 9),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -535,59 +786,69 @@ class _HomePageState extends State<HomePage> {
 
     return GestureDetector(
       onTap: () {
+        HapticFeedback.selectionClick();
         setState(() {
           selectedPool = index;
         });
 
         final pId = pool['pool_id']?.toString() ?? 'pool_id_0$index';
         final pName = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
+        final pGambar = pool['image']?.toString() ?? '';
         TiketPage.globalSelectedPoolId = pId;
         TiketPage.globalSelectedPoolName = pName;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('📍 $pName dipilih'), duration: const Duration(milliseconds: 1200)),
-        );
+        widget.onPoolChanged?.call(index, pId, pName, pGambar);
       },
-      child: Container(
-        width: 120,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xff123C73) : Colors.white,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(width: 104, height: 62, child: _buildImage(image, fit: BoxFit.cover)),
+      child: AnimatedScale(
+        scale: selected ? 1.03 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          width: 120,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xff123C73) : Colors.white,
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: selected ? const Color(0xFF378ADD) : Colors.transparent,
+              width: 2,
             ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? Colors.white : const Color(0xff172B4D),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(width: 104, height: 62, child: _buildImage(image, fit: BoxFit.cover)),
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? Colors.white : const Color(0xff172B4D),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('★', style: TextStyle(color: Color(0xffFFD166), fontSize: 9)),
-                const SizedBox(width: 2),
-                Text(rating, style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 8)),
-              ],
-            ),
-          ],
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('★', style: TextStyle(color: Color(0xffFFD166), fontSize: 9)),
+                  const SizedBox(width: 2),
+                  Text(rating, style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 8)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -662,7 +923,7 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         children: [
           Expanded(
-            child: _quickMenu(Icons.add_shopping_cart_rounded, 'Beli Tiket', () {
+            child: _quickMenu(Icons.add_shopping_cart_rounded, 'Beli Tiket', const Color(0xFF00B4D8), () {
               String pId = 'pool_id_01';
               String pName = 'Tiara Jember Park Waterboom';
               if (selectedPool > 0 && selectedPool <= pools.length) {
@@ -675,31 +936,49 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _quickMenu(Icons.confirmation_number_rounded, 'Tiket Saya', () {
+            child: _quickMenu(Icons.confirmation_number_rounded, 'Tiket Saya', const Color(0xFFFFB703), () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const TiketPage(initialTab: 1)));
             }),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _quickMenu(Icons.local_offer_outlined, 'Promo',
+            child: _quickMenu(Icons.local_offer_rounded, 'Promo', const Color(0xFFEF476F),
                 () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage()))),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _quickMenu(Icons.explore_outlined, 'Explore',
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage()))),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _quickMenu(Icons.map_outlined, 'Peta',
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetaPage()))),
+            child: _quickMenu(Icons.star_rounded, 'Ulasan', const Color(0xFF7B61FF), () {
+              if (selectedPool == 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Silakan pilih kolam renang terlebih dahulu.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+              final Map<String, dynamic> pool = pools[selectedPool - 1];
+              final String namaKolam = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
+              final String gambarKolam = pool['image']?.toString() ?? '';
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReviewPage(
+                    poolId: pool['pool_id']?.toString() ?? '',
+                    namaKolam: namaKolam,
+                    gambarKolam: gambarKolam,
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _quickMenu(IconData icon, String title, VoidCallback onTap) {
+  Widget _quickMenu(IconData icon, String title, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -712,8 +991,16 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: const Color(0xff123C73), size: 25),
-            const SizedBox(height: 7),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 5),
             Text(title, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
           ],
         ),
@@ -768,7 +1055,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildTitle(
           'Promo Terbaru',
-          Icons.local_offer,
+          Icons.local_offer_rounded,
           const Color(0xffD4960A),
           action: 'Lihat Semua',
           onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage())),
@@ -887,7 +1174,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Event Mendatang', Icons.celebration_outlined, const Color(0xffEF476F),
+        _buildTitle('Event Mendatang', Icons.celebration_rounded, const Color(0xffEF476F),
             action: 'Lihat Semua', onAction: _eventMessage),
         const SizedBox(height: 12),
         SizedBox(
@@ -972,7 +1259,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildTitle(
           'Harga Tiket',
-          Icons.payments_outlined,
+          Icons.payments_rounded,
           const Color(0xffD4960A),
           action: 'Beli Tiket',
           onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TiketPage())),
@@ -1032,14 +1319,42 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ============================================================
-  // WAHANA & KOLAM
+  // WAHANA & KOLAM — Setiap card bisa diklik untuk membuka bottom sheet
   // ============================================================
   Widget _buildWahanaSection() {
     final List<Map<String, String>> wahana = [
-      {'name': 'Kolam Utama', 'desc': 'Kedalaman 1,2m – 1,5m', 'image': 'assets/images/pool_main.png', 'emoji': '🏊'},
-      {'name': 'Kolam Balap', 'desc': 'Dengan pelampung seru', 'image': 'assets/images/waterslide_fun.png', 'emoji': '🏆'},
-      {'name': 'Kolam Keluarga', 'desc': 'Aman untuk semua usia', 'image': 'assets/images/family_pool.png', 'emoji': '👨‍👩‍👧‍👦'},
-      {'name': 'Kolam Cangkir', 'desc': 'Wahana unik & mengagumkan', 'image': '', 'emoji': '🍵'},
+      {
+        'name': 'Kolam Utama',
+        'desc': 'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
+        'image': 'assets/images/pool_main.png',
+        'emoji': '🏊',
+        'detail1': 'Kedalaman: 1.2m – 1.5m',
+        'detail2': 'Usia: Dewasa',
+      },
+      {
+        'name': 'Kolam Balap',
+        'desc': 'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
+        'image': 'assets/images/waterslide_fun.png',
+        'emoji': '🏆',
+        'detail1': 'Lintasan balap air',
+        'detail2': 'Remaja & Dewasa',
+      },
+      {
+        'name': 'Kolam Keluarga',
+        'desc': 'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
+        'image': 'assets/images/family_pool.png',
+        'emoji': '👨‍👩‍👧‍👦',
+        'detail1': 'Kedalaman: 0.5m – 1m',
+        'detail2': 'Semua usia',
+      },
+      {
+        'name': 'Kolam Cangkir',
+        'desc': 'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
+        'image': '',
+        'emoji': '🍵',
+        'detail1': 'Wahana Air',
+        'detail2': 'Anak-anak',
+      },
     ];
 
     return Column(
@@ -1047,14 +1362,17 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildTitle(
           'Wahana & Kolam',
-          Icons.pool,
+          Icons.pool_rounded,
           const Color(0xff00A4C6),
-          action: 'Explore',
-          onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage())),
+        ),
+        const SizedBox(height: 6),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Text('Ketuk card untuk melihat detail', style: TextStyle(color: Colors.grey, fontSize: 11)),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 165,
+          height: 175,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
@@ -1068,36 +1386,64 @@ class _HomePageState extends State<HomePage> {
               final String emoji = item['emoji'] ?? '🏊';
 
               return GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage())),
-                child: Container(
-                  width: 150,
+                onTap: () => _showWahanaDetail(item),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 155,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(17),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (image.isNotEmpty)
-                        Image.asset(
-                          image,
-                          width: double.infinity,
-                          height: 92,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _wahanaPlaceholder(emoji),
-                        )
-                      else
-                        _wahanaPlaceholder(emoji),
+                      // Image or placeholder
+                      Stack(
+                        children: [
+                          if (image.isNotEmpty)
+                            Image.asset(
+                              image,
+                              width: double.infinity,
+                              height: 96,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _wahanaPlaceholder(emoji),
+                            )
+                          else
+                            _wahanaPlaceholder(emoji),
+                          // Tap to explore badge
+                          Positioned(
+                            bottom: 6,
+                            right: 6,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xff00B4D8).withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_rounded, color: Colors.white, size: 10),
+                                  SizedBox(width: 3),
+                                  Text('Detail', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       Padding(
                         padding: const EdgeInsets.all(10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF172B4D))),
                             const SizedBox(height: 3),
-                            Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
+                            Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
                           ],
                         ),
                       ),
@@ -1115,23 +1461,23 @@ class _HomePageState extends State<HomePage> {
   Widget _wahanaPlaceholder(String emoji) {
     return Container(
       width: double.infinity,
-      height: 92,
+      height: 96,
       decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xff90E0EF), Color(0xff00B4D8)])),
-      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 34))),
+      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
     );
   }
 
   // ============================================================
-  // FASILITAS
+  // FASILITAS — Tidak bisa diklik, hanya tampilan
   // ============================================================
   Widget _buildFacilitySection() {
     final List<Map<String, dynamic>> facilities = [
-      {'name': 'Gazebo', 'desc': 'Berbagai pilihan gazebo', 'icon': Icons.deck, 'color': const Color(0xff06D6A0)},
-      {'name': 'Mushola', 'desc': 'Tersedia untuk beribadah', 'icon': Icons.mosque, 'color': const Color(0xff8BC34A)},
-      {'name': 'Kantin', 'desc': 'Makanan & minuman', 'icon': Icons.restaurant, 'color': const Color(0xffff9800)},
-      {'name': 'Ruang Bilas', 'desc': 'Bersih & nyaman', 'icon': Icons.shower, 'color': const Color(0xff00B4D8)},
-      {'name': 'Parkir', 'desc': 'Luas & aman', 'icon': Icons.local_parking, 'color': const Color(0xff3F51B5)},
-      {'name': 'Wi-Fi', 'desc': 'Internet gratis', 'icon': Icons.wifi, 'color': const Color(0xff7B61FF)},
+      {'name': 'Gazebo', 'desc': 'Berbagai pilihan gazebo', 'icon': Icons.deck_rounded, 'color': const Color(0xff06D6A0)},
+      {'name': 'Mushola', 'desc': 'Tersedia untuk beribadah', 'icon': Icons.mosque_rounded, 'color': const Color(0xff8BC34A)},
+      {'name': 'Kantin', 'desc': 'Makanan & minuman', 'icon': Icons.restaurant_rounded, 'color': const Color(0xffff9800)},
+      {'name': 'Ruang Bilas', 'desc': 'Bersih & nyaman', 'icon': Icons.shower_rounded, 'color': const Color(0xff00B4D8)},
+      {'name': 'Parkir', 'desc': 'Luas & aman', 'icon': Icons.local_parking_rounded, 'color': const Color(0xff3F51B5)},
+      {'name': 'Wi-Fi', 'desc': 'Internet gratis', 'icon': Icons.wifi_rounded, 'color': const Color(0xff7B61FF)},
     ];
 
     return Column(
@@ -1139,10 +1485,8 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildTitle(
           'Fasilitas',
-          Icons.apartment,
+          Icons.apartment_rounded,
           const Color(0xff7B61FF),
-          action: 'Lihat Semua',
-          onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExplorePage())),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -1159,6 +1503,7 @@ class _HomePageState extends State<HomePage> {
               final IconData icon = item['icon'] is IconData ? item['icon'] as IconData : Icons.info;
               final Color color = item['color'] is Color ? item['color'] as Color : const Color(0xff00B4D8);
 
+              // Tidak ada GestureDetector / InkWell - tidak bisa diklik
               return Container(
                 width: 125,
                 padding: const EdgeInsets.all(12),
@@ -1191,7 +1536,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ============================================================
-  // JAM OPERASIONAL
+  // JAM OPERASIONAL — Tanpa tombol Lokasi
   // ============================================================
   Widget _buildOperationalSection(Map<String, dynamic> pool) {
     final String hours = pool['hours']?.toString() ?? '07.00 – 17.00 WIB';
@@ -1199,7 +1544,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Jam Operasional', Icons.schedule, const Color(0xff0097A7)),
+        _buildTitle('Jam Operasional', Icons.schedule_rounded, const Color(0xff0097A7)),
         const SizedBox(height: 12),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -1215,7 +1560,7 @@ class _HomePageState extends State<HomePage> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(color: const Color(0xff06D6A0).withOpacity(0.12), borderRadius: BorderRadius.circular(13)),
-                child: const Icon(Icons.check_circle, color: Color(0xff06A87E), size: 25),
+                child: const Icon(Icons.check_circle_rounded, color: Color(0xff06A87E), size: 25),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1230,20 +1575,6 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetaPage())),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-                  decoration: BoxDecoration(color: const Color(0xff00B4D8), borderRadius: BorderRadius.circular(11)),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.location_on, color: Colors.white, size: 14),
-                      SizedBox(width: 3),
-                      Text('Lokasi', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -1252,16 +1583,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ============================================================
-  // LOKASI
+  // LOKASI — Tombol "Buka Maps" yang membuka Google Maps
   // ============================================================
   Widget _buildLocationSection(Map<String, dynamic> pool) {
     final String fullName = pool['fullName']?.toString() ?? 'Kolam Renang';
     final String location = pool['location']?.toString() ?? 'Kabupaten Jember';
+    final String mapsUrl = pool['mapsUrl']?.toString() ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Lokasi', Icons.location_on, const Color(0xffEF476F)),
+        _buildTitle('Lokasi', Icons.location_on_rounded, const Color(0xffEF476F)),
         const SizedBox(height: 12),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -1277,19 +1609,39 @@ class _HomePageState extends State<HomePage> {
                 height: 110,
                 width: double.infinity,
                 decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xffE8F4F8), Color(0xffCDEBF2)])),
-                child: const Center(child: Icon(Icons.map, size: 58, color: Color(0xff00A4C6))),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.map_rounded, size: 58, color: Color(0xff00A4C6)),
+                    Positioned(
+                      bottom: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '🗺️ Peta Lokasi',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0077A8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(15),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(fullName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                    Text(fullName, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 6),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on, size: 15, color: Color(0xffEF476F)),
+                        const Icon(Icons.location_on_rounded, size: 15, color: Color(0xffEF476F)),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -1303,9 +1655,9 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetaPage())),
-                        icon: const Icon(Icons.map, size: 15),
-                        label: const Text('Buka Peta', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                        onPressed: () => _openMaps(mapsUrl, fullName),
+                        icon: const Icon(Icons.map_rounded, size: 15),
+                        label: const Text('Buka Maps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff00B4D8),
                           foregroundColor: Colors.white,
@@ -1346,7 +1698,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         _buildTitle(
           'Rating Pengunjung',
-          Icons.star,
+          Icons.star_rounded,
           const Color(0xffD4960A),
           action: 'Beri Review',
           onAction: () {
@@ -1468,99 +1820,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ============================================================
-  // BOTTOM NAVIGATION
-  // ============================================================
-  Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xff00a0c0),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      onTap: (index) {
-        if (index == 0) return;
-
-        if (index == 1) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ExplorePage()));
-        }
-
-        if (index == 2) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PetaPage()));
-        }
-
-        if (index == 3) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TiketPage()));
-        }
-
-        if (index == 4) {
-          if (selectedPool == 0) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.'),
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 2),
-              ),
-            );
-            return;
-          }
-
-          final Map<String, dynamic> pool = pools[selectedPool - 1];
-          final String namaKolam = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
-          final String gambarKolam = pool['image']?.toString() ?? '';
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ReviewPage(
-                poolId: pool['pool_id']?.toString() ?? '',
-                namaKolam: namaKolam,
-                gambarKolam: gambarKolam,
-              ),
-            ),
-          );
-        }
-      },
-      items: [
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), false),
-          activeIcon: _navIcon(Icons.home_rounded, const Color(0xFF00B4D8), true),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), false),
-          activeIcon: _navIcon(Icons.pool_rounded, const Color(0xFF7B61FF), true),
-          label: 'Explore',
-        ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), false),
-          activeIcon: _navIcon(Icons.map_rounded, const Color(0xFF06D6A0), true),
-          label: 'Peta',
-        ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), false),
-          activeIcon: _navIcon(Icons.confirmation_number_rounded, const Color(0xFFFFB703), true),
-          label: 'Tiket',
-        ),
-        BottomNavigationBarItem(
-          icon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), false),
-          activeIcon: _navIcon(Icons.star_rounded, const Color(0xFFEF476F), true),
-          label: 'Ulasan',
-        ),
-      ],
-    );
-  }
-
-  Widget _navIcon(IconData icon, Color color, bool active) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: active ? color.withOpacity(0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, size: 22, color: active ? color : Colors.grey.shade400),
-    );
-  }
 }
