@@ -9,7 +9,7 @@
     // =========================================================
 
     static const String baseUrl =
-        'http://192.168.1.36:8000/api';
+        'http://10.132.193.54:8000/api';
 
     static const Duration _timeout =
         Duration(seconds: 15);
