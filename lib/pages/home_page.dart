@@ -584,6 +584,47 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900),
                   ),
                 ),
+
+                // ===== TOMBOL SIGN IN =====
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    // Sign In -> menuju Tiket (di sana otomatis diminta registrasi dulu, lalu login)
+                    String pId = 'pool_id_01';
+                    String pName = 'Tiara Jember Park Waterboom';
+                    if (selectedPool > 0 && selectedPool <= pools.length) {
+                      final p = pools[selectedPool - 1];
+                      pId = p['pool_id']?.toString() ?? 'pool_id_0$selectedPool';
+                      pName = p['fullName']?.toString() ?? p['name']?.toString() ?? pName;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName, initialTab: 0)),
+                    );
+                  },
+                  child: Container(
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: Colors.white.withOpacity(0.45), width: 1),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.login_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          'Sign In',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
                 GestureDetector(
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const NotifikasiPage()));
