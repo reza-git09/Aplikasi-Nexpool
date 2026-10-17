@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
@@ -128,6 +130,48 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
     debugPrint('🔥 HOME PAGE INIT JALAN');
     _loadPools();
+    _loadFasilitas();
+  }
+
+  // ============================================================
+  // FASILITAS DARI API LARAVEL (diisi lewat admin)
+  // ============================================================
+  List<Map<String, dynamic>> _fasilitas = [];
+
+  Future<void> _loadFasilitas([String poolId = '']) async {
+    try {
+      final String q = poolId.isEmpty ? '' : '?pool_id=$poolId';
+      final res = await http
+          .get(
+            Uri.parse('${ApiService.baseUrl}/fasilitas$q'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode != 200) return;
+      final body = jsonDecode(res.body);
+      final raw = body is Map ? (body['data'] ?? []) : body;
+      if (raw is! List) return;
+
+      final String origin = ApiService.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+      final list = <Map<String, dynamic>>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        if (item['status'] == false || item['status'] == 0) continue;
+        final String gambar = item['gambar']?.toString() ?? '';
+        list.add({
+          'name': item['nama_fasilitas']?.toString() ?? 'Fasilitas',
+          'desc': item['deskripsi']?.toString() ?? '',
+          'image': gambar.isEmpty ? '' : '$origin/storage/$gambar',
+          'jenis': (item['jenis'] ?? item['tipe'] ?? item['kategori'] ?? '').toString(),
+          'kedalaman': (item['kedalaman'] ?? '').toString(),
+          'usia': (item['usia'] ?? '').toString(),
+        });
+      }
+      if (mounted) setState(() => _fasilitas = list);
+    } catch (e) {
+      debugPrint('Gagal ambil fasilitas: $e');
+    }
   }
 
   // ============================================================
@@ -369,15 +413,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           // Image or placeholder
                           ClipRRect(
                             borderRadius: BorderRadius.circular(18),
-                            child: image.isNotEmpty
-                                ? Image.asset(
-                                    image,
-                                    width: double.infinity,
-                                    height: 180,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
-                                  )
-                                : _wahanaSheetPlaceholder(emoji),
+                            child: image.isEmpty
+                                ? _wahanaSheetPlaceholder(emoji)
+                                : image.startsWith('http')
+                                    ? Image.network(
+                                        image,
+                                        width: double.infinity,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
+                                      )
+                                    : Image.asset(
+                                        image,
+                                        width: double.infinity,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
+                                      ),
                           ),
 
                           const SizedBox(height: 18),
@@ -505,9 +557,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 const SizedBox(height: 28),
                 _buildPriceSection(detailPool),
                 const SizedBox(height: 28),
-                _buildWahanaSection(),
-                const SizedBox(height: 28),
-                _buildFacilitySection(),
+                _buildWahanaFasilitasSection(),
                 const SizedBox(height: 28),
                 _buildOperationalSection(detailPool),
                 const SizedBox(height: 28),
@@ -764,6 +814,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         TiketPage.globalSelectedPoolId = 'pool_id_01';
         TiketPage.globalSelectedPoolName = 'Tiara Jember Park Waterboom';
         widget.onPoolChanged?.call(0, 'pool_id_01', 'Tiara Jember Park Waterboom', '');
+        _loadFasilitas();
       },
       child: AnimatedScale(
         scale: selected ? 1.03 : 1.0,
@@ -838,6 +889,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         TiketPage.globalSelectedPoolId = pId;
         TiketPage.globalSelectedPoolName = pName;
         widget.onPoolChanged?.call(index, pId, pName, pGambar);
+        _loadFasilitas(pId);
       },
       child: AnimatedScale(
         scale: selected ? 1.03 : 1.0,
@@ -947,6 +999,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               setState(() {
                 selectedPool = 0;
               });
+              _loadFasilitas();
             },
             child: const Text('← Semua', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
           ),
@@ -1360,9 +1413,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // ============================================================
-  // WAHANA & KOLAM — Setiap card bisa diklik untuk membuka bottom sheet
+  // WAHANA & FASILITAS — satu section, satu daftar geser
+  // Wahana: bisa diketuk (muncul bottom sheet detail).
+  // Fasilitas: hanya tampilan, tidak bisa diklik.
   // ============================================================
-  Widget _buildWahanaSection() {
+  Widget _buildWahanaFasilitasSection() {
     final List<Map<String, String>> wahana = [
       {
         'name': 'Kolam Utama',
@@ -1398,18 +1453,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       },
     ];
 
+    final List<Map<String, dynamic>> facilities = _fasilitas;
+
+    final int total = wahana.length + facilities.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(
-          'Wahana & Kolam',
+          'Wahana & Fasilitas',
           Icons.pool_rounded,
           const Color(0xff00A4C6),
         ),
         const SizedBox(height: 6),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Text('Ketuk card untuk melihat detail', style: TextStyle(color: Colors.grey, fontSize: 11)),
+          child: Text(
+            'Geser untuk melihat semua · ketuk wahana untuk detail',
+            style: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -1417,85 +1479,188 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
-            itemCount: wahana.length,
+            itemCount: total,
             separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
-              final item = wahana[index];
-              final String name = item['name'] ?? 'Wahana';
-              final String desc = item['desc'] ?? '';
-              final String image = item['image'] ?? '';
-              final String emoji = item['emoji'] ?? '🏊';
-
-              return GestureDetector(
-                onTap: () => _showWahanaDetail(item),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 155,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(17),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image or placeholder
-                      Stack(
-                        children: [
-                          if (image.isNotEmpty)
-                            Image.asset(
-                              image,
-                              width: double.infinity,
-                              height: 96,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _wahanaPlaceholder(emoji),
-                            )
-                          else
-                            _wahanaPlaceholder(emoji),
-                          // Tap to explore badge
-                          Positioned(
-                            bottom: 6,
-                            right: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xff00B4D8).withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.info_rounded, color: Colors.white, size: 10),
-                                  SizedBox(width: 3),
-                                  Text('Detail', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF172B4D))),
-                            const SizedBox(height: 3),
-                            Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              if (index < wahana.length) {
+                return _wahanaCard(wahana[index]);
+              }
+              return _facilityCard(facilities[index - wahana.length]);
             },
           ),
         ),
       ],
+    );
+  }
+
+  // Card wahana — bisa diklik
+  Widget _wahanaCard(Map<String, String> item) {
+    final String name = item['name'] ?? 'Wahana';
+    final String desc = item['desc'] ?? '';
+    final String image = item['image'] ?? '';
+    final String emoji = item['emoji'] ?? '🏊';
+
+    return GestureDetector(
+      onTap: () => _showWahanaDetail(item),
+      child: Container(
+        width: 155,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                if (image.isNotEmpty)
+                  Image.asset(
+                    image,
+                    width: double.infinity,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _wahanaPlaceholder(emoji),
+                  )
+                else
+                  _wahanaPlaceholder(emoji),
+                Positioned(
+                  bottom: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff00B4D8).withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.info_rounded, color: Colors.white, size: 10),
+                        SizedBox(width: 3),
+                        Text('Detail', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF172B4D))),
+                  const SizedBox(height: 3),
+                  Text(desc,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Card fasilitas — tidak bisa diklik, ukuran sama dengan card wahana
+  Widget _facilityCard(Map<String, dynamic> item) {
+    final String name = item['name']?.toString() ?? 'Fasilitas';
+    final String desc = item['desc']?.toString() ?? '';
+    final String image = item['image']?.toString() ?? '';
+    final String kedalaman = item['kedalaman']?.toString() ?? '';
+    final String usia = item['usia']?.toString() ?? '';
+    final String jenis = item['jenis']?.toString().toLowerCase() ?? '';
+    // Hanya KOLAM yang bisa diketuk (detail). Gazebo, mushola, dll tidak.
+    final bool isKolam = jenis.isNotEmpty ? jenis == 'kolam' : name.toLowerCase().contains('kolam');
+    final Color color = isKolam ? const Color(0xff00B4D8) : const Color(0xff06D6A0);
+
+    Widget placeholder() => Container(
+          width: double.infinity,
+          height: 96,
+          color: color.withOpacity(0.12),
+          child: Center(child: Icon(isKolam ? Icons.pool_rounded : Icons.deck_rounded, color: color, size: 44)),
+        );
+
+    final Widget card = Container(
+      width: 155,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              if (image.isNotEmpty)
+                Image.network(
+                  image,
+                  width: double.infinity,
+                  height: 96,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => placeholder(),
+                )
+              else
+                placeholder(),
+              Positioned(
+                bottom: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isKolam ? 'Detail' : 'Fasilitas',
+                    style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF172B4D))),
+                const SizedBox(height: 3),
+                Text(desc,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!isKolam) return card;
+
+    return GestureDetector(
+      onTap: () => _showWahanaDetail({
+        'name': name,
+        'desc': desc,
+        'image': image,
+        'emoji': '🏊',
+        'detail1': kedalaman.isEmpty ? '' : 'Kedalaman: $kedalaman',
+        'detail2': usia.isEmpty ? '' : 'Usia: $usia',
+      }),
+      child: card,
     );
   }
 
@@ -1505,74 +1670,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       height: 96,
       decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xff90E0EF), Color(0xff00B4D8)])),
       child: Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
-    );
-  }
-
-  // ============================================================
-  // FASILITAS — Tidak bisa diklik, hanya tampilan
-  // ============================================================
-  Widget _buildFacilitySection() {
-    final List<Map<String, dynamic>> facilities = [
-      {'name': 'Gazebo', 'desc': 'Berbagai pilihan gazebo', 'icon': Icons.deck_rounded, 'color': const Color(0xff06D6A0)},
-      {'name': 'Mushola', 'desc': 'Tersedia untuk beribadah', 'icon': Icons.mosque_rounded, 'color': const Color(0xff8BC34A)},
-      {'name': 'Kantin', 'desc': 'Makanan & minuman', 'icon': Icons.restaurant_rounded, 'color': const Color(0xffff9800)},
-      {'name': 'Ruang Bilas', 'desc': 'Bersih & nyaman', 'icon': Icons.shower_rounded, 'color': const Color(0xff00B4D8)},
-      {'name': 'Parkir', 'desc': 'Luas & aman', 'icon': Icons.local_parking_rounded, 'color': const Color(0xff3F51B5)},
-      {'name': 'Wi-Fi', 'desc': 'Internet gratis', 'icon': Icons.wifi_rounded, 'color': const Color(0xff7B61FF)},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitle(
-          'Fasilitas',
-          Icons.apartment_rounded,
-          const Color(0xff7B61FF),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 132,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: facilities.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final item = facilities[index];
-              final String name = item['name']?.toString() ?? 'Fasilitas';
-              final String desc = item['desc']?.toString() ?? '';
-              final IconData icon = item['icon'] is IconData ? item['icon'] as IconData : Icons.info;
-              final Color color = item['color'] is Color ? item['color'] as Color : const Color(0xff00B4D8);
-
-              // Tidak ada GestureDetector / InkWell - tidak bisa diklik
-              return Container(
-                width: 125,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                      child: Icon(icon, color: color, size: 21),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 2),
-                    Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
