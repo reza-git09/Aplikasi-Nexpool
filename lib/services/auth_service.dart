@@ -45,7 +45,7 @@ class AuthService {
 
     await prefs.setBool('is_logged_in', true);
     await prefs.setString('user_username', username);
-    await prefs.setString('user_nama', name);
+    await prefs.setString('user_name', name);
   }
 
   // =====================================================
@@ -58,7 +58,7 @@ class AuthService {
     await prefs.remove('is_logged_in');
     await prefs.remove('user_id');
     await prefs.remove('user_username');
-    await prefs.remove('user_nama');
+    await prefs.remove('user_name');
     await prefs.remove('user_email');
     await prefs.remove('user_no_hp');
     await prefs.remove('user_alamat');
@@ -71,7 +71,7 @@ class AuthService {
   // =====================================================
 
   static Future<String?> register({
-    required String nama,
+    required String name,
     required String email,
     required String username,
     required String password,
@@ -86,7 +86,7 @@ class AuthService {
             Uri.parse('${ApiService.baseUrl}/register'),
             headers: _headers,
             body: jsonEncode({
-              'nama': nama.trim(),
+              'name': name.trim(),
               'email': email.trim(),
               'username': username.trim(),
               'password': password,
@@ -164,8 +164,8 @@ class AuthService {
         }
 
         await prefs.setString(
-          'user_nama',
-          (data['nama'] ?? '').toString(),
+          'user_name',
+          (data['name'] ?? '').toString(),
         );
 
         await prefs.setString(
@@ -191,7 +191,7 @@ class AuthService {
         // Controller Laravel saat ini belum mengirim token.
         await prefs.remove(_kToken);
 
-        return (data['nama'] ?? username).toString();
+        return (data['name'] ?? username).toString();
       }
 
       lastError = _errorMessage(

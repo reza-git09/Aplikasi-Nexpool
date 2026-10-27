@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import 'profile_page.dart';
 import 'tiket_page.dart';
 import 'promo_page.dart';
 import 'review_page.dart';
@@ -16,11 +17,12 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     this.onPoolChanged,
+    this.userData, // <-- 1. Tambahkan ini di parameter
   });
 
-  /// Called whenever user changes pool selection.
-  /// poolIndex: 0 = semua, 1..n = kolam tertentu
   final void Function(int poolIndex, String poolId, String poolName, String poolGambar)? onPoolChanged;
+  
+  final Map<String, dynamic>? userData; // <-- 2. Tambahkan variabel penampung ini
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -579,40 +581,54 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget _buildHero(Map<String, dynamic>? pool) {
     final bool allPool = pool == null;
 
-    final String image =
-        allPool ? 'assets/images/hero_banner.png' : (pool['image']?.toString() ?? 'assets/images/hero_banner.png');
+    final String image = allPool
+        ? 'assets/images/hero_banner.png'
+        : (pool['image']?.toString() ?? 'assets/images/hero_banner.png');
 
-    final String title = allPool ? 'Selamat Datang di\nNexPool! 🏊' : (pool['fullName']?.toString() ?? 'NEXPOOL');
+    final String title = allPool
+        ? 'Selamat Datang di\nNexPool! 🏊'
+        : (pool['fullName']?.toString() ?? 'NEXPOOL');
 
-    final String subtitle =
-        allPool ? 'Pilih kolam renang favoritmu di bawah' : (pool['sub']?.toString() ?? 'Informasi kolam renang NEXPOOL');
+    final String subtitle = allPool
+        ? 'Pilih kolam renang favoritmu di bawah'
+        : (pool['sub']?.toString() ?? 'Informasi kolam renang NEXPOOL');
 
     final String badge = allPool
         ? '🌊 ${pools.length} Wisata Kolam Renang Jember'
         : '⭐ Rating ${pool['rating']?.toString() ?? '-'} · ${pool['reviews']?.toString() ?? '0'} Ulasan';
 
     return SizedBox(
+      width: double.infinity,
       height: 285,
       child: Stack(
         children: [
+          // 1. Gambar latar
           Positioned.fill(child: _buildImage(image, fit: BoxFit.cover)),
+
+          // 2. Lapisan gradien
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color.fromARGB(50, 0, 0, 0), Color.fromARGB(220, 0, 45, 65)],
+                  colors: [
+                    Color.fromARGB(50, 0, 0, 0),
+                    Color.fromARGB(220, 0, 45, 65),
+                  ],
                 ),
               ),
             ),
           ),
+
+          // 3. Header Atas: Logo, Teks, Tombol Profil, Notifikasi
           Positioned(
             top: 16,
             left: 20,
             right: 20,
             child: Row(
               children: [
+                // Logo NexPool
                 Container(
                   width: 45,
                   height: 45,
@@ -624,50 +640,64 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   child: Image.asset(
                     'assets/images/LOGO_NEXPOOL.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.pool, color: Colors.white),
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.pool, color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 10),
+
+                // Teks NEXPOOL
                 const Expanded(
                   child: Text(
                     'NEXPOOL',
-                    style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
 
-                // ===== TOMBOL SIGN IN =====
+                // Tombol Profil / Sign In
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    // Sign In -> menuju Tiket (di sana otomatis diminta registrasi dulu, lalu login)
-                    String pId = 'pool_id_01';
-                    String pName = 'Tiara Jember Park Waterboom';
-                    if (selectedPool > 0 && selectedPool <= pools.length) {
-                      final p = pools[selectedPool - 1];
-                      pId = p['pool_id']?.toString() ?? 'pool_id_0$selectedPool';
-                      pName = p['fullName']?.toString() ?? p['name']?.toString() ?? pName;
+                    if (widget.userData != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ProfilePage(userData: widget.userData),
+                        ),
+                      );
+                    } else {
+                      Navigator.pushNamed(context, '/login');
                     }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName, initialTab: 0)),
-                    );
                   },
                   child: Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(color: Colors.white.withOpacity(0.45), width: 1),
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.35)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.login_rounded, color: Colors.white, size: 16),
-                        SizedBox(width: 6),
+                        const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          'Sign In',
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                          widget.userData != null ? 'Profil' : 'Sign In',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -675,9 +705,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 ),
                 const SizedBox(width: 10),
 
+                // Tombol Notifikasi
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const NotifikasiPage()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const NotifikasiPage()),
+                    );
                   },
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -689,7 +724,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           color: Colors.white.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(13),
                         ),
-                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                        child: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                        ),
                       ),
                       Positioned(
                         right: -2,
@@ -703,7 +741,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: const Center(
-                            child: Text('3', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                            child: Text(
+                              '3',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -713,34 +758,53 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ],
             ),
           ),
+
+          // 4. Informasi teks & badge di bawah hero banner
           Positioned(
             left: 20,
             right: 20,
             bottom: 22,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 11, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xffFFD166).withOpacity(0.18),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(badge, style: const TextStyle(color: Color(0xffFFD166), fontSize: 10, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    badge,
+                    style: const TextStyle(
+                      color: Color(0xffFFD166),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 9),
                 Text(
                   title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 25, height: 1.15, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 25,
+                    height: 1.15,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.82), fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.82),
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

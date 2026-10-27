@@ -8,7 +8,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.16:8000/api';
+  static const String baseUrl = 'http://10.224.60.105:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 

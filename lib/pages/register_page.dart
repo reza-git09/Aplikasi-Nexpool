@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import 'login_page.dart';
+import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -13,7 +14,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final namaController = TextEditingController();
+  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
@@ -29,7 +30,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
-    namaController.dispose();
+    nameController.dispose();
     emailController.dispose();
     usernameController.dispose();
     passwordController.dispose();
@@ -46,7 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       final String? error = await AuthService.register(
-        nama: namaController.text.trim(),
+        name: nameController.text.trim(),
         email: emailController.text.trim(),
         username: usernameController.text.trim(),
         password: passwordController.text,
@@ -54,16 +55,29 @@ class _RegisterPageState extends State<RegisterPage> {
         alamat: alamatController.text.trim(),
       );
 
-      if (!mounted) return;
-      setState(() => isLoading = false);
-
       if (error != null) {
         _showMessage(error, isError: true);
         return;
       }
 
-      _showMessage('Registrasi berhasil! Silakan login.');
-      await _goToLogin();
+      // --- GANTI MULAI DARI SINI ---
+      _showMessage('Registrasi berhasil!');
+
+      final Map<String, dynamic> dataUserBaru = {
+        'name': nameController.text,
+        'email': emailController.text,
+        'username': usernameController.text,
+        'no_hp': noHpController.text,
+        'alamat': alamatController.text,
+      };
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(userData: dataUserBaru),
+        ),
+        (route) => false,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => isLoading = false);
@@ -71,8 +85,8 @@ class _RegisterPageState extends State<RegisterPage> {
         'Gagal terhubung ke server. Periksa koneksi dan coba lagi.',
         isError: true,
       );
-    }
-  }
+    } // <-- Penutup blok catch (_)
+  } // <-- Penutup fungsi daftar()
 
   Future<void> _goToLogin() async {
     final bool? ok = await Navigator.push<bool>(
@@ -371,7 +385,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         field(
                           label: 'Nama Lengkap',
                           icon: Icons.person_outline_rounded,
-                          controller: namaController,
+                          controller: nameController,
                           errorMessage: 'Nama wajib diisi',
                         ),
                         const SizedBox(height: 15),
