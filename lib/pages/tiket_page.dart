@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import 'home_page.dart';
@@ -119,6 +121,13 @@ class TiketPage extends StatefulWidget {
 
 class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMixin {
 
+  // ============================================================
+  // LANGKAH PEMESANAN
+  // Langkah 2 (Data Diri) sudah dihapus. Nomor langkah internal
+  // tetap 1, 3, 4, 5 supaya sisa kode tidak berubah:
+  //   1 = Tanggal, 3 = Tiket, 4 = Bayar, 5 = Struk
+  // Data pemesan diambil otomatis dari akun yang login.
+  // ============================================================
   int currentStep = 1;
   late int selectedTab;
 
@@ -129,6 +138,8 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   String selectedDateLabel = '';
   bool isWeekend = false;
 
+  // Data pemesan (diambil dari akun yang login)
+  bool isLoggedIn = false;
   String nama = '';
   String telepon = '';
   String alamat = '';
@@ -149,6 +160,12 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   String statusPembayaran = 'pending';
   DateTime? paidAt;
 
+  // ── Timer pembayaran (5 menit) ──────────────────────────────────
+  static const int payDurationSeconds = 300;
+  Timer? _payTimer;
+  int _remainingSeconds = payDurationSeconds;
+  bool paymentExpired = false;
+
   int weekdayPrice = 0;
   int weekendPrice = 0;
 
@@ -163,9 +180,6 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   // Mengacu ke list global savedTickets. Dimulai kosong (0).
   List<Map<String, dynamic>> get myTickets => TiketPage.savedTickets;
 
-  final namaController = TextEditingController();
-  final teleponController = TextEditingController();
-  final alamatController = TextEditingController();
   final keteranganController = TextEditingController();
 
   @override
@@ -194,17 +208,41 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     debugPrint('Selected Pool Name : $selectedPoolName');
     debugPrint('====================================');
 
+    _loadAccount();
     loadHargaTiket();
   }
 
   @override
   void dispose() {
+    _payTimer?.cancel();
     _successAnimController.dispose();
-    namaController.dispose();
-    teleponController.dispose();
-    alamatController.dispose();
     keteranganController.dispose();
     super.dispose();
+  }
+
+  // ============================================================
+  // DATA PEMESAN DARI AKUN YANG LOGIN
+  // ============================================================
+  Future<void> _loadAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    setState(() {
+      isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+      nama = prefs.getString('user_name') ?? '';
+      telepon = prefs.getString('user_no_hp') ?? '';
+      alamat = prefs.getString('user_alamat') ?? '';
+    });
+  }
+
+  /// Nomor HP untuk ditampilkan, contoh: 0858xxx -> +62 858xxx
+  String get phoneDisplay {
+    final t = telepon.trim();
+    if (t.isEmpty) return '—';
+    if (t.startsWith('+')) return t;
+    if (t.startsWith('0')) return '+62 ${t.substring(1)}';
+    if (t.startsWith('62')) return '+$t';
+    return '+62 $t';
   }
 
   Future<void> loadHargaTiket() async {
@@ -317,35 +355,19 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   }
 
   void goStep(int step) {
+    // Keluar dari langkah Bayar -> timer dihentikan
+    if (step != 4) _stopPayTimer();
+
     setState(() {
       currentStep = step;
       if (step == 4) paySubStep = 'select';
+
+      // Pembayaran yang kedaluwarsa direset kalau user meninggalkan langkah Bayar
+      if (step != 4 && statusPembayaran == 'expired') {
+        statusPembayaran = 'pending';
+        paymentExpired = false;
+      }
     });
-  }
-
-  bool validateData() {
-    if (namaController.text.trim().isEmpty) {
-      showMessage('Nama lengkap belum diisi');
-      return false;
-    }
-
-    if (teleponController.text.trim().length < 9) {
-      showMessage('Nomor telepon minimal 9 angka');
-      return false;
-    }
-
-    if (alamatController.text.trim().isEmpty) {
-      showMessage('Alamat belum diisi');
-      return false;
-    }
-
-    setState(() {
-      nama = namaController.text.trim();
-      telepon = teleponController.text.trim();
-      alamat = alamatController.text.trim();
-    });
-
-    return true;
   }
 
   String _generateOrderId() {
@@ -367,6 +389,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
       return;
     }
     setState(() => paySubStep = 'process');
+    _startPayTimer(); // QR / VA berlaku 5 menit
   }
 
   Future<void> simulatePaymentSuccess() async {
@@ -380,13 +403,24 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
       return;
     }
 
+    if (paymentExpired || statusPembayaran == 'expired') {
+      showMessage('Waktu pembayaran habis. Silakan bayar ulang.');
+      return;
+    }
+
     if (selectedDate == null) {
       showMessage('Tanggal kunjungan belum dipilih.');
       return;
     }
 
+    // Pastikan data pemesan dari akun sudah terbaca
     if (nama.trim().isEmpty || telepon.trim().isEmpty) {
-      showMessage('Data pemesan belum lengkap.');
+      await _loadAccount();
+      if (!mounted) return;
+    }
+
+    if (nama.trim().isEmpty || telepon.trim().isEmpty) {
+      showMessage('Data akun belum lengkap. Silakan login ulang.');
       return;
     }
 
@@ -460,6 +494,8 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
       setState(() {
         statusPembayaran = 'paid';
         paidAt = now;
+        _payTimer?.cancel(); // sudah dibayar -> timer berhenti
+        _payTimer = null;
 
         // Gunakan kode resmi dari Laravel sebagai kode tiket.
         // Jika tidak ada, gunakan kode lokal sebagai fallback.
@@ -710,6 +746,47 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     );
   }
 
+  /// Kartu kecil berisi nama & nomor HP pemesan (dari akun yang login)
+  Widget pemesanCard() {
+    return pad20(
+      infoBox(
+        color: Colors.white,
+        radius: 14,
+        pad: 12,
+        border: Colors.grey.shade200,
+        child: Row(
+          children: [
+            colorfulIcon(icon: Icons.person_rounded, color: kPurple, boxSize: 38, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'PEMESAN (AKUN KAMU)',
+                    style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    nama.isEmpty ? 'Memuat data akun...' : nama,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    phoneDisplay,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            colorfulIcon(icon: Icons.verified_user_rounded, color: kGreen, boxSize: 30, size: 16),
+          ],
+        ),
+      ),
+      top: 10,
+    );
+  }
+
   Widget dateStrip({
     required List<DateTime> list,
     required DateTime? active,
@@ -816,7 +893,6 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
                         children: [
                           buildStepper(),
                           if (currentStep == 1) buildStep1(),
-                          if (currentStep == 2) buildStep2(),
                           if (currentStep == 3) buildStep3(),
                           if (currentStep == 4) buildStep4(),
                           if (currentStep == 5) buildStep5(),
@@ -900,13 +976,18 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     );
   }
 
+  // ============================================================
+  // STEPPER — 4 langkah: Tanggal, Tiket, Bayar, Struk
+  // (id langkah internal: 1, 3, 4, 5 — langkah 2 sudah dihapus)
+  // ============================================================
   Widget buildStepper() {
-    final labels = ['Tanggal', 'Data Diri', 'Tiket', 'Bayar', 'Struk'];
+    const labels = ['Tanggal', 'Tiket', 'Bayar', 'Struk'];
+    const stepIds = [1, 3, 4, 5];
 
     return pad20(
       Row(
-        children: List.generate(5, (index) {
-          final step = index + 1;
+        children: List.generate(labels.length, (index) {
+          final step = stepIds[index];
           final done = currentStep > step;
           final active = currentStep == step;
 
@@ -931,7 +1012,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
                           child: done
                               ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
                               : Text(
-                                  '$step',
+                                  '${index + 1}',
                                   style: TextStyle(
                                     color: active ? Colors.white : Colors.grey.shade700,
                                     fontWeight: FontWeight.w800,
@@ -953,7 +1034,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
                     ],
                   ),
                 ),
-                if (index < 4)
+                if (index < labels.length - 1)
                   Container(
                     width: 15,
                     height: 2,
@@ -1043,12 +1124,21 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: selectedDate == null ? null : () => goStep(2),
+              onPressed: selectedDate == null
+                  ? null
+                  : () {
+                      // Pemesanan butuh akun. Data pemesan diambil dari akun.
+                      if (!isLoggedIn) {
+                        showMessage('Silakan login dulu untuk memesan tiket.');
+                        return;
+                      }
+                      goStep(3);
+                    },
               style: primaryStyle.copyWith(
                 padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 16)),
                 shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               ),
-              child: const Text('Lanjut Isi Data Diri →', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+              child: const Text('Lanjut Pilih Tiket →', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
             ),
           ),
         ),
@@ -1255,83 +1345,13 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget buildStep2() {
-    return Column(
-      children: [
-        recapDate(),
-
-        sectionTitle('Data Diri Pemesan', icon: Icons.person_rounded, iconColor: kPurple),
-
-        pad20(
-          infoBox(
-            color: Colors.white,
-            radius: 20,
-            pad: 18,
-            border: Colors.grey.shade200,
-            child: Column(
-              children: [
-                buildTextField(
-                  controller: namaController,
-                  label: 'Nama Lengkap',
-                  hint: 'Masukkan nama lengkap',
-                  icon: Icons.person_rounded,
-                  iconColor: kPurple,
-                ),
-                const SizedBox(height: 14),
-                buildTextField(
-                  controller: teleponController,
-                  label: 'No. Telepon',
-                  hint: '812-3456-7890',
-                  prefix: '+62',
-                  icon: Icons.phone_in_talk_rounded,
-                  iconColor: kGreen,
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 14),
-                buildTextField(
-                  controller: alamatController,
-                  label: 'Alamat Pemesan',
-                  hint: 'Jl. Nama Jalan, No. Rumah, Kelurahan...',
-                  icon: Icons.location_on_rounded,
-                  iconColor: kRed,
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        pad20(
-          infoBox(
-            child: Row(
-              children: [
-                colorfulIcon(icon: Icons.security_rounded, color: kGreen, boxSize: 32, size: 18),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Data diri Anda tersimpan aman untuk verifikasi tiket saat masuk area kolam renang.',
-                    style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          top: 10,
-        ),
-
-        const SizedBox(height: 16),
-
-        navButtons(1, 'Lanjut Pilih Tiket →', () {
-          if (validateData()) goStep(3);
-        }),
-      ],
-    );
-  }
-
   Widget buildStep3() {
     return Column(
       children: [
         recapDate(),
+
+        // Pemesan diambil otomatis dari akun yang login
+        pemesanCard(),
 
         sectionTitle('Kategori & Jumlah Tiket', icon: Icons.confirmation_number_rounded, iconColor: kOrange),
 
@@ -1446,8 +1466,9 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
         buildSummary(),
 
+        // Kembali -> langsung ke langkah Tanggal (langkah 1)
         navButtons(
-          2,
+          1,
           'Lanjut Pembayaran →',
           isPriceLoading || priceError.isNotEmpty || adultPrice <= 0 || qtyAdult <= 0
               ? null
@@ -1621,6 +1642,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
   Widget buildStep4() {
     if (paySubStep == 'process') {
+      if (paymentExpired) return buildPaymentExpired();
       return payMethod == 'qris' ? buildQrisPayment() : buildBankTransferPayment();
     }
     return buildPaymentSelect();
@@ -1971,6 +1993,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     return Column(
       children: [
         pad20(_paymentInfoHeader(), top: 14),
+        pad20(_countdownBanner(), top: 10),
 
         sectionTitle('Scan QR Code (${activeWallet['name']})', icon: Icons.qr_code_scanner_rounded, iconColor: activeWallet['color'] as Color),
 
@@ -2089,7 +2112,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
         pad20(
           OutlinedButton(
-            onPressed: () => setState(() => paySubStep = 'select'),
+            onPressed: _backToSelect,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -2111,6 +2134,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     return Column(
       children: [
         pad20(_paymentInfoHeader(), top: 14),
+        pad20(_countdownBanner(), top: 10),
 
         sectionTitle('Transfer Virtual Account (${activeBank['name']})', icon: Icons.account_balance_rounded, iconColor: activeBank['color'] as Color),
 
@@ -2226,7 +2250,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
         pad20(
           OutlinedButton(
-            onPressed: () => setState(() => paySubStep = 'select'),
+            onPressed: _backToSelect,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -2264,13 +2288,181 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _statusChip('⏳ PENDING', kOrange),
+              _statusChip('⏱ $countdownLabel', _remainingSeconds <= 60 ? kRed : kOrange),
               const SizedBox(height: 6),
               Text('$qtyAdult Dewasa${qtyChild > 0 ? ', $qtyChild Anak' : ''}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  // ============================================================
+  // TIMER PEMBAYARAN
+  // ============================================================
+  void _startPayTimer() {
+    _payTimer?.cancel();
+
+    setState(() {
+      _remainingSeconds = payDurationSeconds;
+      paymentExpired = false;
+    });
+
+    _payTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+        setState(() {
+          _remainingSeconds = 0;
+          paymentExpired = true;
+          statusPembayaran = 'expired';
+        });
+        return;
+      }
+
+      setState(() => _remainingSeconds--);
+    });
+  }
+
+  void _stopPayTimer() {
+    _payTimer?.cancel();
+    _payTimer = null;
+  }
+
+  /// Kembali ke pilihan metode pembayaran (timer dihentikan)
+  void _backToSelect() {
+    _stopPayTimer();
+    setState(() => paySubStep = 'select');
+  }
+
+  /// Bayar ulang setelah waktu habis: Order ID baru, kembali pilih metode
+  void _restartPayment() {
+    _stopPayTimer();
+    setState(() {
+      orderId = _generateOrderId();
+      statusPembayaran = 'pending';
+      paymentExpired = false;
+      paySubStep = 'select';
+    });
+  }
+
+  String get countdownLabel {
+    final m = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_remainingSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  Widget _countdownBanner() {
+    final bool urgent = _remainingSeconds <= 60;
+    final Color color = urgent ? kRed : kOrange;
+
+    return infoBox(
+      color: urgent ? kRedSoft : kOrangeSoft,
+      radius: 12,
+      pad: 12,
+      border: color.withOpacity(.35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.timer_rounded, size: 16, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Selesaikan pembayaran sebelum waktu habis',
+                  style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                countdownLabel,
+                style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: _remainingSeconds / payDurationSeconds,
+              minHeight: 6,
+              backgroundColor: color.withOpacity(.15),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tampilan kalau waktu pembayaran habis
+  Widget buildPaymentExpired() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        pad20(
+          infoBox(
+            color: Colors.white,
+            radius: 20,
+            pad: 24,
+            border: kRed.withOpacity(.3),
+            child: Column(
+              children: [
+                colorfulIcon(
+                  icon: Icons.timer_off_rounded,
+                  color: kRed,
+                  bgColor: kRedSoft,
+                  boxSize: 76,
+                  size: 40,
+                  isCircle: true,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Waktu Pembayaran Habis',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kRed),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pesanan $orderId dibatalkan otomatis karena belum dibayar dalam 5 menit.\nSilakan buat pembayaran baru.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.5),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _restartPayment,
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    label: const Text('Bayar Ulang', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    style: primaryStyle.copyWith(
+                      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 16)),
+                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => goStep(3),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('← Kembali ke Pilih Tiket'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
@@ -2449,7 +2641,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
                       receiptRow(Icons.pool_rounded, kAqua, 'ID Pool', '$normalizedPoolId ($selectedPoolId)'),
                       receiptRow(Icons.water_rounded, kBlue, 'Kolam Renang', selectedPoolName),
                       receiptRow(Icons.person_rounded, kPurple, 'Nama Pemesan', nama.isEmpty ? '—' : nama),
-                      receiptRow(Icons.phone_in_talk_rounded, kGreen, 'No. Telepon', telepon.isEmpty ? '—' : '+62 $telepon'),
+                      receiptRow(Icons.phone_in_talk_rounded, kGreen, 'No. Telepon', phoneDisplay),
                       receiptRow(Icons.calendar_month_rounded, kBlue, 'Tanggal Kunjungan', selectedDateLabel.isEmpty ? '—' : selectedDateLabel),
                       receiptRow(Icons.local_activity_rounded, kOrange, 'Kategori', category == 'dewasa' ? 'Dewasa' : 'Anak-anak'),
                       receiptRow(Icons.group_rounded, kGreen, 'Jumlah', qtyChild > 0 ? '$qtyAdult Dewasa, $qtyChild Anak' : '$qtyAdult Dewasa'),
@@ -3219,58 +3411,6 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide(color: color ?? Colors.grey.shade300, width: width),
-    );
-  }
-
-  Widget buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    IconData? icon,
-    Color? iconColor,
-    String? prefix,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            text: label,
-            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w800, fontSize: 12),
-            children: const [TextSpan(text: ' *', style: TextStyle(color: Colors.red))],
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-            prefixIcon: icon != null
-                ? Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: colorfulIcon(icon: icon, color: iconColor ?? kBlue, boxSize: 30, size: 16),
-                  )
-                : prefix != null
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 14, right: 5),
-                        child: Text(prefix, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      )
-                    : null,
-            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            border: fieldBorder(),
-            enabledBorder: fieldBorder(),
-            focusedBorder: fieldBorder(color: kBlue, width: 1.5),
-          ),
-        ),
-      ],
     );
   }
 }
