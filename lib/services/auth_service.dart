@@ -59,9 +59,11 @@ class AuthService {
     await prefs.remove('user_id');
     await prefs.remove('user_username');
     await prefs.remove('user_name');
+    await prefs.remove('user_nama_lengkap');
     await prefs.remove('user_email');
     await prefs.remove('user_no_hp');
     await prefs.remove('user_alamat');
+    await prefs.remove('user_foto');
     await prefs.remove(_kToken);
   }
 
@@ -235,6 +237,90 @@ class AuthService {
   }
 
   // =====================================================
+  // CEK APAKAH AKUN TERDAFTAR
+  // POST /api/check-account
+  // Return: true = ada, false = tidak ada / error
+  // =====================================================
+
+  static Future<bool> checkAccountExists(String login) async {
+    lastError = '';
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiService.baseUrl}/check-account'),
+            headers: _headers,
+            body: jsonEncode({'login': login.trim()}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('CHECK-ACCOUNT STATUS: ${response.statusCode}');
+      debugPrint('CHECK-ACCOUNT BODY: ${response.body}');
+
+      final body = _decodeResponse(response);
+
+      if (response.statusCode == 200 && body['success'] != false) {
+        return true;
+      }
+
+      lastError = _errorMessage(response, 'Akun tidak ditemukan.');
+      return false;
+    } catch (e) {
+      debugPrint('CHECK-ACCOUNT ERROR: $e');
+      lastError =
+          'Tidak bisa terhubung ke server. Periksa koneksi dan coba lagi.';
+      return false;
+    }
+  }
+
+  // =====================================================
+  // RESET PASSWORD
+  // POST /api/reset-password
+  // Return: null = sukses, String = pesan error
+  // =====================================================
+
+  static Future<String?> resetPassword({
+    required String login,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    lastError = '';
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${ApiService.baseUrl}/reset-password'),
+            headers: _headers,
+            body: jsonEncode({
+              'login': login.trim(),
+              'password': newPassword,
+              'password_confirmation': confirmPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('RESET-PASSWORD STATUS: ${response.statusCode}');
+      debugPrint('RESET-PASSWORD BODY: ${response.body}');
+
+      final body = _decodeResponse(response);
+
+      final bool statusOk =
+          response.statusCode == 200 || response.statusCode == 201;
+      final bool notFailed = body['success'] != false;
+
+      if (statusOk && notFailed) {
+        return null; // sukses
+      }
+
+      lastError = _errorMessage(response, 'Gagal mereset password.');
+      return lastError;
+    } catch (e) {
+      debugPrint('RESET-PASSWORD ERROR: $e');
+      lastError =
+          'Tidak bisa terhubung ke server. Periksa koneksi dan coba lagi.';
+      return lastError;
+    }
+  }
+
+  // =====================================================
   // BACA RESPONSE JSON
   // =====================================================
 
@@ -278,4 +364,4 @@ class AuthService {
 
     return fallback;
   }
-}
+}

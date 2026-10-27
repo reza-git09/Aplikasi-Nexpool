@@ -8,8 +8,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.83:8000/api';
-
+  static const String baseUrl = 'http://192.168.1.9:8000/api';
   static const Duration _timeout = Duration(seconds: 15);
 
   // =========================================================
@@ -83,9 +82,7 @@ class ApiService {
   // HELPER RESPONSE JSON
   // =========================================================
 
-  static Map<String, dynamic> _decodeResponse(
-    http.Response response,
-  ) {
+  static Map<String, dynamic> _decodeResponse(http.Response response) {
     final dynamic decoded = jsonDecode(response.body);
 
     if (decoded is! Map<String, dynamic>) {
@@ -112,9 +109,7 @@ class ApiService {
         final data = _decodeResponse(response);
 
         if (data['success'] == false) {
-          throw Exception(
-            data['message'] ?? 'Gagal mengambil data kolam.',
-          );
+          throw Exception(data['message'] ?? 'Gagal mengambil data kolam.');
         }
 
         return List<dynamic>.from(data['data'] ?? []);
@@ -145,8 +140,7 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = _decodeResponse(response);
 
-        final List<dynamic> result =
-            List<dynamic>.from(data['data'] ?? []);
+        final List<dynamic> result = List<dynamic>.from(data['data'] ?? []);
 
         if (data['success'] == false || result.isEmpty) {
           return _defaultHarga;
@@ -166,22 +160,16 @@ class ApiService {
   // GET SEMUA FASILITAS
   // =========================================================
 
-  static Future<List<dynamic>> getFasilitas({
-    String? poolId,
-  }) async {
+  static Future<List<dynamic>> getFasilitas({String? poolId}) async {
     try {
       final uri = Uri.parse('$baseUrl/fasilitas').replace(
-        queryParameters:
-            poolId != null && poolId.trim().isNotEmpty
-                ? {'pool_id': poolId}
-                : null,
+        queryParameters: poolId != null && poolId.trim().isNotEmpty
+            ? {'pool_id': poolId}
+            : null,
       );
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       debugPrint('GET FASILITAS: $uri');
@@ -189,14 +177,11 @@ class ApiService {
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          data['success'] == true) {
+      if (response.statusCode == 200 && data['success'] == true) {
         return List<dynamic>.from(data['data'] ?? []);
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal mengambil data fasilitas.',
-      );
+      throw Exception(data['message'] ?? 'Gagal mengambil data fasilitas.');
     } catch (e) {
       debugPrint('ERROR GET FASILITAS: $e');
       rethrow;
@@ -207,29 +192,21 @@ class ApiService {
   // GET DETAIL FASILITAS BERDASARKAN ID
   // =========================================================
 
-  static Future<Map<String, dynamic>> getFasilitasById(
-    int id,
-  ) async {
+  static Future<Map<String, dynamic>> getFasilitasById(int id) async {
     try {
       final uri = Uri.parse('$baseUrl/fasilitas/$id');
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          data['success'] == true) {
+      if (response.statusCode == 200 && data['success'] == true) {
         return Map<String, dynamic>.from(data['data'] ?? {});
       }
 
-      throw Exception(
-        data['message'] ?? 'Fasilitas tidak ditemukan.',
-      );
+      throw Exception(data['message'] ?? 'Fasilitas tidak ditemukan.');
     } catch (e) {
       debugPrint('ERROR DETAIL FASILITAS: $e');
       rethrow;
@@ -256,14 +233,10 @@ class ApiService {
           return List<dynamic>.from(data['data'] ?? []);
         }
 
-        throw Exception(
-          data['message'] ?? 'Gagal mengambil data review.',
-        );
+        throw Exception(data['message'] ?? 'Gagal mengambil data review.');
       }
 
-      throw Exception(
-        'Gagal mengambil review. Status: ${response.statusCode}',
-      );
+      throw Exception('Gagal mengambil review. Status: ${response.statusCode}');
     } catch (e) {
       debugPrint('ERROR GET REVIEW: $e');
       rethrow;
@@ -274,19 +247,13 @@ class ApiService {
   // GET REVIEW BERDASARKAN POOL
   // =========================================================
 
-  static Future<List<dynamic>> getReviewsByPool(
-    String poolId,
-  ) async {
+  static Future<List<dynamic>> getReviewsByPool(String poolId) async {
     try {
-      final uri = Uri.parse('$baseUrl/reviews').replace(
-        queryParameters: {'pool_id': poolId},
-      );
+      final uri = Uri.parse('$baseUrl/reviews')
+          .replace(queryParameters: {'pool_id': poolId});
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
@@ -296,14 +263,10 @@ class ApiService {
           return List<dynamic>.from(data['data'] ?? []);
         }
 
-        throw Exception(
-          data['message'] ?? 'Gagal mengambil review.',
-        );
+        throw Exception(data['message'] ?? 'Gagal mengambil review.');
       }
 
-      throw Exception(
-        'Gagal mengambil review. Status: ${response.statusCode}',
-      );
+      throw Exception('Gagal mengambil review. Status: ${response.statusCode}');
     } catch (e) {
       debugPrint('ERROR GET REVIEW BY POOL: $e');
       rethrow;
@@ -334,38 +297,29 @@ class ApiService {
       request.fields['komentar'] = komentar;
 
       if (fotoPath != null && fotoPath.trim().isNotEmpty) {
-        request.files.add(
-          await http.MultipartFile.fromPath('foto', fotoPath),
-        );
+        request.files.add(await http.MultipartFile.fromPath('foto', fotoPath));
       }
 
       debugPrint('KIRIM REVIEW KE: $url');
 
-      final streamedResponse =
-          await request.send().timeout(_timeout);
+      final streamedResponse = await request.send().timeout(_timeout);
 
-      final response =
-          await http.Response.fromStream(streamedResponse);
+      final response = await http.Response.fromStream(streamedResponse);
 
       debugPrint('STATUS API REVIEW: ${response.statusCode}');
       debugPrint('RESPONSE API REVIEW: ${response.body}');
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 201 &&
-          data['success'] == true) {
+      if (response.statusCode == 201 && data['success'] == true) {
         return data;
       }
 
       if (response.statusCode == 422) {
-        throw Exception(
-          data['message'] ?? 'Data review tidak valid.',
-        );
+        throw Exception(data['message'] ?? 'Data review tidak valid.');
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal mengirim review.',
-      );
+      throw Exception(data['message'] ?? 'Gagal mengirim review.');
     } catch (e) {
       debugPrint('ERROR SUBMIT REVIEW: $e');
       rethrow;
@@ -414,20 +368,15 @@ class ApiService {
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 201 &&
-          data['success'] == true) {
+      if (response.statusCode == 201 && data['success'] == true) {
         return data;
       }
 
       if (response.statusCode == 422) {
-        throw Exception(
-          data['message'] ?? 'Data reservasi tidak valid.',
-        );
+        throw Exception(data['message'] ?? 'Data reservasi tidak valid.');
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal membuat reservasi.',
-      );
+      throw Exception(data['message'] ?? 'Gagal membuat reservasi.');
     } catch (e) {
       debugPrint('ERROR CREATE RESERVASI: $e');
       rethrow;
@@ -438,38 +387,29 @@ class ApiService {
   // GET SEMUA RESERVASI
   // =========================================================
 
-  static Future<List<dynamic>> getReservasi({
-    String? poolId,
-  }) async {
+  static Future<List<dynamic>> getReservasi({String? poolId}) async {
     try {
       final uri = Uri.parse('$baseUrl/reservasi').replace(
-        queryParameters:
-            poolId != null && poolId.trim().isNotEmpty
-                ? {'pool_id': poolId}
-                : null,
+        queryParameters: poolId != null && poolId.trim().isNotEmpty
+            ? {'pool_id': poolId}
+            : null,
       );
 
       debugPrint('GET RESERVASI: $uri');
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       debugPrint('STATUS GET RESERVASI: ${response.statusCode}');
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          data['success'] == true) {
+      if (response.statusCode == 200 && data['success'] == true) {
         return List<dynamic>.from(data['data'] ?? []);
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal mengambil data reservasi.',
-      );
+      throw Exception(data['message'] ?? 'Gagal mengambil data reservasi.');
     } catch (e) {
       debugPrint('ERROR GET RESERVASI: $e');
       rethrow;
@@ -480,31 +420,23 @@ class ApiService {
   // GET DETAIL RESERVASI BERDASARKAN ID
   // =========================================================
 
-  static Future<Map<String, dynamic>> getReservasiById(
-    int id,
-  ) async {
+  static Future<Map<String, dynamic>> getReservasiById(int id) async {
     try {
       final uri = Uri.parse('$baseUrl/reservasi/$id');
 
       debugPrint('GET DETAIL RESERVASI: $uri');
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          data['success'] == true) {
+      if (response.statusCode == 200 && data['success'] == true) {
         return Map<String, dynamic>.from(data['data'] ?? {});
       }
 
-      throw Exception(
-        data['message'] ?? 'Reservasi tidak ditemukan.',
-      );
+      throw Exception(data['message'] ?? 'Reservasi tidak ditemukan.');
     } catch (e) {
       debugPrint('ERROR DETAIL RESERVASI: $e');
       rethrow;
@@ -519,29 +451,21 @@ class ApiService {
     String kodeReservasi,
   ) async {
     try {
-      final uri = Uri.parse(
-        '$baseUrl/reservasi/kode/$kodeReservasi',
-      );
+      final uri = Uri.parse('$baseUrl/reservasi/kode/$kodeReservasi');
 
       debugPrint('GET RESERVASI BY KODE: $uri');
 
       final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
+          .get(uri, headers: {'Accept': 'application/json'})
           .timeout(_timeout);
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          data['success'] == true) {
+      if (response.statusCode == 200 && data['success'] == true) {
         return Map<String, dynamic>.from(data['data'] ?? {});
       }
 
-      throw Exception(
-        data['message'] ?? 'Kode reservasi tidak ditemukan.',
-      );
+      throw Exception(data['message'] ?? 'Kode reservasi tidak ditemukan.');
     } catch (e) {
       debugPrint('ERROR RESERVASI BY KODE: $e');
       rethrow;

@@ -1,7 +1,7 @@
-
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import 'forgot_password_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -142,6 +142,14 @@ class _LoginPageState extends State<LoginPage>
     if (registered == true) {
       Navigator.pop(context, true);
     }
+  }
+
+  Future<void> _goToForgotPassword() async {
+    if (isLoading) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+    );
   }
 
   Widget _bubble({
@@ -504,7 +512,37 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                 ),
 
-                                const SizedBox(height: 27),
+                                const SizedBox(height: 14),
+
+                                // LUPA PASSWORD
+                                Center(
+                                  child: TextButton(
+                                    onPressed: isLoading ? null : _goToForgotPassword,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: blue,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.lock_reset_rounded, size: 16),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Lupa Password?',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 6),
 
                                 // TOMBOL LOGIN
                                 SizedBox(

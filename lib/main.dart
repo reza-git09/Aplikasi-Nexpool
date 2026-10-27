@@ -81,6 +81,10 @@ class _MainShellState extends State<MainShell> {
       _user = logged
           ? {
               'name': prefs.getString('user_name') ?? '',
+              'nama_lengkap':
+                  prefs.getString('user_nama_lengkap') ??
+                  prefs.getString('user_name') ??
+                  '',
               'username': prefs.getString('user_username') ?? '',
               'email': prefs.getString('user_email') ?? '',
               'no_hp': prefs.getString('user_no_hp') ?? '',
