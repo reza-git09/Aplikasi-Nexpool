@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import 'login_page.dart';
 import 'profile_page.dart';
 import 'tiket_page.dart';
 import 'promo_page.dart';
@@ -17,12 +19,22 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     this.onPoolChanged,
-    this.userData, // <-- 1. Tambahkan ini di parameter
+    this.userData,
+    this.sessionTick = 0,
+    this.onSessionChanged,
+    this.onOpenProfile,
   });
 
+  // Naik setiap kali status login berubah di MainShell
+  final int sessionTick;
+  final VoidCallback? onSessionChanged;
+  final VoidCallback? onOpenProfile;
+
   final void Function(int poolIndex, String poolId, String poolName, String poolGambar)? onPoolChanged;
-  
-  final Map<String, dynamic>? userData; // <-- 2. Tambahkan variabel penampung ini
+
+  // Tidak dipakai lagi untuk status login (sekarang dibaca dari SharedPreferences),
+  // tetap dibiarkan supaya kode lain yang memanggil HomePage(userData: ...) tidak error.
+  final Map<String, dynamic>? userData;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -34,6 +46,64 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // 0 = Semua, 1 = Tiara, 2 = Kebon Agung, 3 = Annasya, 4 = Dira Park, 5 = Jati Park
   // ============================================================
   int selectedPool = 0;
+
+  // ============================================================
+  // SESI LOGIN (dibaca dari SharedPreferences)
+  // ============================================================
+  bool _isLoggedIn = false;
+  Map<String, dynamic>? _user;
+
+  Future<void> _loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool logged = prefs.getBool('is_logged_in') ?? false;
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoggedIn = logged;
+      _user = logged
+          ? {
+              'name': prefs.getString('user_name') ?? '',
+              'username': prefs.getString('user_username') ?? '',
+              'email': prefs.getString('user_email') ?? '',
+              'no_hp': prefs.getString('user_no_hp') ?? '',
+              'alamat': prefs.getString('user_alamat') ?? '',
+            }
+          : null;
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Status login berubah di tempat lain (tab Profil / guard Tiket)
+    if (oldWidget.sessionTick != widget.sessionTick) {
+      _loadSession();
+    }
+  }
+
+  Future<void> _openLogin() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    await _loadSession(); // baca ulang setelah balik dari login
+    widget.onSessionChanged?.call();
+  }
+
+  Future<void> _openProfile() async {
+    // Di dalam MainShell: pindah ke tab Profil
+    if (widget.onOpenProfile != null) {
+      widget.onOpenProfile!();
+      return;
+    }
+    // Fallback kalau HomePage dipakai berdiri sendiri
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProfilePage(userData: _user)),
+    );
+    await _loadSession();
+  }
 
   // ============================================================
   // DATA KOLAM CADANGAN
@@ -131,6 +201,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     debugPrint('🔥 HOME PAGE INIT JALAN');
+    _loadSession();
     _loadPools();
     _loadFasilitas();
   }
@@ -576,6 +647,66 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // ============================================================
+  // TOMBOL SIGN IN (muncul kalau belum login)
+  // ============================================================
+  Widget _buildSignInButton() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _openLogin();
+      },
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.35)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 6),
+            Text(
+              'Sign In',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // AVATAR PROFIL (muncul di sebelah notifikasi kalau sudah login)
+  // ============================================================
+  Widget _buildProfileAvatar() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _openProfile();
+      },
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
+        ),
+        child: const Center(
+          child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // HERO
   // ============================================================
   Widget _buildHero(Map<String, dynamic>? pool) {
@@ -659,50 +790,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 ),
 
                 // Tombol Profil / Sign In
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    if (widget.userData != null) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ProfilePage(userData: widget.userData),
-                        ),
-                      );
-                    } else {
-                      Navigator.pushNamed(context, '/login');
-                    }
-                  },
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.35)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          widget.userData != null ? 'Profil' : 'Sign In',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _isLoggedIn ? _buildProfileAvatar() : _buildSignInButton(),
                 const SizedBox(width: 10),
 
                 // Tombol Notifikasi

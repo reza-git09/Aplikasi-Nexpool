@@ -1,6 +1,6 @@
-
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -68,6 +68,7 @@ class AuthService {
   // =====================================================
   // REGISTER PENGUNJUNG
   // POST /api/register
+  // Return: null = sukses, String = pesan error
   // =====================================================
 
   static Future<String?> register({
@@ -86,7 +87,7 @@ class AuthService {
             Uri.parse('${ApiService.baseUrl}/register'),
             headers: _headers,
             body: jsonEncode({
-              'name': name.trim(),
+              'nama': name.trim(),
               'email': email.trim(),
               'username': username.trim(),
               'password': password,
@@ -96,11 +97,19 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 15));
 
+      debugPrint('REGISTER STATUS: ${response.statusCode}');
+      debugPrint('REGISTER BODY: ${response.body}');
+
       final body = _decodeResponse(response);
 
-      if ((response.statusCode == 200 ||
-              response.statusCode == 201) &&
-          body['success'] == true) {
+      // Sukses kalau status 200/201 dan backend tidak bilang success=false.
+      // (Sebelumnya wajib success == true, padahal backend tidak
+      // selalu mengirim key "success".)
+      final bool statusOk =
+          response.statusCode == 200 || response.statusCode == 201;
+      final bool notFailed = body['success'] != false;
+
+      if (statusOk && notFailed) {
         return null;
       }
 
@@ -111,6 +120,7 @@ class AuthService {
 
       return lastError;
     } catch (e) {
+      debugPrint('REGISTER ERROR: $e');
       lastError =
           'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
@@ -120,6 +130,7 @@ class AuthService {
   // =====================================================
   // LOGIN PENGUNJUNG
   // POST /api/login
+  // Return: nama user kalau sukses, null kalau gagal
   // =====================================================
 
   static Future<String?> verifyLogin(
@@ -140,15 +151,22 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 15));
 
+      debugPrint('LOGIN STATUS: ${response.statusCode}');
+      debugPrint('LOGIN BODY: ${response.body}');
+
       final body = _decodeResponse(response);
 
-      if (response.statusCode == 200 &&
-          body['success'] == true &&
-          body['data'] is Map) {
-        final data = Map<String, dynamic>.from(
-          body['data'] as Map,
-        );
+      // Data user bisa ada di body['data'] atau body['user'].
+      Map<String, dynamic>? data;
+      if (body['data'] is Map) {
+        data = Map<String, dynamic>.from(body['data'] as Map);
+      } else if (body['user'] is Map) {
+        data = Map<String, dynamic>.from(body['user'] as Map);
+      }
 
+      if (response.statusCode == 200 &&
+          body['success'] != false &&
+          data != null) {
         final prefs = await SharedPreferences.getInstance();
 
         await prefs.setBool('is_logged_in', true);
@@ -165,7 +183,7 @@ class AuthService {
 
         await prefs.setString(
           'user_name',
-          (data['name'] ?? '').toString(),
+          (data['nama'] ?? data['name'] ?? '').toString(),
         );
 
         await prefs.setString(
@@ -188,10 +206,18 @@ class AuthService {
           (data['alamat'] ?? '').toString(),
         );
 
-        // Controller Laravel saat ini belum mengirim token.
-        await prefs.remove(_kToken);
+        // Simpan token kalau backend mengirimnya
+        // (token bisa ada di body atau di dalam data).
+        final dynamic token =
+            body['token'] ?? body['access_token'] ?? data['token'];
 
-        return (data['name'] ?? username).toString();
+        if (token != null && token.toString().isNotEmpty) {
+          await prefs.setString(_kToken, token.toString());
+        } else {
+          await prefs.remove(_kToken);
+        }
+
+        return (data['nama'] ?? data['name'] ?? username).toString();
       }
 
       lastError = _errorMessage(
@@ -201,6 +227,7 @@ class AuthService {
 
       return null;
     } catch (e) {
+      debugPrint('LOGIN ERROR: $e');
       lastError =
           'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return null;

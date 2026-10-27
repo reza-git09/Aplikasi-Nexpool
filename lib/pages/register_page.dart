@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import 'login_page.dart';
-import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -55,38 +54,28 @@ class _RegisterPageState extends State<RegisterPage> {
         alamat: alamatController.text.trim(),
       );
 
+      if (!mounted) return;
+
       if (error != null) {
         _showMessage(error, isError: true);
         return;
       }
 
-      // --- GANTI MULAI DARI SINI ---
-      _showMessage('Registrasi berhasil!');
-
-      final Map<String, dynamic> dataUserBaru = {
-        'name': nameController.text,
-        'email': emailController.text,
-        'username': usernameController.text,
-        'no_hp': noHpController.text,
-        'alamat': alamatController.text,
-      };
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(userData: dataUserBaru),
-        ),
-        (route) => false,
-      );
-    } catch (_) {
+      // Registrasi sukses -> langsung ke halaman login
+      _showMessage('Registrasi berhasil! Silakan login.');
+      _goToLogin();
+    } catch (e) {
+      debugPrint('ERROR REGISTER: $e');
       if (!mounted) return;
-      setState(() => isLoading = false);
       _showMessage(
         'Gagal terhubung ke server. Periksa koneksi dan coba lagi.',
         isError: true,
       );
-    } // <-- Penutup blok catch (_)
-  } // <-- Penutup fungsi daftar()
+    } finally {
+      // Spinner SELALU berhenti, apa pun hasilnya
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
   Future<void> _goToLogin() async {
     final bool? ok = await Navigator.push<bool>(

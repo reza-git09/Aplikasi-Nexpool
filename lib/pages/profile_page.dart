@@ -1,23 +1,61 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+
 class ProfilePage extends StatelessWidget {
   final Map<String, dynamic>? userData;
 
-  const ProfilePage({super.key, this.userData});
+  // embedded = true kalau dipakai sebagai tab di navbar bawah
+  final bool embedded;
+
+  // Dipanggil setelah logout (dipakai saat embedded)
+  final VoidCallback? onLogout;
+
+  const ProfilePage({
+    super.key,
+    this.userData,
+    this.embedded = false,
+    this.onLogout,
+  });
 
   // Skema warna tema NexPool
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
   static const Color background = Color(0xFFF3F7FD);
 
+  String _pick(List<String> keys, String fallback) {
+    for (final k in keys) {
+      final v = userData?[k];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return v.toString();
+      }
+    }
+    return fallback;
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    // Hapus sesi login dari HP
+    await AuthService.logout();
+
+    // Sebagai tab: kabari MainShell, dia yang pindah ke Home
+    if (onLogout != null) {
+      onLogout!();
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    // Sebagai halaman biasa: kembali ke halaman sebelumnya
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Membaca field dari database Laravel (mendukung nama kolom id/en)
-    final String nama = userData?['nama'] ?? userData?['name'] ?? 'Pengguna NexPool';
-    final String username = userData?['username'] ?? '-';
-    final String email = userData?['email'] ?? '-';
-    final String noHp = userData?['no_hp'] ?? userData?['phone'] ?? userData?['telepon'] ?? '-';
-    final String alamat = userData?['alamat'] ?? userData?['address'] ?? '-';
+    final String nama = _pick(['nama', 'name'], 'Pengguna NexPool');
+    final String username = _pick(['username'], '-');
+    final String email = _pick(['email'], '-');
+    final String noHp = _pick(['no_hp', 'phone', 'telepon'], '-');
+    final String alamat = _pick(['alamat', 'address'], '-');
 
     return Scaffold(
       backgroundColor: background,
@@ -30,6 +68,7 @@ class ProfilePage extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        automaticallyImplyLeading: !embedded,
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -147,10 +186,7 @@ class ProfilePage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  onPressed: () {
-                    // Arahkan kembali ke login dan hapus sesi layar sebelumnya
-                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                  },
+                  onPressed: () => _logout(context),
                   icon: const Icon(Icons.logout_rounded, size: 20),
                   label: const Text(
                     'Keluar Akun',
@@ -160,7 +196,8 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            // Ruang kosong supaya tidak tertutup navbar bawah
+            SizedBox(height: embedded ? 120 : 30),
           ],
         ),
       ),
