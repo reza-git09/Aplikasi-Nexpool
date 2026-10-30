@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.85,
       'location': 'Jl. Taman Air No.1, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Tiara+Jember+Park+Waterboom+Jember',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1845,113.7160&query_place_id=ChIJTiara+Jember+Park',
     },
     {
       'name': 'Kebon Agung',
@@ -142,7 +142,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.75,
       'location': 'Jl. Kebon Agung, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Pemandian+Kebon+Agung+Jember',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1628,113.7048&query_place_id=ChIJKebon+Agung+Jember',
     },
     {
       'name': 'Annasya Waterpark',
@@ -159,7 +159,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.82,
       'location': 'Jl. Annasya Water Park, Kabupaten Jember',
       'hours': '07.00 – 16.30 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Annasya+Waterpark+Jember',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1734,113.7203&query_place_id=ChIJAnnasya+Waterpark',
     },
     {
       'name': 'Dira Park',
@@ -176,7 +176,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.70,
       'location': 'Jl. Dira Park, Kabupaten Jember',
       'hours': '08.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Dira+Park+Jember',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.2059,113.6982&query_place_id=ChIJDira+Park+Jember',
     },
     {
       'name': 'Jati Park',
@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.83,
       'location': 'Jl. Jati Park, Kabupaten Jember',
       'hours': '07.30 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=Jati+Park+Jember',
+      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1520,113.7115&query_place_id=ChIJJati+Park+Jember',
     },
   ];
 
@@ -446,25 +446,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // BUKA GOOGLE MAPS
   // ============================================================
   Future<void> _openMaps(String mapsUrl, String poolName) async {
+    // Fallback jika URL kosong
     if (mapsUrl.isEmpty) {
-      // Fallback jika URL kosong
-      mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(poolName)}';
+      mapsUrl =
+          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(poolName)}+Jember';
     }
     final Uri uri = Uri.parse(mapsUrl);
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
+      // Langsung coba launchUrl — lebih reliable di Android 11+
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Jika gagal, coba via browser dengan URL pencarian biasa
+      try {
+        final Uri fallbackUri = Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(poolName)}+Jember',
+        );
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka Maps. Pastikan aplikasi Maps sudah terpasang.')),
+          SnackBar(
+            content: Text('Tidak dapat membuka Maps: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membuka Maps: $e')),
-      );
     }
   }
 

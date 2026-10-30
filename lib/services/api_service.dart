@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -9,7 +8,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.15:8000/api';
+  static const String baseUrl = 'http://192.168.1.1:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -111,9 +110,7 @@ class ApiService {
         final data = _decodeResponse(response);
 
         if (data['success'] == false) {
-          throw Exception(
-            data['message'] ?? 'Gagal mengambil data kolam.',
-          );
+          throw Exception(data['message'] ?? 'Gagal mengambil data kolam.');
         }
 
         return List<dynamic>.from(data['data'] ?? []);
@@ -143,8 +140,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = _decodeResponse(response);
-        final List<dynamic> result =
-            List<dynamic>.from(data['data'] ?? []);
+        final List<dynamic> result = List<dynamic>.from(data['data'] ?? []);
 
         if (data['success'] == false || result.isEmpty) {
           return _defaultHarga;
@@ -185,9 +181,7 @@ class ApiService {
         return List<dynamic>.from(data['data'] ?? []);
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal mengambil data fasilitas.',
-      );
+      throw Exception(data['message'] ?? 'Gagal mengambil data fasilitas.');
     } catch (e) {
       debugPrint('ERROR GET FASILITAS: $e');
       rethrow;
@@ -239,14 +233,10 @@ class ApiService {
           return List<dynamic>.from(data['data'] ?? []);
         }
 
-        throw Exception(
-          data['message'] ?? 'Gagal mengambil data review.',
-        );
+        throw Exception(data['message'] ?? 'Gagal mengambil data review.');
       }
 
-      throw Exception(
-        'Gagal mengambil review. Status: ${response.statusCode}',
-      );
+      throw Exception('Gagal mengambil review. Status: ${response.statusCode}');
     } catch (e) {
       debugPrint('ERROR GET REVIEW: $e');
       rethrow;
@@ -276,9 +266,7 @@ class ApiService {
         throw Exception(data['message'] ?? 'Gagal mengambil review.');
       }
 
-      throw Exception(
-        'Gagal mengambil review. Status: ${response.statusCode}',
-      );
+      throw Exception('Gagal mengambil review. Status: ${response.statusCode}');
     } catch (e) {
       debugPrint('ERROR GET REVIEW BY POOL: $e');
       rethrow;
@@ -307,9 +295,7 @@ class ApiService {
       request.fields['komentar'] = komentar;
 
       if (fotoPath != null && fotoPath.trim().isNotEmpty) {
-        request.files.add(
-          await http.MultipartFile.fromPath('foto', fotoPath),
-        );
+        request.files.add(await http.MultipartFile.fromPath('foto', fotoPath));
       }
 
       debugPrint('KIRIM REVIEW KE: $url');
@@ -420,9 +406,7 @@ class ApiService {
         return List<dynamic>.from(data['data'] ?? []);
       }
 
-      throw Exception(
-        data['message'] ?? 'Gagal mengambil data reservasi.',
-      );
+      throw Exception(data['message'] ?? 'Gagal mengambil data reservasi.');
     } catch (e) {
       debugPrint('ERROR GET RESERVASI: $e');
       rethrow;
@@ -464,8 +448,7 @@ class ApiService {
     String kodeReservasi,
   ) async {
     try {
-      final uri =
-          Uri.parse('$baseUrl/reservasi/kode/$kodeReservasi');
+      final uri = Uri.parse('$baseUrl/reservasi/kode/$kodeReservasi');
 
       debugPrint('GET RESERVASI BY KODE: $uri');
 
@@ -479,9 +462,7 @@ class ApiService {
         return Map<String, dynamic>.from(data['data'] ?? {});
       }
 
-      throw Exception(
-        data['message'] ?? 'Kode reservasi tidak ditemukan.',
-      );
+      throw Exception(data['message'] ?? 'Kode reservasi tidak ditemukan.');
     } catch (e) {
       debugPrint('ERROR RESERVASI BY KODE: $e');
       rethrow;

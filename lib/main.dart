@@ -9,7 +9,7 @@ import 'pages/profile_page.dart';
 import 'pages/liquid_glass_navbar.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
-import 'services/auth_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +47,6 @@ class _MainShellState extends State<MainShell> {
 
   // Index tab
   static const int _tabHome = 0;
-  static const int _tabTiket = 1;
   static const int _tabUlasan = 2;
   static const int _tabProfil = 3;
 
@@ -93,17 +92,6 @@ class _MainShellState extends State<MainShell> {
           : null;
       _sessionTick++;
     });
-  }
-
-  /// Buka Registrasi (lalu Login). Mengembalikan true kalau akhirnya login.
-  Future<bool> _openAuth() async {
-    final bool? result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const RegisterPage()),
-    );
-    final bool ok = result == true && await AuthService.isLoggedIn();
-    await _loadSession();
-    return ok;
   }
 
   Future<void> _openLogin() async {
@@ -159,15 +147,8 @@ class _MainShellState extends State<MainShell> {
       return;
     }
 
-    // Guard: Tiket butuh akun. Belum login -> Registrasi dulu, lalu Login.
-    if (index == _tabTiket) {
-      final bool logged = await AuthService.isLoggedIn();
-      if (!mounted) return;
-      if (!logged) {
-        final bool ok = await _openAuth();
-        if (!ok || !mounted) return;
-      }
-    }
+    // Tab Tiket & Profil: boleh dibuka meski belum login.
+    // Halaman guest (button register/login) akan ditampilkan di dalam tab.
 
     HapticFeedback.selectionClick();
     setState(() {
@@ -195,11 +176,17 @@ class _MainShellState extends State<MainShell> {
                     setState(() => _currentIndex = _tabProfil);
                   },
                 ),
-                TiketPage(
-                  key: ValueKey('tiket_${_poolId}_$_loggedIn'),
-                  poolId: _poolId,
-                  poolName: _poolName,
-                ),
+                _loggedIn
+                    ? TiketPage(
+                        key: ValueKey('tiket_${_poolId}_$_loggedIn'),
+                        poolId: _poolId,
+                        poolName: _poolName,
+                      )
+                    : _GuestTiket(
+                        key: const ValueKey('tiket_guest'),
+                        onSignIn: _openLogin,
+                        onRegister: _openRegister,
+                      ),
                 ReviewPage(
                   key: ValueKey('review_$_poolId'),
                   poolId: _poolId,
@@ -290,7 +277,7 @@ class _GuestProfile extends StatelessWidget {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: navy.withOpacity(0.08),
+                  color: navy.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -311,6 +298,117 @@ class _GuestProfile extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Masuk ke akunmu untuk melihat profil\ndan memesan tiket kolam renang.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF8490A3),
+                  fontSize: 13,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: onSignIn,
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Text(
+                    'SIGN IN',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: navy,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: onRegister,
+                style: TextButton.styleFrom(foregroundColor: blue),
+                child: const Text(
+                  'Belum punya akun? Daftar sekarang',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================================================================
+// TAMPILAN TAB TIKET KALAU BELUM LOGIN
+// ================================================================
+class _GuestTiket extends StatelessWidget {
+  const _GuestTiket({
+    super.key,
+    required this.onSignIn,
+    required this.onRegister,
+  });
+
+  final VoidCallback onSignIn;
+  final VoidCallback onRegister;
+
+  static const Color navy = Color(0xFF173F7A);
+  static const Color blue = Color(0xFF2675D8);
+  static const Color background = Color(0xFFF3F7FD);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: background,
+      appBar: AppBar(
+        title: const Text(
+          'Pesan Tiket',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 24, 28, 120),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: navy.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.confirmation_number_outlined,
+                  size: 52,
+                  color: navy,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Kamu belum login',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: navy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Masuk ke akunmu untuk memesan tiket\nkolam renang favoritmu.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF8490A3),
