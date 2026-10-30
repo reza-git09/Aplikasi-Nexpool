@@ -202,6 +202,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
     debugPrint('🔥 HOME PAGE INIT JALAN');
     _loadSession();
+    _loadPromos();
     _loadPools();
     _loadFasilitas();
   }
@@ -210,6 +211,76 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // FASILITAS DARI API LARAVEL (diisi lewat admin)
   // ============================================================
   List<Map<String, dynamic>> _fasilitas = [];
+
+  // ============================================================
+  // PROMO DARI API LARAVEL (diisi lewat admin)
+  // ============================================================
+  List<Map<String, dynamic>> _promos = [];
+
+  static const List<List<Color>> _promoColors = [
+    [Color(0xff0077A8), Color(0xff00B4D8)],
+    [Color(0xff06D6A0), Color(0xff0077A8)],
+    [Color(0xffEF476F), Color(0xff7B61FF)],
+    [Color(0xff7B61FF), Color(0xff4A36C8)],
+    [Color(0xffF7B731), Color(0xffEF476F)],
+  ];
+
+  String _shortDate(String raw) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return raw;
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return '${d.day} ${m[d.month - 1]} ${d.year}';
+  }
+
+  Future<void> _loadPromos() async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('${ApiService.baseUrl}/promo'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode != 200) return;
+
+      final body = jsonDecode(res.body);
+      final raw = body is Map ? (body['data'] ?? []) : body;
+      if (raw is! List) return;
+
+      final list = <Map<String, dynamic>>[];
+      for (int i = 0; i < raw.length; i++) {
+        final item = raw[i];
+        if (item is! Map) continue;
+
+        final colors = _promoColors[i % _promoColors.length];
+        final String poolId = item['pool_id']?.toString() ?? '';
+
+        String poolName = 'Semua Kolam';
+        if (poolId.isNotEmpty) {
+          for (final p in pools) {
+            if (p['pool_id']?.toString() == poolId) {
+              poolName = p['name']?.toString() ?? poolName;
+              break;
+            }
+          }
+        }
+
+        final String end = item['tanggal_selesai']?.toString() ?? '';
+
+        list.add({
+          'title': item['nama']?.toString() ?? 'Promo',
+          'place': end.isEmpty ? poolName : '$poolName · s/d ${_shortDate(end)}',
+          'discount': item['label_diskon']?.toString() ?? '',
+          'color1': colors[0],
+          'color2': colors[1],
+        });
+      }
+
+      if (mounted) setState(() => _promos = list);
+    } catch (e) {
+      debugPrint('Gagal ambil promo: $e');
+    }
+  }
 
   Future<void> _loadFasilitas([String poolId = '']) async {
     try {
@@ -1258,43 +1329,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // PROMO
   // ============================================================
   Widget _buildPromoSection() {
-    final List<Map<String, dynamic>> promos = [
-      {
-        'title': 'Promo Paket Keluarga',
-        'place': 'Tiara Jember Park Waterboom · Sep 2026',
-        'discount': 'Hemat 30%',
-        'color1': const Color(0xff0077A8),
-        'color2': const Color(0xff00B4D8),
-      },
-      {
-        'title': 'Diskon Weekday',
-        'place': 'Pemandian Kebon Agung · Senin–Rabu',
-        'discount': 'Gratis 1',
-        'color1': const Color(0xff06D6A0),
-        'color2': const Color(0xff0077A8),
-      },
-      {
-        'title': 'Flash Sale Weekend',
-        'place': 'Annasya Waterpark · Sabtu–Minggu',
-        'discount': 'Diskon 25%',
-        'color1': const Color(0xffEF476F),
-        'color2': const Color(0xff7B61FF),
-      },
-      {
-        'title': 'Paket Grup 10+',
-        'place': 'Dira Park · Min. 10 orang',
-        'discount': 'Diskon 20%',
-        'color1': const Color(0xff7B61FF),
-        'color2': const Color(0xff4A36C8),
-      },
-      {
-        'title': 'Early Bird Masuk',
-        'place': 'Jati Park · Sebelum pukul 09.00',
-        'discount': 'Hemat 15%',
-        'color1': const Color(0xffF7B731),
-        'color2': const Color(0xffEF476F),
-      },
-    ];
+    // Promo dari API (diisi admin lewat website)
+    final List<Map<String, dynamic>> promos = _promos;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1307,6 +1343,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage())),
         ),
         const SizedBox(height: 12),
+        if (promos.isEmpty)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.local_offer_outlined, color: Colors.grey, size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Belum ada promo aktif saat ini.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
         SizedBox(
           height: 125,
           child: ListView.separated(
