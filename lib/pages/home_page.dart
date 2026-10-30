@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import '../services/profile_photo_service.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
 import 'tiket_page.dart';
@@ -71,6 +73,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             }
           : null;
     });
+
+    // Foto profil per akun: dimuat saat login, dikosongkan (di memori) saat logout
+    if (logged) {
+      await ProfilePhotoService.load();
+    } else {
+      ProfilePhotoService.clearMemory();
+    }
   }
 
   @override
@@ -776,8 +785,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
         ),
-        child: const Center(
-          child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+        child: ClipOval(
+          child: ValueListenableBuilder<Uint8List?>(
+            valueListenable: ProfilePhotoService.photo,
+            builder: (_, bytes, __) {
+              const Widget icon = Center(
+                child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+              );
+              if (bytes == null) return icon;
+              return Image.memory(
+                bytes,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => icon,
+              );
+            },
+          ),
         ),
       ),
     );

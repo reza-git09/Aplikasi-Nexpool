@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
+import '../services/profile_photo_service.dart';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -47,9 +47,6 @@ class _ProfilePageState extends State<ProfilePage>
   String _noHp = '';
   String _alamat = '';
 
-  // Bytes foto profil — pakai MemoryImage agar tidak bergantung
-  // pada dart:io FileImage yang crash di beberapa Android setup.
-  Uint8List? _fotoBytes;
   bool _isEditing = false;
   bool _isSaving = false;
 
@@ -132,17 +129,51 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> _loadSavedPhoto() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('user_foto');
-    if (path == null || path.isEmpty) return;
-    try {
-      // Baca bytes secara async — aman, tidak pakai existsSync/_Namespace
-      final bytes = await File(path).readAsBytes();
-      if (!mounted) return;
-      setState(() => _fotoBytes = bytes);
-    } catch (_) {
-      // File mungkin sudah dihapus / tidak ada — abaikan
+    // Foto disimpan per akun & dibagikan ke Home lewat ProfilePhotoService
+    await ProfilePhotoService.load();
+  }
+
+  Widget _avatarPlaceholder() {
+    return Container(
+      width: 96,
+      height: 96,
+      color: background,
+      child: const Icon(Icons.person_rounded, size: 52, color: blue),
+    );
+  }
+
+  // Tap foto: kalau sudah ada -> perbesar, kalau belum -> pilih foto
+  Future<void> _onAvatarTap() async {
+    final bytes = ProfilePhotoService.photo.value;
+    if (bytes == null) {
+      await _pickPhoto();
+      return;
     }
+
+    final bool? ganti = await Navigator.of(context).push<bool>(
+      PageRouteBuilder<bool>(
+        transitionDuration: const Duration(milliseconds: 240),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, __, ___) => _PhotoViewerPage(
+          bytes: bytes,
+          nama: _namaController.text.isNotEmpty
+              ? _namaController.text
+              : 'Pengguna NexPool',
+        ),
+        transitionsBuilder: (_, anim, __, child) {
+          final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+
+    if (ganti == true && mounted) await _pickPhoto();
   }
 
   // ─── Ambil Foto ────────────────────────────────────────────────
@@ -161,8 +192,8 @@ class _ProfilePageState extends State<ProfilePage>
     try {
       picked = await ImagePicker().pickImage(
         source: choice,
-        imageQuality: 80,
-        maxWidth: 800,
+        imageQuality: 75,
+        maxWidth: 600,
       );
     } catch (e) {
       if (mounted) _showSnack('Gagal buka kamera/galeri: $e', isError: true);
@@ -183,15 +214,11 @@ class _ProfilePageState extends State<ProfilePage>
 
       if (!mounted) return;
 
-      // Simpan path ke SharedPreferences untuk reload saat app dibuka ulang
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_foto', picked.path);
+      // Simpan isi foto per akun (tidak hilang saat logout / cache dibersihkan)
+      // dan kabari Home supaya avatar di header ikut berubah.
+      await ProfilePhotoService.save(bytes);
 
       if (!mounted) return;
-      setState(() => _fotoBytes = bytes);
-      debugPrint(
-        '[ProfilePage] setState _fotoBytes done (${bytes.length} bytes)',
-      );
       _showSnack('Foto profil berhasil diperbarui ✓');
     } catch (e) {
       debugPrint('[ProfilePage] ERROR foto: $e');
@@ -464,58 +491,46 @@ class _ProfilePageState extends State<ProfilePage>
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    // Ring / border animasi
-                    Container(
-                      width: 104,
-                      height: 104,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [blueAccent, Color(0xFF74C0FC)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: blue.withOpacity(0.5),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
+                    // Ring / border — tap untuk memperbesar foto
+                    GestureDetector(
+                      onTap: _onAvatarTap,
+                      child: Container(
+                        width: 104,
+                        height: 104,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [blueAccent, Color(0xFF74C0FC)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(3),
-                      child: ClipOval(
-                        child: _fotoBytes != null
-                            // Image.memory lebih andal daripada CircleAvatar
-                            // backgroundImage — langsung render dari bytes,
-                            // punya errorBuilder jika decode gagal.
-                            ? Image.memory(
-                                _fotoBytes!,
-                                key: ValueKey(_fotoBytes!.length),
+                          boxShadow: [
+                            BoxShadow(
+                              color: blue.withOpacity(0.5),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(3),
+                        child: ClipOval(
+                          child: ValueListenableBuilder<Uint8List?>(
+                            valueListenable: ProfilePhotoService.photo,
+                            builder: (_, bytes, __) {
+                              if (bytes == null) return _avatarPlaceholder();
+                              return Image.memory(
+                                bytes,
+                                key: ValueKey(bytes.length),
                                 width: 96,
                                 height: 96,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 96,
-                                  height: 96,
-                                  color: background,
-                                  child: const Icon(
-                                    Icons.person_rounded,
-                                    size: 52,
-                                    color: blue,
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                width: 96,
-                                height: 96,
-                                color: background,
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  size: 52,
-                                  color: blue,
-                                ),
-                              ),
+                                gaplessPlayback: true,
+                                errorBuilder: (_, __, ___) =>
+                                    _avatarPlaceholder(),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                     // Tombol kamera
@@ -1078,6 +1093,116 @@ class _SourceOption extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ================================================================
+// LAYAR PENUH: PERBESAR FOTO PROFIL
+// ================================================================
+class _PhotoViewerPage extends StatelessWidget {
+  final Uint8List bytes;
+  final String nama;
+
+  const _PhotoViewerPage({required this.bytes, required this.nama});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        // Wajib expand: tanpa ini Stack hanya setinggi baris atas (X + nama)
+        // dan foto/tombol jadi terjepit di atas layar.
+        fit: StackFit.expand,
+        children: [
+          // Foto: cubit dua jari untuk zoom, tap area kosong untuk menutup
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.pop(context),
+              child: Center(
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  child: Image.memory(
+                    bytes,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white54,
+                      size: 64,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Tombol tutup + nama
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 16, 0),
+                child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Expanded(
+                    child: Text(
+                      nama,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              ),
+            ),
+          ),
+
+          // Tombol ganti foto
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                    label: const Text(
+                      'Ganti Foto',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF173F7A),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
