@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/otp_service.dart';
 import 'login_page.dart';
+import 'otp_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -22,6 +24,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool passwordVisible = false;
   bool isLoading = false;
+
+  // Bukti verifikasi OTP. Disimpan supaya kalau registrasi gagal karena
+  // email/username dobel, pengguna tidak perlu minta OTP lagi.
+  String? _otpToken;
+  String? _otpPhone;
 
   static const navy = Color(0xFF173F7A);
   static const blue = Color(0xFF2675D8);
@@ -45,18 +52,58 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => isLoading = true);
 
     try {
+      final String noHp = noHpController.text.trim();
+
+      // 1) Kirim kode OTP ke WhatsApp (dilewati kalau nomor ini sudah diverifikasi)
+      if (_otpToken == null || _otpPhone != noHp) {
+        final sent = await OtpService.send(noHp);
+        if (!mounted) return;
+
+        if (sent.error != null) {
+          _showMessage(sent.error!, isError: true);
+          return;
+        }
+
+        // 2) Pengguna mengisi kode OTP
+        final String? token = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpPage(
+              noHp: noHp,
+              initialResendIn: sent.resendIn,
+              initialExpiresIn: sent.expiresIn,
+              debugCode: sent.debugCode,
+            ),
+          ),
+        );
+        if (!mounted) return;
+
+        // Dibatalkan / kembali tanpa verifikasi
+        if (token == null) return;
+
+        _otpToken = token;
+        _otpPhone = noHp;
+      }
+
+      // 3) Daftar dengan bukti verifikasi
       final String? error = await AuthService.register(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
         username: usernameController.text.trim(),
         password: passwordController.text,
-        noHp: noHpController.text.trim(),
+        noHp: noHp,
         alamat: alamatController.text.trim(),
+        otpToken: _otpToken,
       );
 
       if (!mounted) return;
 
       if (error != null) {
+        // Token kedaluwarsa / ditolak server -> minta OTP lagi di percobaan berikutnya
+        if (error.toLowerCase().contains('verifikasi')) {
+          _otpToken = null;
+          _otpPhone = null;
+        }
         _showMessage(error, isError: true);
         return;
       }
@@ -400,11 +447,20 @@ class _RegisterPageState extends State<RegisterPage> {
                         const SizedBox(height: 15),
 
                         field(
-                          label: 'Nomor HP',
+                          label: 'Nomor HP (WhatsApp)',
                           icon: Icons.phone_android_rounded,
                           controller: noHpController,
                           keyboardType: TextInputType.phone,
                           errorMessage: 'Nomor HP wajib diisi',
+                          validator: (value) {
+                            final v = (value ?? '').trim();
+                            if (v.isEmpty) return 'Nomor HP wajib diisi';
+                            final digits = v.replaceAll(RegExp(r'\D'), '');
+                            if (!RegExp(r'^(0|62|8)\d{8,13}$').hasMatch(digits)) {
+                              return 'Gunakan nomor WhatsApp aktif, contoh 08123456789';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 15),
 

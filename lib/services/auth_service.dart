@@ -59,11 +59,9 @@ class AuthService {
     await prefs.remove('user_id');
     await prefs.remove('user_username');
     await prefs.remove('user_name');
-    await prefs.remove('user_nama_lengkap');
     await prefs.remove('user_email');
     await prefs.remove('user_no_hp');
     await prefs.remove('user_alamat');
-    await prefs.remove('user_foto');
     await prefs.remove(_kToken);
   }
 
@@ -80,6 +78,7 @@ class AuthService {
     required String password,
     required String noHp,
     required String alamat,
+    String? otpToken, // bukti verifikasi OTP WhatsApp (dari /otp/verify)
   }) async {
     lastError = '';
 
@@ -95,6 +94,7 @@ class AuthService {
               'password': password,
               'no_hp': noHp.trim(),
               'alamat': alamat.trim(),
+              if (otpToken != null) 'otp_token': otpToken,
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -237,13 +237,15 @@ class AuthService {
   }
 
   // =====================================================
-  // CEK APAKAH AKUN TERDAFTAR
-  // POST /api/check-account
-  // Return: true = ada, false = tidak ada / error
+  // LUPA PASSWORD - LANGKAH 1: CEK AKUN
+  // POST /api/check-account   { login }
+  // Return: true = akun ditemukan, false = tidak ada / gagal
+  // (alasan gagal ada di AuthService.lastError)
   // =====================================================
 
   static Future<bool> checkAccountExists(String login) async {
     lastError = '';
+
     try {
       final response = await http
           .post(
@@ -253,27 +255,38 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 15));
 
-      debugPrint('CHECK-ACCOUNT STATUS: ${response.statusCode}');
-      debugPrint('CHECK-ACCOUNT BODY: ${response.body}');
+      debugPrint('CHECK ACCOUNT STATUS: ${response.statusCode}');
+      debugPrint('CHECK ACCOUNT BODY: ${response.body}');
 
       final body = _decodeResponse(response);
 
-      if (response.statusCode == 200 && body['success'] != false) {
+      final bool statusOk =
+          response.statusCode == 200 || response.statusCode == 201;
+      final bool notFailed = body['success'] != false;
+      // Kalau backend mengirim penanda "exists"/"found", hormati itu.
+      final bool notMissing =
+          body['exists'] != false && body['found'] != false;
+
+      if (statusOk && notFailed && notMissing) {
         return true;
       }
 
-      lastError = _errorMessage(response, 'Akun tidak ditemukan.');
+      lastError = _errorMessage(
+        response,
+        'Akun dengan username/email tersebut tidak ditemukan.',
+      );
+
       return false;
     } catch (e) {
-      debugPrint('CHECK-ACCOUNT ERROR: $e');
+      debugPrint('CHECK ACCOUNT ERROR: $e');
       lastError =
-          'Tidak bisa terhubung ke server. Periksa koneksi dan coba lagi.';
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return false;
     }
   }
 
   // =====================================================
-  // RESET PASSWORD
+  // LUPA PASSWORD - LANGKAH 2: RESET PASSWORD
   // POST /api/reset-password
   // Return: null = sukses, String = pesan error
   // =====================================================
@@ -284,6 +297,7 @@ class AuthService {
     required String confirmPassword,
   }) async {
     lastError = '';
+
     try {
       final response = await http
           .post(
@@ -291,14 +305,19 @@ class AuthService {
             headers: _headers,
             body: jsonEncode({
               'login': login.trim(),
+              // Nama field password dikirim dalam beberapa bentuk umum
+              // supaya cocok dengan validasi di Laravel.
               'password': newPassword,
               'password_confirmation': confirmPassword,
+              'new_password': newPassword,
+              'new_password_confirmation': confirmPassword,
+              'confirm_password': confirmPassword,
             }),
           )
           .timeout(const Duration(seconds: 15));
 
-      debugPrint('RESET-PASSWORD STATUS: ${response.statusCode}');
-      debugPrint('RESET-PASSWORD BODY: ${response.body}');
+      debugPrint('RESET PASSWORD STATUS: ${response.statusCode}');
+      debugPrint('RESET PASSWORD BODY: ${response.body}');
 
       final body = _decodeResponse(response);
 
@@ -307,15 +326,15 @@ class AuthService {
       final bool notFailed = body['success'] != false;
 
       if (statusOk && notFailed) {
-        return null; // sukses
+        return null;
       }
 
-      lastError = _errorMessage(response, 'Gagal mereset password.');
+      lastError = _errorMessage(response, 'Gagal memperbarui password.');
       return lastError;
     } catch (e) {
-      debugPrint('RESET-PASSWORD ERROR: $e');
+      debugPrint('RESET PASSWORD ERROR: $e');
       lastError =
-          'Tidak bisa terhubung ke server. Periksa koneksi dan coba lagi.';
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
     }
   }
@@ -364,4 +383,4 @@ class AuthService {
 
     return fallback;
   }
-}
+}
