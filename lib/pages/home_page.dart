@@ -16,6 +16,7 @@ import 'tiket_page.dart';
 import 'promo_page.dart';
 import 'review_page.dart';
 import 'notifikasi_page.dart';
+import '../widgets/pool_map_preview.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -132,7 +133,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'weekend': 'Rp20.000',
       'ratingCount': '1.2k ulasan',
       'bar5': 0.85,
-      'location': 'Jl. Taman Air No.1, Kabupaten Jember',
+      'location': 'Jl. Kaliurang, Sumbersari, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
       'lat': -8.1662879,
       'lng': 113.7281353,
@@ -151,7 +152,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'weekend': 'Rp15.000',
       'ratingCount': '980 ulasan',
       'bar5': 0.75,
-      'location': 'Jl. Kebon Agung, Kabupaten Jember',
+      'location': 'Jl. Kebon Agung, Patrang, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
       'lat': -8.1624937,
       'lng': 113.6758968,
@@ -170,7 +171,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'weekend': 'Rp18.000',
       'ratingCount': '756 ulasan',
       'bar5': 0.82,
-      'location': 'Jl. Annasya Water Park, Kabupaten Jember',
+      'location': 'Jl. Kalisat-Mayang, Glagahwero, Kalisat, Kabupaten Jember',
       'hours': '07.00 – 16.30 WIB',
       'lat': -8.1500932,
       'lng': 113.7796128,
@@ -189,7 +190,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'weekend': 'Rp22.000',
       'ratingCount': '612 ulasan',
       'bar5': 0.70,
-      'location': 'Jl. Dira Park, Kabupaten Jember',
+      'location': 'Jl. Kota Blater KM. 4, Ambulu, Kabupaten Jember',
       'hours': '08.00 – 17.00 WIB',
       'lat': -8.3642237,
       'lng': 113.6325732,
@@ -208,7 +209,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'weekend': 'Rp18.000',
       'ratingCount': '890 ulasan',
       'bar5': 0.83,
-      'location': 'Jl. Jati Park, Kabupaten Jember',
+      'location': 'Wedan Gunung, Wonojati, Jenggawah, Kabupaten Jember',
       'hours': '07.30 – 17.00 WIB',
       'lat': -8.2726348,
       'lng': 113.650029,
@@ -419,8 +420,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
 
         // GABUNG DATA API + DATA LOKAL
+        double lat = local['lat'] is num
+            ? (local['lat'] as num).toDouble()
+            : (double.tryParse(local['lat']?.toString() ?? '') ?? -8.1662879);
+        double lng = local['lng'] is num
+            ? (local['lng'] as num).toDouble()
+            : (double.tryParse(local['lng']?.toString() ?? '') ?? 113.7281353);
+        final apiLat = item['latitude'] ?? item['lat'];
+        final apiLng = item['longitude'] ?? item['lng'];
+        if (apiLat != null && double.tryParse(apiLat.toString()) != null) {
+          lat = double.parse(apiLat.toString());
+        }
+        if (apiLng != null && double.tryParse(apiLng.toString()) != null) {
+          lng = double.parse(apiLng.toString());
+        }
+
         apiPools.add({
           ...local,
+          'lat': lat,
+          'lng': lng,
           // Data dari API
           'id': item['id'],
           'pool_id': poolId,
@@ -733,6 +751,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 _buildLocationSection(detailPool),
                 const SizedBox(height: 28),
                 _buildRatingSection(detailPool),
+              ] else ...[
+                const SizedBox(height: 28),
+                _buildAllPoolsLocationSection(),
               ],
               const SizedBox(height: 100), // clearance for floating navbar
             ],
@@ -1974,94 +1995,208 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // ============================================================
-  // LOKASI — Tombol "Buka Maps" yang membuka Google Maps
+  // LOKASI & PETA — Map Preview & Tombol "Buka Maps"
   // ============================================================
   Widget _buildLocationSection(Map<String, dynamic> pool) {
-    final String fullName = pool['fullName']?.toString() ?? 'Kolam Renang';
+    final String poolName = pool['name']?.toString() ?? 'Kolam Renang';
+    final String fullName = pool['fullName']?.toString() ?? poolName;
     final String location = pool['location']?.toString() ?? 'Kabupaten Jember';
     final String mapsUrl = pool['mapsUrl']?.toString() ?? '';
+    final String rating = pool['rating']?.toString() ?? '4.8';
+
+    final double lat = pool['lat'] is num
+        ? (pool['lat'] as num).toDouble()
+        : (double.tryParse(pool['lat']?.toString() ?? '') ?? -8.1662879);
+    final double lng = pool['lng'] is num
+        ? (pool['lng'] as num).toDouble()
+        : (double.tryParse(pool['lng']?.toString() ?? '') ?? 113.7281353);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Lokasi', Icons.location_on_rounded, const Color(0xffEF476F)),
+        _buildTitle('Lokasi & Peta', Icons.location_on_rounded, const Color(0xffEF476F)),
         const SizedBox(height: 12),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+        PoolMapPreview(
+          latitude: lat,
+          longitude: lng,
+          poolName: poolName,
+          fullName: fullName,
+          address: location,
+          mapsUrl: mapsUrl,
+          rating: rating,
+          onOpenMaps: () => _openMaps(mapsUrl, fullName),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // SEMUA LOKASI — Tampil saat 'Semua Kolam' dipilih
+  // ============================================================
+  Widget _buildAllPoolsLocationSection() {
+    // Destinasi awal default preview (Tiara Jember Park)
+    final Map<String, dynamic> defaultPool = pools.isNotEmpty
+        ? pools[0]
+        : {
+            'name': 'Tiara Jember Park',
+            'fullName': 'Tiara Jember Park Waterboom',
+            'location': 'Jl. Kaliurang, Sumbersari, Kabupaten Jember',
+            'mapsUrl': 'https://maps.app.goo.gl/vPjhgv3KZdqJsq1Q8',
+            'lat': -8.1662879,
+            'lng': 113.7281353,
+            'rating': '4.9',
+          };
+
+    final double defaultLat = defaultPool['lat'] is num
+        ? (defaultPool['lat'] as num).toDouble()
+        : -8.1662879;
+    final double defaultLng = defaultPool['lng'] is num
+        ? (defaultPool['lng'] as num).toDouble()
+        : 113.7281353;
+    final String defaultName =
+        defaultPool['name']?.toString() ?? 'Tiara Jember Park';
+    final String defaultFull =
+        defaultPool['fullName']?.toString() ?? defaultName;
+    final String defaultLoc =
+        defaultPool['location']?.toString() ?? 'Kabupaten Jember';
+    final String defaultUrl = defaultPool['mapsUrl']?.toString() ??
+        'https://maps.app.goo.gl/vPjhgv3KZdqJsq1Q8';
+    final String defaultRating =
+        defaultPool['rating']?.toString() ?? '4.9';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitle('Lokasi Wisata Kolam Renang', Icons.map_rounded,
+            const Color(0xffEF476F)),
+        const SizedBox(height: 5),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            'Preview lokasi dan peta 5 destinasi kolam renang di Kabupaten Jember',
+            style: TextStyle(color: Colors.grey, fontSize: 11),
           ),
-          clipBehavior: Clip.antiAlias,
+        ),
+        const SizedBox(height: 12),
+        PoolMapPreview(
+          latitude: defaultLat,
+          longitude: defaultLng,
+          poolName: defaultName,
+          fullName: defaultFull,
+          address: defaultLoc,
+          mapsUrl: defaultUrl,
+          rating: defaultRating,
+          onOpenMaps: () => _openMaps(defaultUrl, defaultFull),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
-            children: [
-              Container(
-                height: 110,
-                width: double.infinity,
-                decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xffE8F4F8), Color(0xffCDEBF2)])),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.map_rounded, size: 58, color: Color(0xff00A4C6)),
-                    Positioned(
-                      bottom: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.85),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          '🗺️ Peta Lokasi',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF0077A8)),
-                        ),
-                      ),
+            children: pools.asMap().entries.map((entry) {
+              final int idx = entry.key + 1;
+              final pool = entry.value;
+              final String pName = pool['name']?.toString() ?? 'Kolam';
+              final String pFull = pool['fullName']?.toString() ?? pName;
+              final String pLoc = pool['location']?.toString() ?? 'Jember';
+              final String pUrl = pool['mapsUrl']?.toString() ?? '';
+              final String pImg = pool['image']?.toString() ?? '';
+              final String pRating = pool['rating']?.toString() ?? '4.8';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(fullName, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.location_on_rounded, size: 15, color: Color(0xffEF476F)),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            '$location\nJawa Timur, Indonesia',
-                            style: const TextStyle(color: Colors.grey, fontSize: 10, height: 1.4),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: _buildImage(pImg, fit: BoxFit.cover),
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          pName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff172B4D),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: Color(0xffFFB703)),
+                      Text(
+                        pRating,
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    pLoc,
+                    style:
+                        TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: ElevatedButton(
+                    onPressed: () => _openMaps(pUrl, pFull),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff00B4D8),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_rounded, size: 13),
+                        SizedBox(width: 3),
+                        Text('Maps',
+                            style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w800)),
                       ],
                     ),
-                    const SizedBox(height: 11),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _openMaps(mapsUrl, fullName),
-                        icon: const Icon(Icons.map_rounded, size: 15),
-                        label: const Text('Buka Maps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff00B4D8),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      selectedPool = idx;
+                    });
+                    final pId =
+                        pool['pool_id']?.toString() ?? 'pool_id_0$idx';
+                    TiketPage.globalSelectedPoolId = pId;
+                    TiketPage.globalSelectedPoolName = pFull;
+                    widget.onPoolChanged?.call(idx, pId, pFull, pImg);
+                    _loadFasilitas(pId);
+                  },
                 ),
-              ),
-            ],
+              );
+            }).toList(),
           ),
         ),
       ],
