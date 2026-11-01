@@ -134,7 +134,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.85,
       'location': 'Jl. Taman Air No.1, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1845,113.7160&query_place_id=ChIJTiara+Jember+Park',
+      'lat': -8.1662879,
+      'lng': 113.7281353,
+      'mapsUrl': 'https://maps.app.goo.gl/vPjhgv3KZdqJsq1Q8',
     },
     {
       'name': 'Kebon Agung',
@@ -151,7 +153,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.75,
       'location': 'Jl. Kebon Agung, Kabupaten Jember',
       'hours': '07.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1628,113.7048&query_place_id=ChIJKebon+Agung+Jember',
+      'lat': -8.1624937,
+      'lng': 113.6758968,
+      'mapsUrl': 'https://maps.app.goo.gl/gMSdLEMkycGgpBmk7',
     },
     {
       'name': 'Annasya Waterpark',
@@ -168,7 +172,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.82,
       'location': 'Jl. Annasya Water Park, Kabupaten Jember',
       'hours': '07.00 – 16.30 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1734,113.7203&query_place_id=ChIJAnnasya+Waterpark',
+      'lat': -8.1500932,
+      'lng': 113.7796128,
+      'mapsUrl': 'https://maps.app.goo.gl/k4inAgdpurtPiwuLA',
     },
     {
       'name': 'Dira Park',
@@ -185,7 +191,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.70,
       'location': 'Jl. Dira Park, Kabupaten Jember',
       'hours': '08.00 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.2059,113.6982&query_place_id=ChIJDira+Park+Jember',
+      'lat': -8.3642237,
+      'lng': 113.6325732,
+      'mapsUrl': 'https://maps.app.goo.gl/oCJMZNMysCqrhhTe9',
     },
     {
       'name': 'Jati Park',
@@ -202,7 +210,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'bar5': 0.83,
       'location': 'Jl. Jati Park, Kabupaten Jember',
       'hours': '07.30 – 17.00 WIB',
-      'mapsUrl': 'https://www.google.com/maps/search/?api=1&query=-8.1520,113.7115&query_place_id=ChIJJati+Park+Jember',
+      'lat': -8.2726348,
+      'lng': 113.650029,
+      'mapsUrl': 'https://maps.app.goo.gl/W1duyx6wUDUMsxbF8',
     },
   ];
 
