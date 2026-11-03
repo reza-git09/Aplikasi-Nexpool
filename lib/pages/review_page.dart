@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 
 import 'home_page.dart';
+import 'login_page.dart';
 
 class ReviewPage extends StatefulWidget {
   // =========================================================
@@ -15,12 +18,16 @@ class ReviewPage extends StatefulWidget {
   final String? poolId;
   final String? namaKolam;
   final String? gambarKolam;
+  final int sessionTick;
+  final Future<void> Function()? onSessionChanged;
 
   const ReviewPage({
     super.key,
     this.poolId,
     this.namaKolam,
     this.gambarKolam,
+    this.sessionTick = 0,
+    this.onSessionChanged,
   });
 
   @override
@@ -63,6 +70,11 @@ class _ReviewPageState extends State<ReviewPage> {
 
   bool isLoadingReviews = true;
   bool isSendingReview = false;
+  bool isCheckingReviewAccount = true;
+  bool hasSubmittedReview = false;
+  String? reviewAccountKey;
+  String? reviewerName;
+  int? reviewerId;
 
   // =========================================================
   // CEK KOLAM
@@ -92,7 +104,7 @@ class _ReviewPageState extends State<ReviewPage> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!hasSelectedPool && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -107,9 +119,112 @@ class _ReviewPageState extends State<ReviewPage> {
           Navigator.pop(context);
         }
       } else {
-        loadReviews();
+        await _loadReviewAccount();
+        if (mounted) loadReviews();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ReviewPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sessionTick != widget.sessionTick) {
+      _loadReviewAccount().then((_) {
+        if (mounted) loadReviews();
+      });
+    }
+  }
+
+  String _reviewSubmissionKey(String accountKey) {
+    final value = base64Url.encode(
+      utf8.encode('$accountKey|$effectivePoolId'),
+    );
+    return 'review_submitted_$value';
+  }
+
+  Future<void> _loadReviewAccount() async {
+    if (mounted) {
+      setState(() {
+        isCheckingReviewAccount = true;
+      });
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final loggedIn = prefs.getBool('is_logged_in') ?? false;
+    final userId = prefs.get('user_id')?.toString();
+    final username = prefs.getString('user_username')?.trim() ?? '';
+    final email = prefs.getString('user_email')?.trim() ?? '';
+    final name = prefs.getString('user_name')?.trim() ?? '';
+    final identifier = userId?.isNotEmpty == true
+        ? 'id:$userId'
+        : username.isNotEmpty
+            ? 'username:${username.toLowerCase()}'
+            : email.isNotEmpty
+                ? 'email:${email.toLowerCase()}'
+                : null;
+
+    if (!mounted) return;
+
+    final hasReviewed = loggedIn &&
+        identifier != null &&
+        (prefs.getBool(_reviewSubmissionKey(identifier)) ?? false);
+
+    setState(() {
+      reviewerId = int.tryParse(userId ?? '');
+      reviewAccountKey = loggedIn ? identifier : null;
+      reviewerName = name.isNotEmpty
+          ? name
+          : username.isNotEmpty
+              ? username
+              : null;
+      hasSubmittedReview = hasReviewed;
+      isCheckingReviewAccount = false;
+    });
+  }
+
+  Future<void> _openLogin() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    if (widget.onSessionChanged != null) {
+      await widget.onSessionChanged!();
+      return;
+    }
+    await _loadReviewAccount();
+    if (mounted) loadReviews();
+  }
+
+  bool _apiContainsReviewForAccount(
+    List<dynamic> reviews, {
+    required String accountKey,
+    required int? accountId,
+  }) {
+    for (final review in reviews) {
+      if (review is! Map) continue;
+
+      final reviewUserId = review['user_id'] ??
+          review['pengunjung_id'] ??
+          review['id_pengunjung'];
+      if (accountId != null &&
+          reviewUserId != null &&
+          reviewUserId.toString() == accountId.toString()) {
+        return true;
+      }
+
+      final username = review['username']?.toString().trim().toLowerCase();
+      final email = review['email']?.toString().trim().toLowerCase();
+      if (accountKey.startsWith('username:') &&
+          username == accountKey.substring('username:'.length)) {
+        return true;
+      }
+      if (accountKey.startsWith('email:') &&
+          email == accountKey.substring('email:'.length)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // =========================================================
@@ -128,15 +243,36 @@ class _ReviewPageState extends State<ReviewPage> {
     }
 
     try {
+      final accountKey = reviewAccountKey;
+      final accountId = reviewerId;
       final data = await ApiService.getReviewsByPool(
         effectivePoolId,
       );
 
       if (!mounted) return;
 
+      final accountIsUnchanged = accountKey == reviewAccountKey;
+      final hasRemoteReview = accountIsUnchanged &&
+          accountKey != null &&
+          _apiContainsReviewForAccount(
+            data,
+            accountKey: accountKey,
+            accountId: accountId,
+          );
+      if (hasRemoteReview) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(
+          _reviewSubmissionKey(accountKey),
+          true,
+        );
+      }
+
+      if (!mounted) return;
+
       setState(() {
         reviewsFromApi = data;
         isLoadingReviews = false;
+        hasSubmittedReview = hasSubmittedReview || hasRemoteReview;
       });
 
       debugPrint(
@@ -305,6 +441,23 @@ class _ReviewPageState extends State<ReviewPage> {
   Future<void> submitReview() async {
     final String comment =
         commentController.text.trim();
+    final String? submittingAccountKey = reviewAccountKey;
+    final String submittingName = reviewerName ?? 'Pengunjung';
+
+    if (submittingAccountKey == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login untuk memberikan ulasan.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (hasSubmittedReview) {
+      _showAlreadyReviewedMessage();
+      return;
+    }
 
     // =======================================================
     // VALIDASI RATING
@@ -398,7 +551,7 @@ class _ReviewPageState extends State<ReviewPage> {
       );
 
       debugPrint(
-        'NAMA          : Reza',
+        'NAMA          : $submittingName',
       );
 
       debugPrint(
@@ -428,7 +581,7 @@ class _ReviewPageState extends State<ReviewPage> {
       final Map<String, dynamic> result =
           await ApiService.submitReview(
         poolId: effectivePoolId,
-        namaPengunjung: 'Reza',
+        namaPengunjung: submittingName,
         rating: overallRating,
         komentar: comment,
         fotoPath: fotoPath,
@@ -436,13 +589,19 @@ class _ReviewPageState extends State<ReviewPage> {
 
       if (!mounted) return;
 
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(
+        _reviewSubmissionKey(submittingAccountKey),
+        true,
+      );
+
       // =====================================================
       // SIMPAN REVIEW LOKAL
       // =====================================================
 
       final ReviewData newReview =
           ReviewData(
-        name: 'Reza',
+        name: submittingName,
         date: 'Baru saja',
         poolName:
             widget.namaKolam ??
@@ -472,6 +631,7 @@ class _ReviewPageState extends State<ReviewPage> {
         selectedPhotos.clear();
 
         isSendingReview = false;
+        hasSubmittedReview = reviewAccountKey == submittingAccountKey;
       });
 
       // =====================================================
@@ -527,6 +687,110 @@ class _ReviewPageState extends State<ReviewPage> {
         ),
       );
     }
+  }
+
+  void _showAlreadyReviewedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Akun ini sudah memberikan ulasan untuk kolam renang ini.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildReviewEntry() {
+    if (isCheckingReviewAccount || isLoadingReviews) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (reviewAccountKey == null) {
+      return _reviewNotice(
+        icon: Icons.lock_outline_rounded,
+        title: 'Login untuk memberi ulasan',
+        message:
+            'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
+        actionLabel: 'Login',
+        onAction: _openLogin,
+      );
+    }
+
+    if (hasSubmittedReview) {
+      return _reviewNotice(
+        icon: Icons.verified_rounded,
+        title: 'Ulasan sudah dikirim',
+        message:
+            'Akun Anda sudah memberikan rating dan ulasan untuk ${widget.namaKolam}. Setiap akun hanya dapat mengulas satu kali.',
+      );
+    }
+
+    return reviewForm();
+  }
+
+  Widget _reviewNotice({
+    required IconData icon,
+    required String title,
+    required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xff0077A8), size: 23),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xff172B3A),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  message,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                if (actionLabel != null && onAction != null) ...[
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: onAction,
+                    child: Text(actionLabel),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // =========================================================
@@ -788,7 +1052,7 @@ class _ReviewPageState extends State<ReviewPage> {
                         height: 18,
                       ),
 
-                      reviewForm(),
+                      _buildReviewEntry(),
 
                       const SizedBox(
                         height: 24,

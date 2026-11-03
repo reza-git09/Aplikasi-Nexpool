@@ -1,4 +1,4 @@
-import 'dart:async';
+    import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -125,6 +125,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'pool_id': 'pool_id_01',
       'image': 'assets/images/tiara_park.jpeg',
       'rating': '4.9',
+      'dummyTicketsSold': 1250,
       'reviews': '1.2k',
       'icon': '🏊',
       'sub': 'Kolam terbesar & wahana terlengkap di Jember',
@@ -144,6 +145,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'pool_id': 'pool_id_02',
       'image': 'assets/images/kebon agung_park.jpeg',
       'rating': '4.7',
+      'dummyTicketsSold': 820,
       'reviews': '980',
       'icon': '🌿',
       'sub': 'Pemandian alam asri & menyegarkan',
@@ -163,6 +165,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'pool_id': 'pool_id_03',
       'image': 'assets/images/annasya_park.jpeg',
       'rating': '4.8',
+      'dummyTicketsSold': 960,
       'reviews': '756',
       'icon': '💦',
       'sub': 'Waterpark keluarga & anak yang nyaman',
@@ -182,6 +185,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'pool_id': 'pool_id_04',
       'image': 'assets/images/dira_park.jpeg',
       'rating': '4.6',
+      'dummyTicketsSold': 540,
       'reviews': '612',
       'icon': '🌿',
       'sub': 'Taman wisata air & alam yang indah',
@@ -201,6 +205,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       'pool_id': 'pool_id_05',
       'image': 'assets/images/jati_park.jpeg',
       'rating': '4.8',
+      'dummyTicketsSold': 740,
       'reviews': '890',
       'icon': '🌳',
       'sub': 'Wisata air di tengah suasana hutan jati',
@@ -738,7 +743,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               const SizedBox(height: 28),
               _buildPromoSection(),
               const SizedBox(height: 28),
-              _buildEventSection(),
+              if (allPool) _buildPopularPoolsSection(),
               if (!allPool) ...[
                 const SizedBox(height: 28),
                 _buildPriceSection(detailPool),
@@ -1494,104 +1499,169 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   // ============================================================
-  // EVENT
+  // KOLAM TERPOPULER — peringkat sementara dari dummy tiket terjual
   // ============================================================
-  Widget _buildEventSection() {
-    final List<Map<String, String>> events = [
-      {
-        'date': '20 Sep 2026',
-        'place': 'Tiara Jember Park',
-        'title': 'Festival Air Merdeka',
-        'desc': 'Lomba berenang berhadiah jutaan rupiah',
-        'badge': 'Segera',
-      },
-      {
-        'date': '25 Sep 2026',
-        'place': 'Pemandian Kebon Agung',
-        'title': 'Fun Swim Anak-Anak',
-        'desc': 'Senam air & games seru untuk si kecil',
-        'badge': 'Gratis',
-      },
-      {
-        'date': '1 Okt 2026',
-        'place': 'Annasya Waterpark',
-        'title': 'Night Pool Party',
-        'desc': 'Renang malam dengan live music & DJ',
-        'badge': 'Hot 🔥',
-      },
-      {
-        'date': '5 Okt 2026',
-        'place': 'Dira Park',
-        'title': 'Foto Kontes Alam',
-        'desc': 'Hunting foto di taman air alami',
-        'badge': 'Hadiah',
-      },
-      {
-        'date': '10 Okt 2026',
-        'place': 'Jati Park',
-        'title': 'Open Water Tournament',
-        'desc': 'Kompetisi renang antar sekolah Jember',
-        'badge': 'Daftar',
-      },
-    ];
+  Widget _buildPopularPoolsSection() {
+    final popularPools = pools.toList()
+      ..sort(
+        (a, b) => ((b['dummyTicketsSold'] as num?) ?? 0)
+            .compareTo((a['dummyTicketsSold'] as num?) ?? 0),
+      );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Event Mendatang', Icons.celebration_rounded, const Color(0xffEF476F),
-            action: 'Lihat Semua', onAction: _eventMessage),
+        _buildTitle(
+          'Kolam Terpopuler',
+          Icons.local_fire_department_rounded,
+          const Color(0xffEF476F),
+        ),
+        const SizedBox(height: 5),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            'Peringkat sementara berdasarkan data dummy tiket terjual',
+            style: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+        ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 140,
+          height: 214,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
-            itemCount: events.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemCount: popularPools.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final event = events[index];
+              final pool = popularPools[index];
+              final poolIndex = pools.indexOf(pool) + 1;
+              final name = pool['name']?.toString() ?? 'Kolam Renang';
+              final image = pool['image']?.toString() ?? '';
+              final rating = pool['rating']?.toString() ?? '-';
+              final price = pool['weekday']?.toString() ?? 'Rp0';
+              final ticketsSold =
+                  ((pool['dummyTicketsSold'] as num?) ?? 0).toInt();
 
               return GestureDetector(
-                onTap: _eventMessage,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => selectedPool = poolIndex);
+
+                  final poolId =
+                      pool['pool_id']?.toString() ?? 'pool_id_0$poolIndex';
+                  final fullName =
+                      pool['fullName']?.toString() ?? name;
+                  final poolImage = pool['image']?.toString() ?? '';
+                  TiketPage.globalSelectedPoolId = poolId;
+                  TiketPage.globalSelectedPoolName = fullName;
+                  widget.onPoolChanged?.call(
+                    poolIndex,
+                    poolId,
+                    fullName,
+                    poolImage,
+                  );
+                  _loadFasilitas(poolId);
+                },
                 child: Container(
-                  width: 260,
-                  padding: const EdgeInsets.all(15),
+                  width: 210,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xff023E58), Color(0xff0077A8)]),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 9,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Row(
+                      Stack(
                         children: [
-                          Expanded(
-                            child: Text(
-                              '${event['date'] ?? '-'} · ${event['place'] ?? '-'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.white.withOpacity(0.72), fontSize: 8.5, fontWeight: FontWeight.w700),
-                            ),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 112,
+                            child: _buildImage(image, fit: BoxFit.cover),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(15)),
-                            child: Text(
-                              event['badge'] ?? '-',
-                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800),
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xffEF476F),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                index == 0 ? 'Terlaris' : 'No. ${index + 1}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(event['title'] ?? '-', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 3),
-                      Text(
-                        event['desc'] ?? '-',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 9.5),
+                      Padding(
+                        padding: const EdgeInsets.all(11),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xff172B4D),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 15,
+                                  color: Color(0xffFFB703),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  rating,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '$ticketsSold tiket terjual',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 8.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Mulai dari $price',
+                              style: const TextStyle(
+                                color: Color(0xff0077A8),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1601,12 +1671,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           ),
         ),
       ],
-    );
-  }
-
-  void _eventMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Halaman Event akan kita buat berikutnya.')),
     );
   }
 

@@ -192,6 +192,8 @@ class _MainShellState extends State<MainShell> {
                   poolId: _poolId,
                   namaKolam: _poolName,
                   gambarKolam: _poolGambar,
+                  sessionTick: _sessionTick,
+                  onSessionChanged: _loadSession,
                 ),
                 _loggedIn
                     ? ProfilePage(
