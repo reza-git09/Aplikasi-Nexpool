@@ -461,14 +461,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       // Pastikan widget masih aktif
       if (!mounted) return;
 
+      final bool selectionInvalid = selectedPool > apiPools.length;
+
       // Masukkan data API ke Home Page
       setState(() {
         pools = apiPools;
         // Jika pilihan kolam tidak valid, kembali ke Semua Kolam.
-        if (selectedPool > pools.length) {
+        if (selectionInvalid) {
           selectedPool = 0;
         }
       });
+
+      if (selectionInvalid) {
+        TiketPage.globalSelectedPoolId = '';
+        TiketPage.globalSelectedPoolName = '';
+        widget.onPoolChanged?.call(0, '', '', '');
+      }
 
       debugPrint('====================================');
       debugPrint('✅ API BERHASIL: ${apiPools.length} kolam diterima.');
@@ -1097,9 +1105,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         setState(() {
           selectedPool = 0;
         });
-        TiketPage.globalSelectedPoolId = 'pool_id_01';
-        TiketPage.globalSelectedPoolName = 'Tiara Jember Park Waterboom';
-        widget.onPoolChanged?.call(0, 'pool_id_01', 'Tiara Jember Park Waterboom', '');
+        TiketPage.globalSelectedPoolId = '';
+        TiketPage.globalSelectedPoolName = '';
+        widget.onPoolChanged?.call(0, '', '', '');
         _loadFasilitas();
       },
       child: AnimatedScale(
@@ -1285,6 +1293,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               setState(() {
                 selectedPool = 0;
               });
+              TiketPage.globalSelectedPoolId = '';
+              TiketPage.globalSelectedPoolName = '';
+              widget.onPoolChanged?.call(0, '', '', '');
               _loadFasilitas();
             },
             child: const Text('← Semua', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
@@ -1304,13 +1315,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         children: [
           Expanded(
             child: _quickMenu(Icons.add_shopping_cart_rounded, 'Beli Tiket', const Color(0xFF00B4D8), () {
-              String pId = 'pool_id_01';
-              String pName = 'Tiara Jember Park Waterboom';
-              if (selectedPool > 0 && selectedPool <= pools.length) {
-                final p = pools[selectedPool - 1];
-                pId = p['pool_id']?.toString() ?? 'pool_id_0$selectedPool';
-                pName = p['fullName']?.toString() ?? p['name']?.toString() ?? 'Tiara Jember Park Waterboom';
+              if (selectedPool == 0 || selectedPool > pools.length) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Silakan pilih wisata kolam renang terlebih dahulu.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
               }
+
+              final p = pools[selectedPool - 1];
+              final pId = p['pool_id']?.toString() ?? '';
+              final pName = p['fullName']?.toString() ?? p['name']?.toString() ?? '';
+              if (pId.isEmpty || pName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Data wisata kolam renang belum tersedia. Silakan pilih kolam lain.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+
               Navigator.push(context, MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName, initialTab: 0)));
             }),
           ),
@@ -1681,6 +1710,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final String weekday = pool['weekday']?.toString() ?? 'Rp0';
     final String weekend = pool['weekend']?.toString() ?? 'Rp0';
     final String name = pool['fullName']?.toString() ?? 'Kolam Renang';
+    final String poolId = pool['pool_id']?.toString() ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1690,7 +1720,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           Icons.payments_rounded,
           const Color(0xffD4960A),
           action: 'Beli Tiket',
-          onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TiketPage())),
+          onAction: () {
+            if (poolId.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Data wisata kolam renang belum tersedia untuk pemesanan tiket.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TiketPage(poolId: poolId, poolName: name),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         Container(

@@ -168,19 +168,6 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     }
   }
 
-  Future<void> _launchDirections() async {
-    HapticFeedback.mediumImpact();
-    final uri = Uri.https('www.google.com', '/maps/dir/', {
-      'api': '1',
-      'destination': '${widget.latitude},${widget.longitude}',
-    });
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (error) {
-      _showActionError('Tidak dapat membuka rute: $error');
-    }
-  }
-
   void _copyCoordinates() {
     HapticFeedback.lightImpact();
     final text = '${widget.latitude}, ${widget.longitude}';
@@ -286,25 +273,12 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                 Positioned(
                   top: 10,
                   right: 10,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _mapAction(
-                        icon: _isSatellite
-                            ? Icons.map_outlined
-                            : Icons.satellite_alt_rounded,
-                        label: _isSatellite ? 'Peta' : 'Satelit',
-                        onTap: _toggleMapType,
-                      ),
-                      const SizedBox(width: 6),
-                      _mapAction(
-                        icon: Icons.map_rounded,
-                        label: 'Maps ↗',
-                        background: const Color(0xff0077A8),
-                        foreground: Colors.white,
-                        onTap: _launchMaps,
-                      ),
-                    ],
+                  child: _mapAction(
+                    icon: _isSatellite
+                        ? Icons.map_outlined
+                        : Icons.satellite_alt_rounded,
+                    label: _isSatellite ? 'Peta' : 'Satelit',
+                    onTap: _toggleMapType,
                   ),
                 ),
                 Positioned(
@@ -462,61 +436,27 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: ElevatedButton.icon(
-                        onPressed: _launchMaps,
-                        icon: const Icon(Icons.map_rounded, size: 16),
-                        label: const Text(
-                          'Buka di Google Maps',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff00B4D8),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _launchMaps,
+                    icon: const Icon(Icons.map_rounded, size: 16),
+                    label: const Text(
+                      'Buka di Google Maps',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 4,
-                      child: OutlinedButton.icon(
-                        onPressed: _launchDirections,
-                        icon: const Icon(
-                          Icons.directions_rounded,
-                          size: 16,
-                          color: Color(0xff0077A8),
-                        ),
-                        label: const Text(
-                          'Rute',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xff0077A8),
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xff0077A8),
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff00B4D8),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),

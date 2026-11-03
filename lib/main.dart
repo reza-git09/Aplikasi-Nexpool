@@ -51,8 +51,8 @@ class _MainShellState extends State<MainShell> {
   static const int _tabProfil = 3;
 
   // Pool data shared from HomePage
-  String _poolId = 'pool_id_01';
-  String _poolName = 'Tiara Jember Park Waterboom';
+  String _poolId = '';
+  String _poolName = '';
   String _poolGambar = '';
   int _homeSelectedPool = 0;
 
@@ -132,6 +132,20 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _onTabTapped(int index) async {
     if (index == _currentIndex) return;
+
+    // Booking requires an explicitly selected pool from the home page.
+    if (index == 1 && _homeSelectedPool == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Silakan pilih wisata kolam renang terlebih dahulu sebelum memesan tiket.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     // Guard: Ulasan needs a pool selected
     if (index == _tabUlasan && _homeSelectedPool == 0) {

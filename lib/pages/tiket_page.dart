@@ -98,8 +98,8 @@ final List<Map<String, dynamic>> kBankOptions = [
 
 class TiketPage extends StatefulWidget {
   /// Pool ID global yang sinkron secara otomatis dengan pilihan di dashboard
-  static String globalSelectedPoolId = 'pool_id_01';
-  static String globalSelectedPoolName = 'Tiara Jember Park Waterboom';
+  static String globalSelectedPoolId = '';
+  static String globalSelectedPoolName = '';
 
   /// List simpanan tiket yang sudah dipesan pengguna (dimulai dari kosong [])
   /// Tiket hanya akan muncul di Tiket Saya setelah pengguna melakukan pemesanan.
@@ -210,7 +210,9 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
     debugPrint('====================================');
 
     _loadAccount();
-    loadHargaTiket();
+    if (selectedPoolId.isNotEmpty) {
+      loadHargaTiket();
+    }
   }
 
   @override
@@ -247,6 +249,17 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   }
 
   Future<void> loadHargaTiket() async {
+    if (selectedPoolId.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        weekdayPrice = 0;
+        weekendPrice = 0;
+        isPriceLoading = false;
+        priceError = 'Pilih kolam renang terlebih dahulu.';
+      });
+      return;
+    }
+
     try {
       if (mounted) {
         setState(() {
@@ -385,6 +398,10 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   // }
 
   void proceedToPaymentProcess() {
+    if (selectedPoolId.isEmpty) {
+      showMessage('Silakan pilih wisata kolam renang terlebih dahulu.');
+      return;
+    }
     if (adultPrice <= 0) {
       showMessage('Harga tiket untuk ${isWeekend ? 'Weekend' : 'Weekday'} belum tersedia.');
       return;
@@ -394,6 +411,11 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   }
 
   Future<void> simulatePaymentSuccess() async {
+    if (selectedPoolId.isEmpty) {
+      showMessage('Silakan pilih wisata kolam renang terlebih dahulu.');
+      return;
+    }
+
     if (statusPembayaran == 'cancelled') {
       showMessage('Transaksi ini sudah dibatalkan.');
       return;
@@ -856,6 +878,70 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    if (selectedTab == 0 && selectedPoolId.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F9FC),
+        appBar: AppBar(
+          title: const Text(
+            'Pesan Tiket',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          centerTitle: true,
+          flexibleSpace: Container(decoration: const BoxDecoration(gradient: kGradient)),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: infoBox(
+                color: Colors.white,
+                radius: 20,
+                pad: 24,
+                border: kBlue.withOpacity(.2),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    colorfulIcon(
+                      icon: Icons.pool_rounded,
+                      color: kBlue,
+                      bgColor: kSoft,
+                      boxSize: 70,
+                      size: 36,
+                      isCircle: true,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Pilih kolam renang dulu',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kDarkBlue),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tentukan wisata kolam renang dari halaman Semua Kolam sebelum memesan tiket.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.5),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Kembali dan pilih kolam'),
+                        style: primaryStyle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       appBar: AppBar(
