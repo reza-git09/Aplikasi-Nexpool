@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+import 'pool_map_surface_stub.dart'
+    if (dart.library.html) 'pool_map_surface_web.dart'
+    as map_surface;
 
 class PoolMapPreview extends StatefulWidget {
   final double latitude;
@@ -24,7 +29,7 @@ class PoolMapPreview extends StatefulWidget {
     this.address,
     this.mapsUrl,
     this.rating,
-    this.height = 190.0,
+    this.height = 280.0,
     this.onOpenMaps,
   });
 
@@ -33,53 +38,99 @@ class PoolMapPreview extends StatefulWidget {
 }
 
 class _PoolMapPreviewState extends State<PoolMapPreview> {
-  // Samakan dengan applicationId di android/app/build.gradle.kts
-  static const String _userAgentPackage = 'com.example.nexpool';
-
-  final MapController _mapController = MapController();
-
-  bool _isSatellite = false;
-  double _zoom = 15;
-
-  LatLng get _point => LatLng(widget.latitude, widget.longitude);
+  WebViewController? _mapController;
+  late final Set<Factory<OneSequenceGestureRecognizer>> _gestureRecognizers = {
+    Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+  };
+  bool _mapLoading = true;
+  String? _mapError;
+  bool _controllerReady = false;
 
   @override
-  void didUpdateWidget(covariant PoolMapPreview oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.latitude != widget.latitude ||
-        oldWidget.longitude != widget.longitude) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _mapController.move(_point, _zoom);
-      });
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      _mapController = WebViewController();
+      _initializeMap();
     }
   }
 
   @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
+  void didUpdateWidget(covariant PoolMapPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_controllerReady &&
+        (oldWidget.latitude != widget.latitude ||
+            oldWidget.longitude != widget.longitude)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadMap();
+      });
+    }
   }
 
-  void _changeZoom(double delta) {
-    final current = _mapController.camera.zoom;
-    final next = (current + delta).clamp(3.0, 19.0);
-
-    if (next == current) return;
-
-    HapticFeedback.selectionClick();
-    _zoom = next;
-    _mapController.move(_mapController.camera.center, next);
+  Future<void> _initializeMap() async {
+    try {
+      final controller = _mapController!;
+      await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await controller.setBackgroundColor(Colors.white);
+      await controller.setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted && (!_mapLoading || _mapError != null)) {
+              setState(() {
+                _mapLoading = true;
+                _mapError = null;
+              });
+            }
+          },
+          onPageFinished: (_) {
+            if (mounted && _mapLoading) {
+              setState(() => _mapLoading = false);
+            }
+          },
+          onWebResourceError: (error) {
+            if (error.isForMainFrame == false || !mounted) return;
+            setState(() {
+              _mapLoading = false;
+              _mapError = 'Peta gagal dimuat. Periksa koneksi internet.';
+            });
+          },
+        ),
+      );
+      _controllerReady = true;
+      await _loadMap();
+    } catch (error) {
+      _showMapError(error);
+    }
   }
 
-  void _toggleMapType() {
-    HapticFeedback.selectionClick();
-    setState(() => _isSatellite = !_isSatellite);
+  Uri get _mapUri => Uri.https('www.google.com', '/maps', {
+    'q': '${widget.latitude},${widget.longitude}',
+    'z': '15',
+    'output': 'embed',
+  });
+
+  Future<void> _loadMap() async {
+    if (kIsWeb || !_controllerReady) return;
+    if (mounted) {
+      setState(() {
+        _mapLoading = true;
+        _mapError = null;
+      });
+    }
+    try {
+      await _mapController!.loadRequest(_mapUri);
+    } catch (error) {
+      _showMapError(error);
+    }
   }
 
-  void _recenter() {
-    HapticFeedback.selectionClick();
-    _mapController.move(_point, _zoom);
+  void _showMapError(Object error) {
+    debugPrint('Gagal memuat peta Google Maps: $error');
+    if (!mounted) return;
+    setState(() {
+      _mapLoading = false;
+      _mapError = 'Peta gagal dimuat. Periksa koneksi internet.';
+    });
   }
 
   Future<void> _launchMaps() async {
@@ -93,7 +144,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     final url = widget.mapsUrl?.isNotEmpty == true
         ? widget.mapsUrl!
         : 'https://www.google.com/maps/search/?api=1'
-            '&query=${widget.latitude},${widget.longitude}';
+              '&query=${widget.latitude},${widget.longitude}';
 
     try {
       final launched = await launchUrl(
@@ -103,25 +154,6 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
       if (!launched) _showActionError('Tidak dapat membuka Google Maps.');
     } catch (error) {
       _showActionError('Tidak dapat membuka Google Maps: $error');
-    }
-  }
-
-  Future<void> _launchDirections() async {
-    HapticFeedback.mediumImpact();
-
-    final uri = Uri.https('www.google.com', '/maps/dir/', {
-      'api': '1',
-      'destination': '${widget.latitude},${widget.longitude}',
-    });
-
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) _showActionError('Tidak dapat membuka rute.');
-    } catch (error) {
-      _showActionError('Tidak dapat membuka rute: $error');
     }
   }
 
@@ -143,9 +175,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
   void _copyAddress() {
     HapticFeedback.lightImpact();
 
-    Clipboard.setData(
-      ClipboardData(text: widget.address ?? widget.poolName),
-    );
+    Clipboard.setData(ClipboardData(text: widget.address ?? widget.poolName));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -159,20 +189,17 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
             color: const Color(0xff123C73).withOpacity(0.08),
@@ -190,65 +217,23 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
             width: double.infinity,
             child: Stack(
               children: [
-                // ===== PETA (bisa digeser & di-zoom pakai jari) =====
                 Positioned.fill(
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: _point,
-                      initialZoom: _zoom,
-                      minZoom: 3,
-                      maxZoom: 19,
-                      interactionOptions: const InteractionOptions(
-                        // geser, cubit-zoom, double-tap zoom; tanpa rotasi
-                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                      ),
-                      // Ketuk peta -> buka lokasi di Google Maps
-                      onTap: (tapPosition, point) => _launchMaps(),
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: _isSatellite
-                            ? 'https://server.arcgisonline.com/ArcGIS/rest/'
-                                'services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                            : 'https://server.arcgisonline.com/ArcGIS/rest/'
-                                'services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-                        userAgentPackageName: _userAgentPackage,
-                        maxNativeZoom: 19,
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: _point,
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.topCenter,
-                            child: const Icon(
-                              Icons.location_on_rounded,
-                              size: 44,
-                              color: Color(0xffEF476F),
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
+                  child: kIsWeb
+                      ? KeyedSubtree(
+                          key: ValueKey(_mapUri.toString()),
+                          child: map_surface.buildWebMapSurface(
+                            url: _mapUri.toString(),
+                            onLoad: () {
+                              if (mounted && _mapLoading) {
+                                setState(() => _mapLoading = false);
+                              }
+                            },
                           ),
-                        ],
-                      ),
-                      SimpleAttributionWidget(
-                        source: Text(
-                          _isSatellite
-                              ? 'Esri World Imagery'
-                              : 'Esri World Street Map',
-                          style: const TextStyle(fontSize: 9),
+                        )
+                      : WebViewWidget(
+                          controller: _mapController!,
+                          gestureRecognizers: _gestureRecognizers,
                         ),
-                        alignment: Alignment.bottomCenter,
-                      ),
-                    ],
-                  ),
                 ),
 
                 // Koordinat (ketuk untuk menyalin)
@@ -283,65 +268,10 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                   ),
                 ),
 
-                // Tombol Peta/Satelit + Maps
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _mapAction(
-                        icon: _isSatellite
-                            ? Icons.map_outlined
-                            : Icons.satellite_alt_rounded,
-                        label: _isSatellite ? 'Peta' : 'Satelit',
-                        onTap: _toggleMapType,
-                      ),
-                      const SizedBox(width: 6),
-                      _mapAction(
-                        icon: Icons.map_rounded,
-                        label: 'Maps ↗',
-                        background: const Color(0xff0077A8),
-                        foreground: Colors.white,
-                        onTap: _launchMaps,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Zoom + / - dan kembali ke lokasi
-                Positioned(
-                  right: 10,
-                  bottom: 24,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.94),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _zoomButton(Icons.add, () => _changeZoom(1)),
-                        _divider(),
-                        _zoomButton(Icons.remove, () => _changeZoom(-1)),
-                        _divider(),
-                        _zoomButton(Icons.my_location_rounded, _recenter),
-                      ],
-                    ),
-                  ),
-                ),
-
                 // Petunjuk
                 Positioned(
                   left: 10,
-                  bottom: 24,
+                  bottom: 10,
                   child: IgnorePointer(
                     child: _mapBadge(
                       background: Colors.white.withOpacity(0.92),
@@ -355,7 +285,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                           ),
                           SizedBox(width: 4),
                           Text(
-                            'Geser peta • Ketuk untuk buka Maps',
+                            'Geser & cubit untuk navigasi',
                             style: TextStyle(
                               color: Color(0xff123C73),
                               fontSize: 9.5,
@@ -367,12 +297,56 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                     ),
                   ),
                 ),
+                if (_mapLoading)
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xff00A4C6),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_mapError != null)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: Color(0xffF5F8FC),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.map_outlined,
+                                color: Color(0xff0077A8),
+                                size: 30,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _mapError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xff123C73),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _loadMap,
+                                child: const Text('Coba lagi'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -381,7 +355,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 17,
                     fontWeight: FontWeight.w900,
                     color: Color(0xff172B4D),
                   ),
@@ -405,7 +379,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                         'Jawa Timur, Indonesia',
                         style: TextStyle(
                           color: Colors.grey.shade600,
-                          fontSize: 11,
+                          fontSize: 13,
                           height: 1.4,
                           fontWeight: FontWeight.w500,
                         ),
@@ -424,62 +398,29 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: ElevatedButton.icon(
-                        onPressed: _launchMaps,
-                        icon: const Icon(Icons.map_rounded, size: 16),
-                        label: const Text(
-                          'Buka di Google Maps',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff00B4D8),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _launchMaps,
+                    icon: const Icon(Icons.map_rounded, size: 19),
+                    label: const Text(
+                      'Buka di Google Maps',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 4,
-                      child: OutlinedButton.icon(
-                        onPressed: _launchDirections,
-                        icon: const Icon(
-                          Icons.directions_rounded,
-                          size: 16,
-                          color: Color(0xff0077A8),
-                        ),
-                        label: const Text(
-                          'Rute',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xff0077A8),
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xff0077A8),
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff00B4D8),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      elevation: 3,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -489,16 +430,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     );
   }
 
-  Widget _divider() => Container(
-        width: 20,
-        height: 1,
-        color: Colors.grey.shade300,
-      );
-
-  Widget _mapBadge({
-    required Color background,
-    required Widget child,
-  }) {
+  Widget _mapBadge({required Color background, required Widget child}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -513,53 +445,6 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
         ],
       ),
       child: child,
-    );
-  }
-
-  Widget _mapAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    Color background = Colors.white,
-    Color foreground = const Color(0xff123C73),
-  }) {
-    return Material(
-      color: background.withOpacity(0.94),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 12, color: foreground),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _zoomButton(IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 34,
-        height: 32,
-        child: Icon(icon, size: 18, color: const Color(0xff123C73)),
-      ),
     );
   }
 }
