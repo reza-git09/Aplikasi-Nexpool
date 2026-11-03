@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -8,7 +9,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.25:8000/api';
+  static const String baseUrl = 'http://10.212.237.105:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -465,6 +466,52 @@ class ApiService {
       throw Exception(data['message'] ?? 'Kode reservasi tidak ditemukan.');
     } catch (e) {
       debugPrint('ERROR RESERVASI BY KODE: $e');
+      rethrow;
+    }
+  }
+  // =========================================================
+  // CREATE PAYMENT (MIDTRANS)
+  // =========================================================
+
+  static Future<Map<String, dynamic>> createPayment({
+    required double totalPrice,
+    required String customerName,
+    required String customerEmail,
+    String? orderId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/midtrans/create-payment');
+
+      debugPrint('MENGIRIM REQUEST PAYMENT MIDTRANS: $url');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'total_price': totalPrice.toInt(),
+              'customer_name': customerName,
+              'customer_email': customerEmail,
+              'order_id': orderId,
+            }),
+          )
+          .timeout(_timeout);
+
+      debugPrint('STATUS API PAYMENT: ${response.statusCode}');
+      debugPrint('RESPONSE PAYMENT: ${response.body}');
+
+      final data = _decodeResponse(response);
+
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        return data;
+      }
+
+      throw Exception(data['message'] ?? 'Gagal membuat transaksi pembayaran.');
+    } catch (e) {
+      debugPrint('ERROR CREATE PAYMENT: $e');
       rethrow;
     }
   }

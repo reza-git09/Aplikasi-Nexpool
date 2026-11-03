@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import 'home_page.dart';
 
@@ -377,11 +378,11 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
   }
 
   /// Kode tiket menyertakan ID Pool kolam yang dipilih user (contoh: pool_id_01_83232942)
-  String _generateTicketId() {
-    final now = DateTime.now();
-    final ms = now.millisecondsSinceEpoch.toString();
-    return '${selectedPoolId}_${ms.substring(ms.length - 8)}';
-  }
+  // String _generateTicketId() {
+  //   final now = DateTime.now();
+  //   final ms = now.millisecondsSinceEpoch.toString();
+  //   return '${selectedPoolId}_${ms.substring(ms.length - 8)}';
+  // }
 
   void proceedToPaymentProcess() {
     if (adultPrice <= 0) {
@@ -476,80 +477,73 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
         return;
       }
 
-      final dynamic responseData = response['data'];
+      // ========================================================
+      // TAMBAHKAN KODE INI DI SINI (SEBELUM UPDATE STATE/TIKET)
+      // ========================================================
+      final Map<String, dynamic> responseData =
+          Map<String, dynamic>.from(response['data'] ?? {});
+      final String orderKode =
+          responseData['kode_reservasi']?.toString() ?? 'NEXPOOL-${DateTime.now().millisecondsSinceEpoch}';
 
-      String kodeReservasi = '';
-      String statusReservasi = 'Menunggu';
+      try {
+        final paymentRes = await ApiService.createPayment(
+          totalPrice: totalPrice.toDouble(),
+          customerName: nama,
+          customerEmail: 'user@nexpool.test', // atau variabel email jika tersedia
+          orderId: orderKode,
+        );
 
-      if (responseData is Map<String, dynamic>) {
-        kodeReservasi =
-            responseData['kode_reservasi']?.toString() ?? '';
-        statusReservasi =
-            responseData['status_reservasi']?.toString() ??
-                'Menunggu';
+        final String? redirectUrl = paymentRes['redirect_url'];
+      if (redirectUrl != null && redirectUrl.isNotEmpty) {
+        final Uri paymentUri = Uri.parse(redirectUrl);
+        if (await canLaunchUrl(paymentUri)) {
+          await launchUrl(
+            paymentUri, 
+            mode: LaunchMode.inAppWebView, // Membuka browser langsung di dalam tampilan aplikasi Flutter
+          );
+          return;
+        } else {
+          showMessage('Tidak dapat membuka browser pembayaran.');
+          return;
+        }
+      } else {
+        showMessage('Gagal mendapatkan tautan pembayaran Midtrans.');
+        return;
       }
-
-      final now = DateTime.now();
-
-      setState(() {
-        statusPembayaran = 'paid';
-        paidAt = now;
-        _payTimer?.cancel(); // sudah dibayar -> timer berhenti
-        _payTimer = null;
-
-        // Gunakan kode resmi dari Laravel sebagai kode tiket.
-        // Jika tidak ada, gunakan kode lokal sebagai fallback.
-        ticketId = kodeReservasi.isNotEmpty
-            ? kodeReservasi
-            : _generateTicketId();
-      });
-
-      _addTicketToMyTickets();
-
-      _successAnimController.reset();
-      _successAnimController.forward();
-
-      setState(() => currentStep = 5);
-
-      showMessage(
-        'Reservasi berhasil dibuat: ${ticketId.isNotEmpty ? ticketId : statusReservasi}',
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      Navigator.of(context, rootNavigator: true).pop();
-
-      debugPrint('ERROR RESERVASI DARI TIKET PAGE: $e');
-
-      showMessage(
-        e.toString().replaceFirst('Exception: ', ''),
-      );
+    } catch (payErr) {
+      debugPrint('GAGAL MEMBUKA MIDTRANS: $payErr');
+      showMessage('Gagal memproses Midtrans: $payErr');
+      return;
     }
+  } catch (e) {
+    debugPrint('ERROR RESERVASI: $e');
+    showMessage('Terjadi kesalahan: $e');
+  }
   }
 
-  void _addTicketToMyTickets() {
-    final normalizedPoolId = normalizePoolId(selectedPoolId);
-    final payLabel = _paymentLabel();
-    final qtyLabel = qtyChild > 0 ? '$qtyAdult Dewasa, $qtyChild Anak' : '$qtyAdult Dewasa';
+  // void _addTicketToMyTickets() {
+  //   final normalizedPoolId = normalizePoolId(selectedPoolId);
+  //   final payLabel = _paymentLabel();
+  //   final qtyLabel = qtyChild > 0 ? '$qtyAdult Dewasa, $qtyChild Anak' : '$qtyAdult Dewasa';
 
-    setState(() {
-      myTickets.insert(0, {
-        'orderId': orderId,
-        'ticketId': ticketId, // e.g. pool_id_02_83232942
-        'poolId': normalizedPoolId, // e.g. POOL-02
-        'rawPoolId': selectedPoolId, // e.g. pool_id_02
-        'poolName': selectedPoolName, // e.g. Pemandian Kebon Agung
-        'name': 'Tiket Dewasa — ${isWeekend ? 'Weekend' : 'Weekday'}',
-        'date': selectedDateLabel.isEmpty ? formatShortDate(DateTime.now()) : formatShortDate(selectedDate ?? DateTime.now()),
-        'qty': qtyLabel,
-        'payment': payLabel,
-        'total': totalPrice,
-        'status': 'paid',
-        'paidAt': formatDateTime(paidAt ?? DateTime.now()),
-        'reschedule': 0,
-      });
-    });
-  }
+  //   setState(() {
+  //     myTickets.insert(0, {
+  //       'orderId': orderId,
+  //       'ticketId': ticketId, // e.g. pool_id_02_83232942
+  //       'poolId': normalizedPoolId, // e.g. POOL-02
+  //       'rawPoolId': selectedPoolId, // e.g. pool_id_02
+  //       'poolName': selectedPoolName, // e.g. Pemandian Kebon Agung
+  //       'name': 'Tiket Dewasa — ${isWeekend ? 'Weekend' : 'Weekday'}',
+  //       'date': selectedDateLabel.isEmpty ? formatShortDate(DateTime.now()) : formatShortDate(selectedDate ?? DateTime.now()),
+  //       'qty': qtyLabel,
+  //       'payment': payLabel,
+  //       'total': totalPrice,
+  //       'status': 'paid',
+  //       'paidAt': formatDateTime(paidAt ?? DateTime.now()),
+  //       'reschedule': 0,
+  //     });
+  //   });
+  // }
 
   String _paymentLabel() {
     if (payMethod == 'qris') {
@@ -1712,7 +1706,7 @@ class _TiketPageState extends State<TiketPage> with SingleTickerProviderStateMix
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: adultPrice <= 0 ? null : proceedToPaymentProcess,
+              onPressed: adultPrice <= 0 ? null : simulatePaymentSuccess,
               icon: Icon(payMethod == 'qris' ? Icons.qr_code_rounded : Icons.account_balance_rounded, size: 20),
               label: Text(
                 payMethod == 'qris' ? 'Bayar via ${activeWallet['name']} (QRIS) →' : 'Bayar via ${activeBank['name']} →',

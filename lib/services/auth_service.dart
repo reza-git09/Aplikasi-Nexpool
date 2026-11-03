@@ -94,7 +94,7 @@ class AuthService {
               'password': password,
               'no_hp': noHp.trim(),
               'alamat': alamat.trim(),
-              if (otpToken != null) 'otp_token': otpToken,
+              'otp_token': ?otpToken,
             }),
           )
           .timeout(const Duration(seconds: 15));
