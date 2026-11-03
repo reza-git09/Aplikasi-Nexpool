@@ -21,8 +21,12 @@ dependencies:
   # Untuk membuka URL eksternal (Google Maps / Browser Pembayaran)
   url_launcher: ^6.3.0
 
-  # pembayaran tampil dalam aplikasi tanpa membuka browser
+  # Pembayaran tampil dalam aplikasi tanpa membuka browser
   webview_flutter: ^4.10.7
+
+  # Peta native yang bisa digeser dan di-zoom pakai jari
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
