@@ -16,7 +16,7 @@ dependencies:
   # Untuk mengambil foto dari galeri/kamera
   image_picker: ^1.2.1
   http: ^1.6.0
-  shared_preferences: ^2.5.5
+  shared_preferences: ^2.5.6
 
   # Untuk membuka URL eksternal (Google Maps / Browser Pembayaran)
   url_launcher: ^6.3.0

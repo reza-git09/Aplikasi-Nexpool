@@ -9,10 +9,13 @@ import 'pages/profile_page.dart';
 import 'pages/liquid_glass_navbar.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_service.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeService.load(); // baca tema terang/gelap yang tersimpan di HP
   // Dimatikan supaya login tetap tersimpan setelah app dibuka ulang.
   // Kalau mau reset login tiap app jalan (untuk tes), aktifkan lagi:
   // await AuthService.logout();
@@ -24,10 +27,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(fontFamily: 'Roboto'),
-      home: const MainShell(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.mode,
+      builder: (context, mode, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: mode,
+        home: const MainShell(),
+      ),
     );
   }
 }
@@ -173,7 +181,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF5F8FC),
+      backgroundColor: context.pageBg,
       extendBody: true,
       body: Stack(
         children: [
@@ -271,7 +279,7 @@ class _GuestProfile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       appBar: AppBar(
         title: const Text(
           'Profil Saya',
@@ -296,19 +304,19 @@ class _GuestProfile extends StatelessWidget {
                   color: navy.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.person_outline_rounded,
                   size: 52,
-                  color: navy,
+                  color: context.textMain,
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Kamu belum login',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: navy,
+                  color: context.textMain,
                 ),
               ),
               const SizedBox(height: 8),
@@ -382,7 +390,7 @@ class _GuestTiket extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       appBar: AppBar(
         title: const Text(
           'Pesan Tiket',
@@ -407,19 +415,19 @@ class _GuestTiket extends StatelessWidget {
                   color: navy.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.confirmation_number_outlined,
                   size: 52,
-                  color: navy,
+                  color: context.textMain,
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Kamu belum login',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: navy,
+                  color: context.textMain,
                 ),
               ),
               const SizedBox(height: 8),
