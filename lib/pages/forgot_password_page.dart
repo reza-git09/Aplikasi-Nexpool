@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 import '../services/auth_service.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -28,7 +30,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   // ─── Warna (sama dengan LoginPage) ─────────────────────────────
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
-  static const Color background = Color(0xFFF3F7FD);
   static const Color headerDark = Color(0xFF102E60);
   static const Color headerMiddle = Color(0xFF205BA9);
   static const Color headerLight = Color(0xFF3688E8);
@@ -126,7 +127,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         content: Row(
           children: [
             Icon(
-              isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -134,7 +137,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             Expanded(child: Text(msg)),
           ],
         ),
-        backgroundColor: isError ? const Color(0xFFEF476F) : const Color(0xFF2ECC71),
+        backgroundColor: isError
+            ? const Color(0xFFEF476F)
+            : const Color(0xFF2ECC71),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -185,7 +190,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
       onSubmitted: (_) => onSubmit?.call(),
       autocorrect: false,
       enableSuggestions: !obscure,
-      style: const TextStyle(color: navy, fontSize: 14, fontWeight: FontWeight.w500),
+      style: const TextStyle(
+        color: navy,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF8490A3), fontSize: 13),
@@ -194,7 +203,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             ? IconButton(
                 onPressed: onToggleObscure,
                 icon: Icon(
-                  obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  obscure
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
                   color: const Color(0xFF73829A),
                   size: 21,
                 ),
@@ -202,7 +213,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             : null,
         filled: true,
         fillColor: const Color(0xFFF8FAFE),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 17,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: const BorderSide(color: Color(0xFFE2E9F3)),
@@ -220,7 +234,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   }
 
   // ─── Tombol utama ──────────────────────────────────────────────
-  Widget _primaryButton({required String label, required VoidCallback? onPressed}) {
+  Widget _primaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -232,18 +249,27 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           foregroundColor: Colors.white,
           elevation: 3,
           shadowColor: navy.withOpacity(0.25),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: _isLoading
             ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(_step == 0 ? Icons.search_rounded : Icons.lock_reset_rounded),
+                  Icon(
+                    _step == 0
+                        ? Icons.search_rounded
+                        : Icons.lock_reset_rounded,
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     label,
@@ -277,8 +303,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             color: done
                 ? const Color(0xFF2ECC71)
                 : active
-                    ? blue
-                    : const Color(0xFFE2E9F3),
+                ? blue
+                : const Color(0xFFE2E9F3),
             borderRadius: BorderRadius.circular(5),
           ),
         );
@@ -309,7 +335,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
 
         const Text(
           'Username atau Email',
-          style: TextStyle(color: navy, fontSize: 14, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: navy,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 9),
         _input(
@@ -342,7 +372,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               Expanded(
                 child: Text(
                   'Pastikan username atau email sesuai yang terdaftar di NEXPOOL.',
-                  style: TextStyle(color: Color(0xFF4A6FA5), fontSize: 12, height: 1.5),
+                  style: TextStyle(
+                    color: Color(0xFF4A6FA5),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],
@@ -369,7 +403,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         const SizedBox(height: 8),
         RichText(
           text: TextSpan(
-            style: const TextStyle(color: Color(0xFF8490A3), fontSize: 13, height: 1.6),
+            style: const TextStyle(
+              color: Color(0xFF8490A3),
+              fontSize: 13,
+              height: 1.6,
+            ),
             children: [
               const TextSpan(text: 'Akun '),
               TextSpan(
@@ -387,7 +425,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
 
         const Text(
           'Password Baru',
-          style: TextStyle(color: navy, fontSize: 14, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: navy,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 9),
         _input(
@@ -403,7 +445,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
 
         const Text(
           'Konfirmasi Password',
-          style: TextStyle(color: navy, fontSize: 14, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: navy,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 9),
         _input(
@@ -411,13 +457,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           hint: 'Ulangi password baru',
           icon: Icons.lock_reset_rounded,
           obscure: _obscureConfirm,
-          onToggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          onToggleObscure: () =>
+              setState(() => _obscureConfirm = !_obscureConfirm),
           action: TextInputAction.done,
           onSubmit: _resetPassword,
         ),
 
         const SizedBox(height: 28),
-        _primaryButton(label: 'SIMPAN & LANJUT LOGIN', onPressed: _resetPassword),
+        _primaryButton(
+          label: 'SIMPAN & LANJUT LOGIN',
+          onPressed: _resetPassword,
+        ),
 
         const SizedBox(height: 14),
 
@@ -427,13 +477,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             onPressed: _isLoading
                 ? null
                 : () => setState(() {
-                      _step = 0;
-                      _passCtrl.clear();
-                      _confirmCtrl.clear();
-                    }),
+                    _step = 0;
+                    _passCtrl.clear();
+                    _confirmCtrl.clear();
+                  }),
             icon: const Icon(Icons.arrow_back_rounded, size: 16),
             label: const Text('Ganti Akun'),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF8490A3)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8490A3),
+            ),
           ),
         ),
       ],
@@ -443,7 +495,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       body: Stack(
         children: [
           // Background gradient
@@ -463,10 +515,30 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             animation: _bubbleCtrl,
             builder: (_, __) => Stack(
               children: [
-                _bubble(size: 70, left: 25, top: 95, progress: _bubbleCtrl.value),
-                _bubble(size: 28, left: 140, top: 50, progress: _bubbleCtrl.value + 0.2),
-                _bubble(size: 45, right: 35, top: 140, progress: _bubbleCtrl.value + 0.4),
-                _bubble(size: 20, right: 135, top: 75, progress: _bubbleCtrl.value + 0.6),
+                _bubble(
+                  size: 70,
+                  left: 25,
+                  top: 95,
+                  progress: _bubbleCtrl.value,
+                ),
+                _bubble(
+                  size: 28,
+                  left: 140,
+                  top: 50,
+                  progress: _bubbleCtrl.value + 0.2,
+                ),
+                _bubble(
+                  size: 45,
+                  right: 35,
+                  top: 140,
+                  progress: _bubbleCtrl.value + 0.4,
+                ),
+                _bubble(
+                  size: 20,
+                  right: 135,
+                  top: 75,
+                  progress: _bubbleCtrl.value + 0.6,
+                ),
               ],
             ),
           ),
@@ -565,8 +637,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                 Expanded(
                   child: Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: background,
+                    decoration: BoxDecoration(
+                      color: context.pageBg,
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(35),
                         topRight: Radius.circular(35),
@@ -581,7 +653,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                             width: double.infinity,
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.cardBg,
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: [
                                 BoxShadow(
@@ -611,19 +683,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                                 // Konten step
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 300),
-                                  transitionBuilder: (child, anim) => FadeTransition(
-                                    opacity: anim,
-                                    child: SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(0.08, 0),
-                                        end: Offset.zero,
-                                      ).animate(anim),
-                                      child: child,
-                                    ),
-                                  ),
+                                  transitionBuilder: (child, anim) =>
+                                      FadeTransition(
+                                        opacity: anim,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.08, 0),
+                                            end: Offset.zero,
+                                          ).animate(anim),
+                                          child: child,
+                                        ),
+                                      ),
                                   child: KeyedSubtree(
                                     key: ValueKey(_step),
-                                    child: _step == 0 ? _buildStep0() : _buildStep1(),
+                                    child: _step == 0
+                                        ? _buildStep0()
+                                        : _buildStep1(),
                                   ),
                                 ),
                               ],

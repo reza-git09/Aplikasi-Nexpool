@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/profile_photo_service.dart';
+import '../theme/theme_service.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
 import 'tiket_page.dart';
@@ -17,7 +18,6 @@ import 'review_page.dart';
 import 'notifikasi_page.dart';
 import '../theme/app_theme.dart';
 import '../widgets/pool_map_preview.dart';
-import '../widgets/theme_switch_tile.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -42,6 +42,40 @@ class HomePage extends StatefulWidget {
 
   @override
   State<HomePage> createState() => _HomePageState();
+}
+
+Widget _buildThemeToggleButton() {
+  return ValueListenableBuilder<ThemeMode>(
+    valueListenable: ThemeService.mode,
+    builder: (context, mode, _) {
+      final isDark = mode == ThemeMode.dark;
+      return Tooltip(
+        message: isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap',
+        child: Material(
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              ThemeService.setDark(!isDark);
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Icon(
+                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                color: isDark
+                    ? const Color(0xFFFFD166)
+                    : Colors.white,
+                size: 19,
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
@@ -727,16 +761,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           // Description
                           Text(
                             desc,
-                            style: TextStyle(fontSize: 13.5, height: 1.65, color: Colors.grey.shade700),
+                            style: TextStyle(fontSize: 13.5, height: 1.65, color: context.mutedText),
                           ),
 
                           if (detail1.isNotEmpty || detail2.isNotEmpty) ...[
                             const SizedBox(height: 18),
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0FAFE),
+                                color: context.softBg,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFB3E8F5)),
+                                border: Border.all(color: Theme.of(sheetCtx).colorScheme.primary.withOpacity(0.35)),
                               ),
                               padding: const EdgeInsets.all(14),
                               child: Column(
@@ -744,7 +778,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   if (detail1.isNotEmpty)
                                     _sheetDetailRow('📐', 'Info', detail1),
                                   if (detail1.isNotEmpty && detail2.isNotEmpty)
-                                    const Divider(height: 16, color: Color(0xFFD0EFF8)),
+                                    Divider(
+                                      height: 16,
+                                      color: Theme.of(sheetCtx).dividerColor,
+                                    ),
                                   if (detail2.isNotEmpty)
                                     _sheetDetailRow('👥', 'Pengunjung', detail2),
                                 ],
@@ -832,8 +869,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHero(selected),
-              const SizedBox(height: 14),
-              const ThemeSwitchTile(),
               const SizedBox(height: 20),
               _buildPoolSelector(),
               if (!allPool) _buildSelectedPool(selected!),
@@ -1024,9 +1059,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   ),
                 ),
 
-                // Tombol Profil / Sign In
+                // Kontrol tema diletakkan sejajar dengan Sign In / profil.
                 _isLoggedIn ? _buildProfileAvatar() : _buildSignInButton(),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                _buildThemeToggleButton(),
+                const SizedBox(width: 8),
 
                 // Tombol Notifikasi
                 GestureDetector(

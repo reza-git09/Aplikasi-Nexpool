@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_theme.dart';
+
 class NavItem {
   final IconData icon;
   final String label;
@@ -86,10 +88,12 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                   Positioned.fill(
                     child: _Glass(
                       radius: 40,
-                      blur: 28,
-                      tintTop: 0.55,
-                      tintBottom: 0.28,
-                      borderOpacity: 0.7,
+                      blur: 6,
+                      tintTop: 0.18,
+                      tintBottom: 0.12,
+                      borderOpacity: 0.55,
+                      baseColor: context.cardBg,
+                      borderColor: context.softBg,
                       shadow: true,
                     ),
                   ),
@@ -108,12 +112,14 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                       curve: Curves.easeOutCubic,
                       child: _Glass(
                         radius: 34,
-                        blur: 6,
-                        tintTop: _dragging ? 0.65 : 0.5,
-                        tintBottom: _dragging ? 0.35 : 0.22,
-                        borderOpacity: 0.95,
+                        blur: 3,
+                        tintTop: _dragging ? 0.32 : 0.24,
+                        tintBottom: _dragging ? 0.22 : 0.16,
+                        borderOpacity: 0.75,
+                        baseColor: context.cardBg,
+                        borderColor: context.softBg,
                         shadow: _dragging,
-                        accent: const Color(0xFF00B4D8),
+                        accent: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
@@ -136,7 +142,9 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                                   child: Icon(
                                     item.icon,
                                     size: 25,
-                                    color: active ? const Color(0xFF0077A8) : const Color(0xFF5C6B80),
+                                    color: active
+                                        ? Theme.of(context).colorScheme.primary
+                                        : context.mutedText,
                                   ),
                                 ),
                                 const SizedBox(height: 3),
@@ -145,7 +153,9 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                                   style: TextStyle(
                                     fontSize: 10.5,
                                     fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                                    color: active ? const Color(0xFF0077A8) : const Color(0xFF5C6B80),
+                                    color: active
+                                        ? Theme.of(context).colorScheme.primary
+                                        : context.mutedText,
                                   ),
                                   child: Text(item.label),
                                 ),
@@ -176,6 +186,8 @@ class _Glass extends StatelessWidget {
     required this.borderOpacity,
     this.shadow = false,
     this.accent,
+    required this.baseColor,
+    required this.borderColor,
   });
 
   final double radius;
@@ -185,6 +197,8 @@ class _Glass extends StatelessWidget {
   final double borderOpacity;
   final bool shadow;
   final Color? accent;
+  final Color baseColor;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -214,16 +228,22 @@ class _Glass extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.white.withOpacity(tintTop),
-                  (accent ?? Colors.white).withOpacity(tintBottom),
+                  Color.lerp(baseColor, borderColor, tintTop)!,
+                  accent == null
+                      ? Color.lerp(baseColor, borderColor, tintBottom)!
+                      : Color.lerp(baseColor, accent!, tintBottom)!,
                 ],
               ),
               border: Border.all(
-                color: Colors.white.withOpacity(borderOpacity),
+                color: Color.lerp(
+                  Colors.transparent,
+                  borderColor,
+                  borderOpacity,
+                )!,
                 width: 1.3,
               ),
             ),
-            // kilap tipis di bagian atas (efek pantulan cahaya)
+            // Pantulan mengikuti warna tema agar tidak muncul semburat putih di mode gelap.
             child: Align(
               alignment: Alignment.topCenter,
               child: FractionallySizedBox(
@@ -236,8 +256,14 @@ class _Glass extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.white.withOpacity(0.35),
-                        Colors.white.withOpacity(0.0),
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.08),
+                        Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0),
                       ],
                     ),
                   ),

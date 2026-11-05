@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 
 import 'home_page.dart';
 import 'login_page.dart';
@@ -45,8 +46,7 @@ class _ReviewPageState extends State<ReviewPage> {
   // KOMENTAR
   // =========================================================
 
-  final TextEditingController commentController =
-      TextEditingController();
+  final TextEditingController commentController = TextEditingController();
 
   // =========================================================
   // FOTO
@@ -83,8 +83,7 @@ class _ReviewPageState extends State<ReviewPage> {
   bool get hasSelectedPool {
     // Cukup namaKolam yang wajib ada agar halaman ulasan bisa dibuka.
     // poolId boleh kosong — API mungkin belum selesai load saat navigasi.
-    return widget.namaKolam != null &&
-        widget.namaKolam!.trim().isNotEmpty;
+    return widget.namaKolam != null && widget.namaKolam!.trim().isNotEmpty;
   }
 
   // poolId efektif yang dipakai untuk request API
@@ -136,9 +135,7 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   String _reviewSubmissionKey(String accountKey) {
-    final value = base64Url.encode(
-      utf8.encode('$accountKey|$effectivePoolId'),
-    );
+    final value = base64Url.encode(utf8.encode('$accountKey|$effectivePoolId'));
     return 'review_submitted_$value';
   }
 
@@ -158,14 +155,15 @@ class _ReviewPageState extends State<ReviewPage> {
     final identifier = userId?.isNotEmpty == true
         ? 'id:$userId'
         : username.isNotEmpty
-            ? 'username:${username.toLowerCase()}'
-            : email.isNotEmpty
-                ? 'email:${email.toLowerCase()}'
-                : null;
+        ? 'username:${username.toLowerCase()}'
+        : email.isNotEmpty
+        ? 'email:${email.toLowerCase()}'
+        : null;
 
     if (!mounted) return;
 
-    final hasReviewed = loggedIn &&
+    final hasReviewed =
+        loggedIn &&
         identifier != null &&
         (prefs.getBool(_reviewSubmissionKey(identifier)) ?? false);
 
@@ -175,8 +173,8 @@ class _ReviewPageState extends State<ReviewPage> {
       reviewerName = name.isNotEmpty
           ? name
           : username.isNotEmpty
-              ? username
-              : null;
+          ? username
+          : null;
       hasSubmittedReview = hasReviewed;
       isCheckingReviewAccount = false;
     });
@@ -203,7 +201,8 @@ class _ReviewPageState extends State<ReviewPage> {
     for (final review in reviews) {
       if (review is! Map) continue;
 
-      final reviewUserId = review['user_id'] ??
+      final reviewUserId =
+          review['user_id'] ??
           review['pengunjung_id'] ??
           review['id_pengunjung'];
       if (accountId != null &&
@@ -245,14 +244,13 @@ class _ReviewPageState extends State<ReviewPage> {
     try {
       final accountKey = reviewAccountKey;
       final accountId = reviewerId;
-      final data = await ApiService.getReviewsByPool(
-        effectivePoolId,
-      );
+      final data = await ApiService.getReviewsByPool(effectivePoolId);
 
       if (!mounted) return;
 
       final accountIsUnchanged = accountKey == reviewAccountKey;
-      final hasRemoteReview = accountIsUnchanged &&
+      final hasRemoteReview =
+          accountIsUnchanged &&
           accountKey != null &&
           _apiContainsReviewForAccount(
             data,
@@ -261,10 +259,7 @@ class _ReviewPageState extends State<ReviewPage> {
           );
       if (hasRemoteReview) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(
-          _reviewSubmissionKey(accountKey),
-          true,
-        );
+        await prefs.setBool(_reviewSubmissionKey(accountKey), true);
       }
 
       if (!mounted) return;
@@ -275,21 +270,11 @@ class _ReviewPageState extends State<ReviewPage> {
         hasSubmittedReview = hasSubmittedReview || hasRemoteReview;
       });
 
-      debugPrint(
-        '========================================',
-      );
-      debugPrint(
-        'REVIEW BERHASIL DIAMBIL',
-      );
-      debugPrint(
-        'POOL ID: $effectivePoolId',
-      );
-      debugPrint(
-        'JUMLAH REVIEW: ${reviewsFromApi.length}',
-      );
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
+      debugPrint('REVIEW BERHASIL DIAMBIL');
+      debugPrint('POOL ID: $effectivePoolId');
+      debugPrint('JUMLAH REVIEW: ${reviewsFromApi.length}');
+      debugPrint('========================================');
     } catch (e) {
       if (!mounted) return;
 
@@ -297,15 +282,11 @@ class _ReviewPageState extends State<ReviewPage> {
         isLoadingReviews = false;
       });
 
-      debugPrint(
-        'ERROR LOAD REVIEW: $e',
-      );
+      debugPrint('ERROR LOAD REVIEW: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Gagal mengambil review: $e',
-          ),
+          content: Text('Gagal mengambil review: $e'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -328,8 +309,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<void> pickPhotos() async {
     try {
-      final List<XFile> images =
-          await imagePicker.pickMultiImage(
+      final List<XFile> images = await imagePicker.pickMultiImage(
         imageQuality: 80,
       );
 
@@ -337,17 +317,14 @@ class _ReviewPageState extends State<ReviewPage> {
         return;
       }
 
-      final int remaining =
-          5 - selectedPhotos.length;
+      final int remaining = 5 - selectedPhotos.length;
 
       if (remaining <= 0) {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Maksimal 5 foto yang dapat dipilih.',
-            ),
+            content: Text('Maksimal 5 foto yang dapat dipilih.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -355,44 +332,26 @@ class _ReviewPageState extends State<ReviewPage> {
         return;
       }
 
-      final List<XFile> photosToAdd =
-          images.take(remaining).toList();
+      final List<XFile> photosToAdd = images.take(remaining).toList();
 
       setState(() {
-        selectedPhotos.addAll(
-          photosToAdd,
-        );
+        selectedPhotos.addAll(photosToAdd);
       });
 
-      debugPrint(
-        '========================================',
-      );
-      debugPrint(
-        'FOTO DIPILIH',
-      );
-      debugPrint(
-        'JUMLAH FOTO: ${selectedPhotos.length}',
-      );
+      debugPrint('========================================');
+      debugPrint('FOTO DIPILIH');
+      debugPrint('JUMLAH FOTO: ${selectedPhotos.length}');
 
-      for (int i = 0;
-          i < selectedPhotos.length;
-          i++) {
-        debugPrint(
-          'FOTO ${i + 1}: ${selectedPhotos[i].path}',
-        );
+      for (int i = 0; i < selectedPhotos.length; i++) {
+        debugPrint('FOTO ${i + 1}: ${selectedPhotos[i].path}');
       }
 
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
 
-      if (images.length > remaining &&
-          mounted) {
+      if (images.length > remaining && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Maksimal 5 foto yang dapat dipilih.',
-            ),
+            content: Text('Maksimal 5 foto yang dapat dipilih.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -400,15 +359,11 @@ class _ReviewPageState extends State<ReviewPage> {
     } catch (e) {
       if (!mounted) return;
 
-      debugPrint(
-        'ERROR PILIH FOTO: $e',
-      );
+      debugPrint('ERROR PILIH FOTO: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Gagal memilih foto.',
-          ),
+          content: Text('Gagal memilih foto.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -420,8 +375,7 @@ class _ReviewPageState extends State<ReviewPage> {
   // =========================================================
 
   void removePhoto(int index) {
-    if (index < 0 ||
-        index >= selectedPhotos.length) {
+    if (index < 0 || index >= selectedPhotos.length) {
       return;
     }
 
@@ -429,9 +383,7 @@ class _ReviewPageState extends State<ReviewPage> {
       selectedPhotos.removeAt(index);
     });
 
-    debugPrint(
-      'FOTO DIHAPUS. SISA FOTO: ${selectedPhotos.length}',
-    );
+    debugPrint('FOTO DIHAPUS. SISA FOTO: ${selectedPhotos.length}');
   }
 
   // =========================================================
@@ -439,8 +391,7 @@ class _ReviewPageState extends State<ReviewPage> {
   // =========================================================
 
   Future<void> submitReview() async {
-    final String comment =
-        commentController.text.trim();
+    final String comment = commentController.text.trim();
     final String? submittingAccountKey = reviewAccountKey;
     final String submittingName = reviewerName ?? 'Pengunjung';
 
@@ -466,9 +417,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (overallRating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Silakan pilih rating bintang terlebih dahulu.',
-          ),
+          content: Text('Silakan pilih rating bintang terlebih dahulu.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -483,9 +432,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (comment.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Silakan tulis komentar terlebih dahulu.',
-          ),
+          content: Text('Silakan tulis komentar terlebih dahulu.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -500,9 +447,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (effectivePoolId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'ID kolam tidak ditemukan.',
-          ),
+          content: Text('ID kolam tidak ditemukan.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -530,56 +475,36 @@ class _ReviewPageState extends State<ReviewPage> {
       String? fotoPath;
 
       if (selectedPhotos.isNotEmpty) {
-        fotoPath =
-            selectedPhotos.first.path;
+        fotoPath = selectedPhotos.first.path;
       }
 
       // =====================================================
       // DEBUG SEBELUM KIRIM
       // =====================================================
 
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
 
-      debugPrint(
-        'MENGIRIM REVIEW',
-      );
+      debugPrint('MENGIRIM REVIEW');
 
-      debugPrint(
-        'POOL ID       : $effectivePoolId',
-      );
+      debugPrint('POOL ID       : $effectivePoolId');
 
-      debugPrint(
-        'NAMA          : $submittingName',
-      );
+      debugPrint('NAMA          : $submittingName');
 
-      debugPrint(
-        'RATING        : $overallRating',
-      );
+      debugPrint('RATING        : $overallRating');
 
-      debugPrint(
-        'KOMENTAR      : $comment',
-      );
+      debugPrint('KOMENTAR      : $comment');
 
-      debugPrint(
-        'JUMLAH FOTO   : ${selectedPhotos.length}',
-      );
+      debugPrint('JUMLAH FOTO   : ${selectedPhotos.length}');
 
-      debugPrint(
-        'FOTO PATH     : $fotoPath',
-      );
+      debugPrint('FOTO PATH     : $fotoPath');
 
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
 
       // =====================================================
       // KIRIM KE API
       // =====================================================
 
-      final Map<String, dynamic> result =
-          await ApiService.submitReview(
+      final Map<String, dynamic> result = await ApiService.submitReview(
         poolId: effectivePoolId,
         namaPengunjung: submittingName,
         rating: overallRating,
@@ -590,39 +515,26 @@ class _ReviewPageState extends State<ReviewPage> {
       if (!mounted) return;
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(
-        _reviewSubmissionKey(submittingAccountKey),
-        true,
-      );
+      await prefs.setBool(_reviewSubmissionKey(submittingAccountKey), true);
 
       // =====================================================
       // SIMPAN REVIEW LOKAL
       // =====================================================
 
-      final ReviewData newReview =
-          ReviewData(
+      final ReviewData newReview = ReviewData(
         name: submittingName,
         date: 'Baru saja',
-        poolName:
-            widget.namaKolam ??
-                'Kolam Renang',
+        poolName: widget.namaKolam ?? 'Kolam Renang',
         rating: overallRating,
         comment: comment,
 
         // Simpan semua foto untuk tampilan lokal.
         // Yang dikirim ke server hanya foto pertama.
-        photoPaths: selectedPhotos
-            .map(
-              (photo) => photo.path,
-            )
-            .toList(),
+        photoPaths: selectedPhotos.map((photo) => photo.path).toList(),
       );
 
       setState(() {
-        newlyUploadedReviews.insert(
-          0,
-          newReview,
-        );
+        newlyUploadedReviews.insert(0, newReview);
 
         overallRating = 0;
 
@@ -649,8 +561,7 @@ class _ReviewPageState extends State<ReviewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            result['message']?.toString() ??
-                'Ulasan berhasil dikirim.',
+            result['message']?.toString() ?? 'Ulasan berhasil dikirim.',
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -662,27 +573,17 @@ class _ReviewPageState extends State<ReviewPage> {
         isSendingReview = false;
       });
 
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
 
-      debugPrint(
-        'ERROR KIRIM REVIEW',
-      );
+      debugPrint('ERROR KIRIM REVIEW');
 
-      debugPrint(
-        '$e',
-      );
+      debugPrint('$e');
 
-      debugPrint(
-        '========================================',
-      );
+      debugPrint('========================================');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Gagal mengirim ulasan: $e',
-          ),
+          content: Text('Gagal mengirim ulasan: $e'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -712,8 +613,7 @@ class _ReviewPageState extends State<ReviewPage> {
       return _reviewNotice(
         icon: Icons.lock_outline_rounded,
         title: 'Login untuk memberi ulasan',
-        message:
-            'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
+        message: 'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
         actionLabel: 'Login',
         onAction: _openLogin,
       );
@@ -742,7 +642,7 @@ class _ReviewPageState extends State<ReviewPage> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -763,8 +663,8 @@ class _ReviewPageState extends State<ReviewPage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Color(0xff172B3A),
+                  style: TextStyle(
+                    color: context.textMain,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -773,17 +673,14 @@ class _ReviewPageState extends State<ReviewPage> {
                 Text(
                   message,
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: context.mutedText,
                     fontSize: 12,
                     height: 1.4,
                   ),
                 ),
                 if (actionLabel != null && onAction != null) ...[
                   const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: onAction,
-                    child: Text(actionLabel),
-                  ),
+                  TextButton(onPressed: onAction, child: Text(actionLabel)),
                 ],
               ],
             ),
@@ -805,111 +702,71 @@ class _ReviewPageState extends State<ReviewPage> {
 
     if (!hasSelectedPool) {
       return Scaffold(
-        backgroundColor:
-            const Color(0xFFF5F9FC),
+        backgroundColor: context.pageBg,
         body: SafeArea(
           child: Center(
             child: Padding(
-              padding:
-                  const EdgeInsets.all(30),
+              padding: const EdgeInsets.all(30),
               child: Column(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
                     width: 80,
                     height: 80,
-                    decoration:
-                        BoxDecoration(
-                      color:
-                          const Color(0xFFE8F7FA),
-                      borderRadius:
-                          BorderRadius.circular(
-                        25,
-                      ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F7FA),
+                      borderRadius: BorderRadius.circular(25),
                     ),
                     child: const Icon(
                       Icons.lock_outline,
                       size: 40,
-                      color:
-                          Color(0xFF0077A8),
+                      color: Color(0xFF0077A8),
                     ),
                   ),
-                  const SizedBox(
-                    height: 20,
-                  ),
+                  const SizedBox(height: 20),
                   const Text(
                     'Pilih Kolam Renang Terlebih Dahulu',
-                    textAlign:
-                        TextAlign.center,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight:
-                          FontWeight.w800,
-                      color:
-                          Color(0xFF172B3A),
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF172B3A),
                     ),
                   ),
-                  const SizedBox(
-                    height: 10,
-                  ),
+                  const SizedBox(height: 10),
                   Text(
                     'Anda harus memilih kolam renang terlebih dahulu sebelum memberikan ulasan.',
-                    textAlign:
-                        TextAlign.center,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color:
-                          Colors.grey.shade600,
+                      color: Colors.grey.shade600,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(
-                    height: 25,
-                  ),
+                  const SizedBox(height: 25),
                   SizedBox(
-                    width:
-                        double.infinity,
+                    width: double.infinity,
                     height: 48,
-                    child:
-                        ElevatedButton(
+                    child: ElevatedButton(
                       onPressed: () {
-                        Navigator
-                            .pushReplacement(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder:
-                                (context) =>
-                                    const HomePage(),
+                            builder: (context) => const HomePage(),
                           ),
                         );
                       },
-                      style:
-                          ElevatedButton
-                              .styleFrom(
-                        backgroundColor:
-                            const Color(
-                          0xFF0077A8,
-                        ),
-                        foregroundColor:
-                            Colors.white,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0077A8),
+                        foregroundColor: Colors.white,
                         elevation: 0,
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            12,
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child:
-                          const Text(
+                      child: const Text(
                         'Kembali ke Home',
-                        style: TextStyle(
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -926,8 +783,7 @@ class _ReviewPageState extends State<ReviewPage> {
     // =======================================================
 
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF5F9FC),
+      backgroundColor: context.pageBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -936,88 +792,52 @@ class _ReviewPageState extends State<ReviewPage> {
             // =================================================
 
             Container(
-              width:
-                  double.infinity,
-              padding:
-                  const EdgeInsets.fromLTRB(
-                20,
-                18,
-                20,
-                22,
-              ),
-              decoration:
-                  const BoxDecoration(
-                gradient:
-                    LinearGradient(
-                  colors: [
-                    Color(0xFF0077A8),
-                    Color(0xFF00B4D8),
-                  ],
-                  begin:
-                      Alignment.topLeft,
-                  end:
-                      Alignment.bottomRight,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0077A8), Color(0xFF00B4D8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(
-                        context,
-                      );
+                      Navigator.pop(context);
                     },
                     child: Container(
                       width: 40,
                       height: 40,
-                      decoration:
-                          BoxDecoration(
-                        color: Colors.white
-                            .withOpacity(
-                          0.15,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(
-                          12,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.arrow_back,
-                        color:
-                            Colors.white,
+                        color: Colors.white,
                         size: 22,
                       ),
                     ),
                   ),
-                  const SizedBox(
-                    width: 12,
-                  ),
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Beri Ulasan',
                           style: TextStyle(
                             fontSize: 22,
-                            fontWeight:
-                                FontWeight.w800,
-                            color:
-                                Colors.white,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
                           ),
                         ),
-                        SizedBox(
-                          height: 4,
-                        ),
+                        SizedBox(height: 4),
                         Text(
                           'Bagikan pengalaman kunjungan Anda',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color:
-                                Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 13, color: Colors.white70),
                         ),
                       ],
                     ),
@@ -1029,40 +849,25 @@ class _ReviewPageState extends State<ReviewPage> {
             // =================================================
             // CONTENT
             // =================================================
-
             Expanded(
-              child:
-                  RefreshIndicator(
-                onRefresh:
-                    loadReviews,
-                child:
-                    SingleChildScrollView(
-                  physics:
-                      const AlwaysScrollableScrollPhysics(),
-                  padding:
-                      const EdgeInsets.only(
-                    top: 16,
-                    bottom: 20,
-                  ),
+              child: RefreshIndicator(
+                onRefresh: loadReviews,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(top: 16, bottom: 20),
                   child: Column(
                     children: [
                       selectedPoolCard(),
 
-                      const SizedBox(
-                        height: 18,
-                      ),
+                      const SizedBox(height: 18),
 
                       _buildReviewEntry(),
 
-                      const SizedBox(
-                        height: 24,
-                      ),
+                      const SizedBox(height: 24),
 
                       apiReviewSection(),
 
-                      const SizedBox(
-                        height: 24,
-                      ),
+                      const SizedBox(height: 24),
 
                       newlyUploadedSection(),
 
@@ -1086,24 +891,16 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Widget selectedPoolCard() {
     return Container(
-      margin:
-          const EdgeInsets.symmetric(
-        horizontal: 20,
-      ),
-      padding:
-          const EdgeInsets.all(14),
-      decoration:
-          BoxDecoration(
-        color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(18),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withOpacity(0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset:
-                const Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -1112,71 +909,39 @@ class _ReviewPageState extends State<ReviewPage> {
           Container(
             width: 70,
             height: 70,
-            decoration:
-                BoxDecoration(
-              color:
-                  const Color(0xFFE8F7FA),
-              borderRadius:
-                  BorderRadius.circular(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F7FA),
+              borderRadius: BorderRadius.circular(14),
             ),
-            clipBehavior:
-                Clip.antiAlias,
-            child:
-                buildPoolImage(),
+            clipBehavior: Clip.antiAlias,
+            child: buildPoolImage(),
           ),
-          const SizedBox(
-            width: 13,
-          ),
+          const SizedBox(width: 13),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Anda akan mengulas',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color:
-                        Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 11, color: context.mutedText),
                 ),
-                const SizedBox(
-                  height: 4,
-                ),
+                const SizedBox(height: 4),
                 Text(
                   widget.namaKolam!,
-                  style:
-                      const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF172B3A),
+                    fontWeight: FontWeight.w800,
+                    color: context.textMain,
                   ),
                 ),
-                const SizedBox(
-                  height: 5,
-                ),
+                const SizedBox(height: 5),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.pool,
-                      size: 14,
-                      color:
-                          Color(0xFF00B4D8),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
+                    const Icon(Icons.pool, size: 14, color: Color(0xFF00B4D8)),
+                    const SizedBox(width: 4),
                     Text(
                       'Kolam Renang',
-                      style:
-                          TextStyle(
-                        fontSize: 11,
-                        color: Colors
-                            .grey
-                            .shade500,
-                      ),
+                      style: TextStyle(fontSize: 11, color: context.mutedText),
                     ),
                   ],
                 ),
@@ -1193,38 +958,18 @@ class _ReviewPageState extends State<ReviewPage> {
   // ===========================================================
 
   Widget buildPoolImage() {
-    if (widget.gambarKolam ==
-            null ||
-        widget.gambarKolam!
-            .trim()
-            .isEmpty) {
-      return const Icon(
-        Icons.pool,
-        size: 32,
-        color:
-            Color(0xFF00B4D8),
-      );
+    if (widget.gambarKolam == null || widget.gambarKolam!.trim().isEmpty) {
+      return const Icon(Icons.pool, size: 32, color: Color(0xFF00B4D8));
     }
 
-    final String image =
-        widget.gambarKolam!;
+    final String image = widget.gambarKolam!;
 
     if (image.startsWith('http')) {
       return Image.network(
         image,
         fit: BoxFit.cover,
-        errorBuilder:
-            (
-          context,
-          error,
-          stackTrace,
-        ) {
-          return const Icon(
-            Icons.pool,
-            size: 32,
-            color:
-                Color(0xFF00B4D8),
-          );
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.pool, size: 32, color: Color(0xFF00B4D8));
         },
       );
     }
@@ -1232,18 +977,8 @@ class _ReviewPageState extends State<ReviewPage> {
     return Image.asset(
       image,
       fit: BoxFit.cover,
-      errorBuilder:
-          (
-        context,
-        error,
-        stackTrace,
-      ) {
-        return const Icon(
-          Icons.pool,
-          size: 32,
-          color:
-              Color(0xFF00B4D8),
-        );
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(Icons.pool, size: 32, color: Color(0xFF00B4D8));
       },
     );
   }
@@ -1254,117 +989,74 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Widget reviewForm() {
     return Container(
-      margin:
-          const EdgeInsets.symmetric(
-        horizontal: 20,
-      ),
-      padding:
-          const EdgeInsets.all(18),
-      decoration:
-          BoxDecoration(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withOpacity(0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset:
-                const Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Bagaimana pengalaman Anda?',
             style: TextStyle(
               fontSize: 16,
-              fontWeight:
-                  FontWeight.w800,
-              color:
-                  Color(0xFF172B3A),
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF172B3A),
             ),
           ),
 
-          const SizedBox(
-            height: 5,
-          ),
+          const SizedBox(height: 5),
 
           Text(
             'Berikan penilaian untuk ${widget.namaKolam}',
-            style: TextStyle(
-              fontSize: 12,
-              color:
-                  Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
 
-          const SizedBox(
-            height: 18,
-          ),
+          const SizedBox(height: 18),
 
           // ===================================================
           // RATING
           // ===================================================
-
           Center(
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  children:
-                      List.generate(
-                    5,
-                    (index) {
-                      final int
-                          starNumber =
-                          index + 1;
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final int starNumber = index + 1;
 
-                      final bool
-                          selected =
-                          starNumber <=
-                              overallRating;
+                    final bool selected = starNumber <= overallRating;
 
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            overallRating =
-                                starNumber;
-                          });
-                        },
-                        child: Padding(
-                          padding:
-                              const EdgeInsets
-                                  .symmetric(
-                            horizontal: 4,
-                          ),
-                          child: Icon(
-                            selected
-                                ? Icons.star
-                                : Icons.star_border,
-                            size: 40,
-                            color: selected
-                                ? const Color(
-                                    0xFFFFD166,
-                                  )
-                                : const Color(
-                                    0xFFCBD5E1,
-                                  ),
-                          ),
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          overallRating = starNumber;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          selected ? Icons.star : Icons.star_border,
+                          size: 40,
+                          color: selected
+                              ? const Color(0xFFFFD166)
+                              : const Color(0xFFCBD5E1),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }),
                 ),
 
-                const SizedBox(
-                  height: 7,
-                ),
+                const SizedBox(height: 7),
 
                 Text(
                   overallRating == 0
@@ -1372,199 +1064,103 @@ class _ReviewPageState extends State<ReviewPage> {
                       : '$overallRating dari 5 bintang',
                   style: TextStyle(
                     fontSize: 12,
-                    color:
-                        overallRating == 0
-                            ? Colors
-                                .grey
-                                .shade500
-                            : const Color(
-                                0xFF0077A8,
-                              ),
-                    fontWeight:
-                        overallRating == 0
-                            ? FontWeight.w400
-                            : FontWeight.w700,
+                    color: overallRating == 0
+                        ? Colors.grey.shade500
+                        : const Color(0xFF0077A8),
+                    fontWeight: overallRating == 0
+                        ? FontWeight.w400
+                        : FontWeight.w700,
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(
-            height: 18,
-          ),
+          const SizedBox(height: 18),
 
-          Divider(
-            color:
-                Colors.grey.shade200,
-          ),
+          Divider(color: Colors.grey.shade200),
 
-          const SizedBox(
-            height: 12,
-          ),
+          const SizedBox(height: 12),
 
           // ===================================================
           // KOMENTAR
           // ===================================================
-
           const Text(
             'Komentar Anda',
             style: TextStyle(
               fontSize: 13,
-              fontWeight:
-                  FontWeight.w700,
-              color:
-                  Color(0xFF172B3A),
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF172B3A),
             ),
           ),
 
-          const SizedBox(
-            height: 8,
-          ),
+          const SizedBox(height: 8),
 
           TextField(
-            controller:
-                commentController,
+            controller: commentController,
             maxLines: 4,
-            style:
-                const TextStyle(
-              fontSize: 13,
-              color:
-                  Color(0xFF172B3A),
-            ),
-            decoration:
-                InputDecoration(
-              hintText:
-                  'Ceritakan pengalaman Anda di ${widget.namaKolam}...',
-              hintStyle:
-                  TextStyle(
-                color:
-                    Colors.grey.shade400,
-                fontSize: 13,
-              ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF172B3A)),
+            decoration: InputDecoration(
+              hintText: 'Ceritakan pengalaman Anda di ${widget.namaKolam}...',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               filled: true,
-              fillColor:
-                  const Color(0xFFF8FAFC),
-              contentPadding:
-                  const EdgeInsets.all(
-                13,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
               ),
-              border:
-                  OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(
-                  12,
-                ),
-                borderSide:
-                    BorderSide(
-                  color:
-                      Colors.grey.shade200,
-                ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade200),
               ),
-              enabledBorder:
-                  OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(
-                  12,
-                ),
-                borderSide:
-                    BorderSide(
-                  color:
-                      Colors.grey.shade200,
-                ),
-              ),
-              focusedBorder:
-                  OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(
-                  12,
-                ),
-                borderSide:
-                    const BorderSide(
-                  color:
-                      Color(0xFF00B4D8),
-                ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF00B4D8)),
               ),
             ),
           ),
 
-          const SizedBox(
-            height: 15,
-          ),
+          const SizedBox(height: 15),
 
           // ===================================================
           // FOTO
           // ===================================================
-
           const Text(
             'Foto',
             style: TextStyle(
               fontSize: 13,
-              fontWeight:
-                  FontWeight.w700,
-              color:
-                  Color(0xFF172B3A),
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF172B3A),
             ),
           ),
 
-          const SizedBox(
-            height: 5,
-          ),
+          const SizedBox(height: 5),
 
           Text(
             'Tambahkan foto pengalaman Anda. Foto pertama akan disimpan ke review.',
-            style: TextStyle(
-              fontSize: 11,
-              color:
-                  Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           // ===================================================
           // PREVIEW FOTO
           // ===================================================
-
           if (selectedPhotos.isNotEmpty)
             SizedBox(
               height: 82,
-              child:
-                  ListView.separated(
-                scrollDirection:
-                    Axis.horizontal,
-                itemCount:
-                    selectedPhotos.length,
-                separatorBuilder:
-                    (
-                  context,
-                  index,
-                ) =>
-                        const SizedBox(
-                  width: 8,
-                ),
-                itemBuilder:
-                    (
-                  context,
-                  index,
-                ) {
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: selectedPhotos.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
                   return Stack(
                     children: [
                       ClipRRect(
-                        borderRadius:
-                            BorderRadius
-                                .circular(
-                          12,
-                        ),
-                        child:
-                            Image.file(
-                          File(
-                            selectedPhotos[
-                                    index]
-                                .path,
-                          ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(selectedPhotos[index].path),
                           width: 82,
                           height: 82,
                           fit: BoxFit.cover,
@@ -1574,31 +1170,21 @@ class _ReviewPageState extends State<ReviewPage> {
                       Positioned(
                         top: 4,
                         right: 4,
-                        child:
-                            GestureDetector(
+                        child: GestureDetector(
                           onTap: () {
-                            removePhoto(
-                              index,
-                            );
+                            removePhoto(index);
                           },
-                          child:
-                              Container(
+                          child: Container(
                             width: 23,
                             height: 23,
-                            decoration:
-                                const BoxDecoration(
-                              color:
-                                  Colors.black54,
-                              shape:
-                                  BoxShape
-                                      .circle,
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
                             ),
-                            child:
-                                const Icon(
+                            child: const Icon(
                               Icons.close,
                               size: 14,
-                              color:
-                                  Colors.white,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -1609,35 +1195,21 @@ class _ReviewPageState extends State<ReviewPage> {
                         Positioned(
                           bottom: 4,
                           left: 4,
-                          child:
-                              Container(
-                            padding:
-                                const EdgeInsets
-                                    .symmetric(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 3,
                             ),
-                            decoration:
-                                BoxDecoration(
-                              color:
-                                  Colors.black54,
-                              borderRadius:
-                                  BorderRadius
-                                      .circular(
-                                6,
-                              ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child:
-                                const Text(
+                            child: const Text(
                               'Upload',
-                              style:
-                                  TextStyle(
+                              style: TextStyle(
                                 fontSize: 8,
-                                color:
-                                    Colors.white,
-                                fontWeight:
-                                    FontWeight
-                                        .w700,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -1648,69 +1220,38 @@ class _ReviewPageState extends State<ReviewPage> {
               ),
             ),
 
-          if (selectedPhotos.isNotEmpty)
-            const SizedBox(
-              height: 10,
-            ),
+          if (selectedPhotos.isNotEmpty) const SizedBox(height: 10),
 
           // ===================================================
           // TOMBOL TAMBAH FOTO
           // ===================================================
-
           GestureDetector(
-            onTap:
-                selectedPhotos.length >= 5
-                    ? null
-                    : pickPhotos,
+            onTap: selectedPhotos.length >= 5 ? null : pickPhotos,
             child: Container(
-              width:
-                  double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(
-                vertical: 13,
-              ),
-              decoration:
-                  BoxDecoration(
-                color:
-                    const Color(0xFFF8FCFD),
-                borderRadius:
-                    BorderRadius.circular(
-                  12,
-                ),
-                border:
-                    Border.all(
-                  color:
-                      const Color(
-                    0xFFD0E8F5,
-                  ),
-                ),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FCFD),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFD0E8F5)),
               ),
               child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons
-                        .add_photo_alternate_outlined,
+                    Icons.add_photo_alternate_outlined,
                     size: 20,
-                    color:
-                        Color(0xFF0077A8),
+                    color: Color(0xFF0077A8),
                   ),
-                  const SizedBox(
-                    width: 8,
-                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    selectedPhotos.length >=
-                            5
+                    selectedPhotos.length >= 5
                         ? 'Maksimal 5 foto'
                         : 'Tambah Foto',
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      fontWeight:
-                          FontWeight.w700,
-                      color:
-                          Color(0xFF0077A8),
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0077A8),
                     ),
                   ),
                 ],
@@ -1718,67 +1259,37 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
           ),
 
-          const SizedBox(
-            height: 15,
-          ),
+          const SizedBox(height: 15),
 
           // ===================================================
           // KIRIM
           // ===================================================
-
           SizedBox(
-            width:
-                double.infinity,
+            width: double.infinity,
             height: 48,
-            child:
-                ElevatedButton.icon(
-              onPressed:
-                  isSendingReview
-                      ? null
-                      : submitReview,
-              icon:
-                  isSendingReview
-                      ? const SizedBox(
-                          width: 17,
-                          height: 17,
-                          child:
-                              CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color:
-                                Colors.white,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.send,
-                          size: 17,
-                        ),
+            child: ElevatedButton.icon(
+              onPressed: isSendingReview ? null : submitReview,
+              icon: isSendingReview
+                  ? const SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send, size: 17),
               label: Text(
-                isSendingReview
-                    ? 'Mengirim...'
-                    : 'Kirim Ulasan',
-                style:
-                    const TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
-                ),
+                isSendingReview ? 'Mengirim...' : 'Kirim Ulasan',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              style:
-                  ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(
-                  0xFF0077A8,
-                ),
-                foregroundColor:
-                    Colors.white,
-                disabledBackgroundColor:
-                    Colors.grey.shade400,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0077A8),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade400,
                 elevation: 0,
-                shape:
-                    RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(
-                    12,
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -1794,94 +1305,60 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Widget apiReviewSection() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
               const Icon(
                 Icons.rate_review_outlined,
                 size: 19,
-                color:
-                    Color(0xFF00B4D8),
+                color: Color(0xFF00B4D8),
               ),
-              const SizedBox(
-                width: 6,
-              ),
-              const Text(
+              const SizedBox(width: 6),
+              Text(
                 'Ulasan Pengunjung',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight:
-                      FontWeight.w800,
-                  color:
-                      Color(0xFF172B3A),
+                  fontWeight: FontWeight.w800,
+                  color: context.textMain,
                 ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(
-          height: 12,
-        ),
+        const SizedBox(height: 12),
 
         if (isLoadingReviews)
           const Padding(
-            padding:
-                EdgeInsets.all(30),
-            child: Center(
-              child:
-                  CircularProgressIndicator(),
-            ),
+            padding: EdgeInsets.all(30),
+            child: Center(child: CircularProgressIndicator()),
           )
         else if (reviewsFromApi.isEmpty)
           Container(
-            margin:
-                const EdgeInsets.symmetric(
-              horizontal: 20,
-            ),
-            padding:
-                const EdgeInsets.all(20),
-            width:
-                double.infinity,
-            decoration:
-                BoxDecoration(
-              color:
-                  Colors.white,
-              borderRadius:
-                  BorderRadius.circular(
-                16,
-              ),
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(20),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
                 Icon(
-                  Icons
-                      .rate_review_outlined,
+                  Icons.rate_review_outlined,
                   size: 38,
-                  color:
-                      Colors.grey.shade300,
+                  color: Colors.grey.shade300,
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const Text(
+                const SizedBox(height: 10),
+                Text(
                   'Belum ada ulasan',
-                  style:
-                      TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        FontWeight.w600,
-                    color:
-                        Color(
-                      0xFF172B3A,
-                    ),
+                    fontWeight: FontWeight.w600,
+                    color: context.textMain,
                   ),
                 ),
               ],
@@ -1889,15 +1366,9 @@ class _ReviewPageState extends State<ReviewPage> {
           )
         else
           Column(
-            children:
-                reviewsFromApi
-                    .map(
-                      (review) =>
-                          apiReviewCard(
-                        review,
-                      ),
-                    )
-                    .toList(),
+            children: reviewsFromApi
+                .map((review) => apiReviewCard(review))
+                .toList(),
           ),
       ],
     );
@@ -1907,77 +1378,37 @@ class _ReviewPageState extends State<ReviewPage> {
   // CARD REVIEW DARI API
   // ===========================================================
 
-  Widget apiReviewCard(
-    dynamic review,
-  ) {
-    final String nama =
-        review['nama_pengunjung']
-                ?.toString() ??
-            'Pengunjung';
+  Widget apiReviewCard(dynamic review) {
+    final String nama = review['nama_pengunjung']?.toString() ?? 'Pengunjung';
 
-    final int rating =
-        int.tryParse(
-              review['rating']
-                  ?.toString() ??
-                  '0',
-            ) ??
-            0;
+    final int rating = int.tryParse(review['rating']?.toString() ?? '0') ?? 0;
 
-    final String komentar =
-        review['komentar']
-                ?.toString() ??
-            '';
+    final String komentar = review['komentar']?.toString() ?? '';
 
-    final String status =
-        review['status']
-                ?.toString() ??
-            'Menunggu';
+    final String status = review['status']?.toString() ?? 'Menunggu';
 
-    final String balasan =
-        review['balasan_admin']
-                ?.toString() ??
-            '';
+    final String balasan = review['balasan_admin']?.toString() ?? '';
 
-    final String fotoUrl =
-        review['foto_url']
-                ?.toString() ??
-            '';
+    final String fotoUrl = review['foto_url']?.toString() ?? '';
 
-    debugPrint(
-      'REVIEW: $nama | FOTO URL: $fotoUrl',
-    );
+    debugPrint('REVIEW: $nama | FOTO URL: $fotoUrl');
 
     return Container(
-      margin:
-          const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        10,
-      ),
-      padding:
-          const EdgeInsets.all(15),
-      decoration:
-          BoxDecoration(
-        color:
-            Colors.white,
-        borderRadius:
-            BorderRadius.circular(
-          16,
-        ),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withOpacity(0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 8,
-            offset:
-                const Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // =================================================
           // USER
@@ -1988,62 +1419,42 @@ class _ReviewPageState extends State<ReviewPage> {
               Container(
                 width: 42,
                 height: 42,
-                decoration:
-                    const BoxDecoration(
-                  color:
-                      Color(0xFFE8F7FA),
-                  shape:
-                      BoxShape.circle,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F7FA),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.person,
-                  color:
-                      Color(0xFF0077A8),
+                  color: Color(0xFF0077A8),
                   size: 20,
                 ),
               ),
 
-              const SizedBox(
-                width: 10,
-              ),
+              const SizedBox(width: 10),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       nama,
-                      style:
-                          const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            FontWeight.w700,
-                        color:
-                            Color(
-                          0xFF172B3A,
-                        ),
+                        fontWeight: FontWeight.w700,
+                        color: context.textMain,
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 2,
-                    ),
+                    const SizedBox(height: 2),
 
                     Text(
                       status,
                       style: TextStyle(
                         fontSize: 11,
-                        color:
-                            status ==
-                                    'Dibalas'
-                                ? Colors
-                                    .green
-                                : Colors
-                                    .orange,
-                        fontWeight:
-                            FontWeight.w600,
+                        color: status == 'Dibalas'
+                            ? Colors.green
+                            : Colors.orange,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -2052,52 +1463,34 @@ class _ReviewPageState extends State<ReviewPage> {
             ],
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           // =================================================
           // RATING
           // =================================================
-
           Row(
-            children:
-                List.generate(
-              5,
-              (index) {
-                return Icon(
-                  index < rating
-                      ? Icons.star
-                      : Icons.star_border,
-                  size: 18,
-                  color:
-                      index < rating
-                          ? const Color(
-                              0xFFFFD166,
-                            )
-                          : const Color(
-                              0xFFCBD5E1,
-                            ),
-                );
-              },
-            ),
+            children: List.generate(5, (index) {
+              return Icon(
+                index < rating ? Icons.star : Icons.star_border,
+                size: 18,
+                color: index < rating
+                    ? const Color(0xFFFFD166)
+                    : const Color(0xFFCBD5E1),
+              );
+            }),
           ),
 
-          const SizedBox(
-            height: 9,
-          ),
+          const SizedBox(height: 9),
 
           // =================================================
           // KOMENTAR
           // =================================================
-
           if (komentar.isNotEmpty)
             Text(
               komentar,
               style: TextStyle(
                 fontSize: 13,
-                color:
-                    Colors.grey.shade700,
+                color: Colors.grey.shade700,
                 height: 1.5,
               ),
             ),
@@ -2105,108 +1498,59 @@ class _ReviewPageState extends State<ReviewPage> {
           // =================================================
           // FOTO DARI LARAVEL
           // =================================================
-
           if (fotoUrl.isNotEmpty)
             Padding(
-              padding:
-                  const EdgeInsets.only(
-                top: 12,
-              ),
-              child:
-                  ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(
-                  12,
-                ),
-                child:
-                    Image.network(
+              padding: const EdgeInsets.only(top: 12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
                   fotoUrl,
-                  width:
-                      double.infinity,
+                  width: double.infinity,
                   height: 180,
                   fit: BoxFit.cover,
 
                   // =================================================
                   // LOADING FOTO
                   // =================================================
-
-                  loadingBuilder:
-                      (
-                    context,
-                    child,
-                    loadingProgress,
-                  ) {
-                    if (loadingProgress ==
-                        null) {
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
                       return child;
                     }
 
                     return Container(
-                      width:
-                          double.infinity,
+                      width: double.infinity,
                       height: 180,
-                      alignment:
-                          Alignment.center,
-                      color:
-                          const Color(
-                        0xFFF1F5F9,
-                      ),
-                      child:
-                          const CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      alignment: Alignment.center,
+                      color: const Color(0xFFF1F5F9),
+                      child: const CircularProgressIndicator(strokeWidth: 2),
                     );
                   },
 
                   // =================================================
                   // ERROR FOTO
                   // =================================================
-
-                  errorBuilder:
-                      (
-                    context,
-                    error,
-                    stackTrace,
-                  ) {
-                    debugPrint(
-                      'GAGAL LOAD FOTO: $fotoUrl',
-                    );
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('GAGAL LOAD FOTO: $fotoUrl');
 
                     return Container(
-                      width:
-                          double.infinity,
+                      width: double.infinity,
                       height: 180,
-                      alignment:
-                          Alignment.center,
-                      color:
-                          const Color(
-                        0xFFF1F5F9,
-                      ),
+                      alignment: Alignment.center,
+                      color: const Color(0xFFF1F5F9),
                       child: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons
-                                .broken_image_outlined,
-                            color: Colors
-                                .grey
-                                .shade400,
+                            Icons.broken_image_outlined,
+                            color: Colors.grey.shade400,
                             size: 32,
                           ),
-                          const SizedBox(
-                            height: 5,
-                          ),
+                          const SizedBox(height: 5),
                           Text(
                             'Foto tidak dapat dimuat',
-                            style:
-                                TextStyle(
-                              fontSize:
-                                  11,
-                              color: Colors
-                                  .grey
-                                  .shade500,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
                             ),
                           ),
                         ],
@@ -2220,57 +1564,33 @@ class _ReviewPageState extends State<ReviewPage> {
           // =================================================
           // BALASAN ADMIN
           // =================================================
-
           if (balasan.isNotEmpty)
             Container(
-              margin:
-                  const EdgeInsets.only(
-                top: 12,
-              ),
-              padding:
-                  const EdgeInsets.all(
-                12,
-              ),
-              decoration:
-                  BoxDecoration(
-                color:
-                    const Color(
-                  0xFFF1F8FB,
-                ),
-                borderRadius:
-                    BorderRadius.circular(
-                  10,
-                ),
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.softBg,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Balasan Admin',
-                    style:
-                        TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      fontWeight:
-                          FontWeight.w800,
-                      color:
-                          Color(
-                        0xFF0077A8,
-                      ),
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0077A8),
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 5,
-                  ),
+                  const SizedBox(height: 5),
 
                   Text(
                     balasan,
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          Colors.grey.shade700,
+                      color: context.mutedText,
                       height: 1.4,
                     ),
                   ),
@@ -2288,121 +1608,76 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Widget newlyUploadedSection() {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
               const Icon(
                 Icons.new_releases_outlined,
                 size: 19,
-                color:
-                    Color(0xFF00B4D8),
+                color: Color(0xFF00B4D8),
               ),
-              const SizedBox(
-                width: 6,
-              ),
-              const Text(
+              const SizedBox(width: 6),
+              Text(
                 'Ulasan yang Baru Saja Diunggah',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight:
-                      FontWeight.w800,
-                  color:
-                      Color(0xFF172B3A),
+                  fontWeight: FontWeight.w800,
+                  color: context.textMain,
                 ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(
-          height: 12,
-        ),
+        const SizedBox(height: 12),
 
-        if (newlyUploadedReviews
-            .isEmpty)
+        if (newlyUploadedReviews.isEmpty)
           Container(
-            margin:
-                const EdgeInsets.symmetric(
-              horizontal: 20,
-            ),
-            padding:
-                const EdgeInsets.all(20),
-            width:
-                double.infinity,
-            decoration:
-                BoxDecoration(
-              color:
-                  Colors.white,
-              borderRadius:
-                  BorderRadius.circular(
-                16,
-              ),
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(20),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
                 Icon(
-                  Icons
-                      .rate_review_outlined,
+                  Icons.rate_review_outlined,
                   size: 38,
-                  color:
-                      Colors.grey.shade300,
+                  color: Colors.grey.shade300,
                 ),
 
-                const SizedBox(
-                  height: 10,
-                ),
+                const SizedBox(height: 10),
 
-                const Text(
+                Text(
                   'Belum ada ulasan baru.',
-                  textAlign:
-                      TextAlign.center,
-                  style:
-                      TextStyle(
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        FontWeight.w600,
-                    color:
-                        Color(
-                      0xFF172B3A,
-                    ),
+                    fontWeight: FontWeight.w600,
+                    color: context.textMain,
                   ),
                 ),
 
-                const SizedBox(
-                  height: 4,
-                ),
+                const SizedBox(height: 4),
 
                 Text(
                   'Ulasan Anda akan muncul di sini setelah dikirim.',
-                  textAlign:
-                      TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color:
-                        Colors.grey.shade500,
-                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: context.mutedText),
                 ),
               ],
             ),
           )
         else
           Column(
-            children:
-                newlyUploadedReviews
-                    .map(
-                      (review) =>
-                          uploadedReviewCard(
-                        review,
-                      ),
-                    )
-                    .toList(),
+            children: newlyUploadedReviews
+                .map((review) => uploadedReviewCard(review))
+                .toList(),
           ),
       ],
     );
@@ -2412,73 +1687,45 @@ class _ReviewPageState extends State<ReviewPage> {
   // CARD ULASAN BARU
   // ===========================================================
 
-  Widget uploadedReviewCard(
-    ReviewData review,
-  ) {
+  Widget uploadedReviewCard(ReviewData review) {
     return Container(
-      margin:
-          const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        10,
-      ),
-      padding:
-          const EdgeInsets.all(15),
-      decoration:
-          BoxDecoration(
-        color:
-            Colors.white,
-        borderRadius:
-            BorderRadius.circular(
-          16,
-        ),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
                 width: 42,
                 height: 42,
-                decoration:
-                    const BoxDecoration(
-                  color:
-                      Color(0xFFE8F7FA),
-                  shape:
-                      BoxShape.circle,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F7FA),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.person,
-                  color:
-                      Color(0xFF0077A8),
+                  color: Color(0xFF0077A8),
                   size: 20,
                 ),
               ),
 
-              const SizedBox(
-                width: 10,
-              ),
+              const SizedBox(width: 10),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       review.name,
-                      style:
-                          const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            FontWeight.w700,
-                        color:
-                            Color(
-                          0xFF172B3A,
-                        ),
+                        fontWeight: FontWeight.w700,
+                        color: context.textMain,
                       ),
                     ),
 
@@ -2486,9 +1733,7 @@ class _ReviewPageState extends State<ReviewPage> {
                       review.date,
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors
-                            .grey
-                            .shade500,
+                        color: Colors.grey.shade500,
                       ),
                     ),
                   ],
@@ -2496,153 +1741,76 @@ class _ReviewPageState extends State<ReviewPage> {
               ),
 
               Container(
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  horizontal: 8,
-                  vertical: 5,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F7FA),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                decoration:
-                    BoxDecoration(
-                  color:
-                      const Color(
-                    0xFFE8F7FA,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    20,
-                  ),
-                ),
-                child:
-                    const Text(
+                child: const Text(
                   'Baru',
-                  style:
-                      TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    fontWeight:
-                        FontWeight.w700,
-                    color:
-                        Color(
-                      0xFF0077A8,
-                    ),
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0077A8),
                   ),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           // RATING
           Row(
-            children:
-                List.generate(
-              5,
-              (index) {
-                return Icon(
-                  index <
-                          review.rating
-                      ? Icons.star
-                      : Icons.star_border,
-                  size: 18,
-                  color:
-                      index <
-                              review.rating
-                          ? const Color(
-                              0xFFFFD166,
-                            )
-                          : const Color(
-                              0xFFCBD5E1,
-                            ),
-                );
-              },
-            ),
+            children: List.generate(5, (index) {
+              return Icon(
+                index < review.rating ? Icons.star : Icons.star_border,
+                size: 18,
+                color: index < review.rating
+                    ? const Color(0xFFFFD166)
+                    : const Color(0xFFCBD5E1),
+              );
+            }),
           ),
 
-          const SizedBox(
-            height: 9,
-          ),
+          const SizedBox(height: 9),
 
           Text(
             review.comment,
             style: TextStyle(
               fontSize: 13,
-              color:
-                  Colors.grey.shade700,
+              color: context.mutedText,
               height: 1.5,
             ),
           ),
 
           // FOTO LOKAL
-          if (review
-              .photoPaths
-              .isNotEmpty)
+          if (review.photoPaths.isNotEmpty)
             Padding(
-              padding:
-                  const EdgeInsets.only(
-                top: 12,
-              ),
-              child:
-                  SizedBox(
+              padding: const EdgeInsets.only(top: 12),
+              child: SizedBox(
                 height: 75,
-                child:
-                    ListView.separated(
-                  scrollDirection:
-                      Axis.horizontal,
-                  itemCount:
-                      review.photoPaths
-                          .length,
-                  separatorBuilder:
-                      (
-                    context,
-                    index,
-                  ) =>
-                          const SizedBox(
-                    width: 8,
-                  ),
-                  itemBuilder:
-                      (
-                    context,
-                    index,
-                  ) {
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: review.photoPaths.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
                     return ClipRRect(
-                      borderRadius:
-                          BorderRadius
-                              .circular(
-                        10,
-                      ),
-                      child:
-                          Image.file(
-                        File(
-                          review
-                              .photoPaths[
-                                  index],
-                        ),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(review.photoPaths[index]),
                         width: 75,
                         height: 75,
-                        fit:
-                            BoxFit.cover,
-                        errorBuilder:
-                            (
-                          context,
-                          error,
-                          stackTrace,
-                        ) {
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
                           return Container(
                             width: 75,
                             height: 75,
-                            color:
-                                const Color(
-                              0xFFF1F5F9,
-                            ),
-                            child:
-                                const Icon(
-                              Icons
-                                  .broken_image_outlined,
-                              color:
-                                  Colors.grey,
+                            color: const Color(0xFFF1F5F9),
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: Colors.grey,
                             ),
                           );
                         },
@@ -2660,7 +1828,6 @@ class _ReviewPageState extends State<ReviewPage> {
   // ===========================================================
   // BOTTOM NAV ITEM
   // ===========================================================
-
 }
 
 // =============================================================

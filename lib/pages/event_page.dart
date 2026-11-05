@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class EventPage extends StatefulWidget {
   const EventPage({super.key});
@@ -123,7 +124,7 @@ class _EventPageState extends State<EventPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff0f8ff),
+      backgroundColor: context.pageBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -257,7 +258,7 @@ class _EventPageState extends State<EventPage> {
                 decoration: BoxDecoration(
                   color: selected
                       ? const Color(0xff0077b6)
-                      : const Color(0xfff0f8ff),
+                      : context.softBg,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: selected
@@ -312,7 +313,7 @@ class _EventPageState extends State<EventPage> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardBg,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(

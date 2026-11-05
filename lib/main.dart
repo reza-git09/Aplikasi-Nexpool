@@ -12,7 +12,6 @@ import 'pages/register_page.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_service.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService.load(); // baca tema terang/gelap yang tersimpan di HP
@@ -34,6 +33,8 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: mode,
+        themeAnimationDuration: const Duration(milliseconds: 360),
+        themeAnimationCurve: Curves.easeInOutCubic,
         home: const MainShell(),
       ),
     );
@@ -274,7 +275,6 @@ class _GuestProfile extends StatelessWidget {
 
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
-  static const Color background = Color(0xFFF3F7FD);
 
   @override
   Widget build(BuildContext context) {
@@ -385,7 +385,6 @@ class _GuestTiket extends StatelessWidget {
 
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
-  static const Color background = Color(0xFFF3F7FD);
 
   @override
   Widget build(BuildContext context) {

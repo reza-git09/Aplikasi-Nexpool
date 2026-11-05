@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
 import 'tiket_page.dart';
 
 class PaketPage extends StatelessWidget {
@@ -7,7 +9,7 @@ class PaketPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff5f8fc),
+      backgroundColor: context.pageBg,
 
       body: SafeArea(
         child: Column(
@@ -20,10 +22,7 @@ class PaketPage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 25, 20, 24),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xff123c73),
-                    Color(0xff00B4D8),
-                  ],
+                  colors: [Color(0xff123c73), Color(0xff00B4D8)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -44,10 +43,7 @@ class PaketPage extends StatelessWidget {
                           color: Colors.white.withOpacity(0.2),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                   ),
 
@@ -68,10 +64,7 @@ class PaketPage extends StatelessWidget {
                         SizedBox(height: 4),
                         Text(
                           'Pilih paket terbaik untuk Anda',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 13, color: Colors.white70),
                         ),
                       ],
                     ),
@@ -108,10 +101,7 @@ class PaketPage extends StatelessWidget {
                       ),
                       child: const Row(
                         children: [
-                          Text(
-                            '💡',
-                            style: TextStyle(fontSize: 17),
-                          ),
+                          Text('💡', style: TextStyle(fontSize: 17)),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -133,15 +123,13 @@ class PaketPage extends StatelessWidget {
                     // PAKET 1
                     // =========================
                     _packageCard(
+                      context: context,
                       badge: '🎟️ REGULER',
                       name: 'Paket Harian',
                       tagline: 'Tiket masuk + akses semua kolam',
                       price: 'Rp15.000',
                       unit: '/orang · weekday',
-                      gradient: const [
-                        Color(0xff0077A8),
-                        Color(0xff00B4D8),
-                      ],
+                      gradient: const [Color(0xff0077A8), Color(0xff00B4D8)],
                       includes: const [
                         ['🏊', 'Akses semua kolam renang'],
                         ['🌊', 'Wahana air dasar'],
@@ -162,19 +150,16 @@ class PaketPage extends StatelessWidget {
                     // PAKET 2
                     // =========================
                     _packageCard(
+                      context: context,
                       badge: '⭐ TERPOPULER',
                       name: 'Paket Keluarga',
                       tagline: 'Untuk 4 orang + pelampung + wahana',
                       price: 'Rp70.000',
                       originalPrice: 'Rp95.000',
                       unit: '/paket',
-                      gradient: const [
-                        Color(0xff7B61FF),
-                        Color(0xff0077A8),
-                      ],
+                      gradient: const [Color(0xff7B61FF), Color(0xff0077A8)],
                       featured: true,
-                      savingText:
-                          '💜 Hemat Rp25.000 dibanding beli satuan!',
+                      savingText: '💜 Hemat Rp25.000 dibanding beli satuan!',
                       includes: const [
                         ['🎟️', '4 Tiket masuk'],
                         ['🌴', 'Area bersantai keluarga'],
@@ -197,17 +182,14 @@ class PaketPage extends StatelessWidget {
                     // PAKET 3
                     // =========================
                     _packageCard(
+                      context: context,
                       badge: '👥 GRUP',
                       name: 'Paket Grup',
-                      tagline:
-                          'Min. 10 orang, cocok untuk piknik & wisata',
+                      tagline: 'Min. 10 orang, cocok untuk piknik & wisata',
                       price: 'Rp12.000',
                       originalPrice: 'Rp15.000',
                       unit: '/orang',
-                      gradient: const [
-                        Color(0xff06D6A0),
-                        Color(0xff0077A8),
-                      ],
+                      gradient: const [Color(0xff06D6A0), Color(0xff0077A8)],
                       includes: const [
                         ['🎟️', 'Tiket masuk (min. 10 orang)'],
                         ['🌴', 'Akses area bersantai grup'],
@@ -230,15 +212,13 @@ class PaketPage extends StatelessWidget {
                     // PAKET 4
                     // =========================
                     _packageCard(
+                      context: context,
                       badge: '👑 PREMIUM',
                       name: 'Paket Premium',
                       tagline: 'Pengalaman wisata mewah & eksklusif',
                       price: 'Rp150.000',
                       unit: '/paket · max 4 orang',
-                      gradient: const [
-                        Color(0xffB7791F),
-                        Color(0xffFFD166),
-                      ],
+                      gradient: const [Color(0xffB7791F), Color(0xffFFD166)],
                       includes: const [
                         ['👑', '4 Tiket masuk + akses prioritas'],
                         ['👑', 'Area santai VIP (seharian penuh)'],
@@ -264,7 +244,6 @@ class PaketPage extends StatelessWidget {
           ],
         ),
       ),
-
     );
   }
 
@@ -272,6 +251,7 @@ class PaketPage extends StatelessWidget {
   // PACKAGE CARD
   // ==========================================================
   Widget _packageCard({
+    required BuildContext context,
     required String badge,
     required String name,
     required String tagline,
@@ -291,13 +271,10 @@ class PaketPage extends StatelessWidget {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(22),
         border: featured
-            ? Border.all(
-                color: const Color(0xff123c73),
-                width: 2,
-              )
+            ? Border.all(color: const Color(0xff123c73), width: 2)
             : null,
         boxShadow: [
           BoxShadow(
@@ -536,16 +513,14 @@ class PaketPage extends StatelessWidget {
                         backgroundColor: goldButton
                             ? const Color(0xffB7791F)
                             : buttonPrimary
-                                ? const Color(0xff123c73)
-                                : Colors.white,
+                            ? const Color(0xff123c73)
+                            : Colors.white,
                         foregroundColor: buttonPrimary || goldButton
                             ? Colors.white
                             : const Color(0xff123c73),
                         side: buttonPrimary || goldButton
                             ? BorderSide.none
-                            : const BorderSide(
-                                color: Color(0xff123c73),
-                              ),
+                            : const BorderSide(color: Color(0xff123c73)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

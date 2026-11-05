@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
 import '../services/profile_photo_service.dart';
+import '../theme/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -35,7 +36,6 @@ class _ProfilePageState extends State<ProfilePage>
   static const Color blue = Color(0xFF2675D8);
   static const Color blueAccent = Color(0xFF4A90E2);
   static const Color background = Color(0xFFF3F7FD);
-  static const Color cardBg = Colors.white;
   static const Color textMuted = Color(0xFF8490A3);
 
   // ─── State ─────────────────────────────────────────────────────
@@ -328,7 +328,7 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       appBar: AppBar(
         title: const Text(
           'Profil Saya',
@@ -338,7 +338,7 @@ class _ProfilePageState extends State<ProfilePage>
             letterSpacing: 0.3,
           ),
         ),
-        backgroundColor: navy,
+        backgroundColor: context.isDark ? AppTheme.darkCard : navy,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -653,7 +653,7 @@ class _ProfilePageState extends State<ProfilePage>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: cardBg,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

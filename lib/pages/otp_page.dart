@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 
 import '../services/otp_service.dart';
@@ -29,7 +30,6 @@ class OtpPage extends StatefulWidget {
 class _OtpPageState extends State<OtpPage> {
   static const navy = Color(0xFF173F7A);
   static const blue = Color(0xFF2675D8);
-  static const background = Color(0xFFF3F7FD);
   static const green = Color(0xFF16865B);
 
   final _controller = TextEditingController();
@@ -159,7 +159,7 @@ class _OtpPageState extends State<OtpPage> {
     final bool expired = _expiresLeft == 0;
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
@@ -175,7 +175,7 @@ class _OtpPageState extends State<OtpPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.cardBg,
                   borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(

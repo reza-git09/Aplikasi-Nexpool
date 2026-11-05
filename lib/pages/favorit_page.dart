@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'paket_page.dart';
+import '../theme/app_theme.dart';
 
 class FavoritPage extends StatefulWidget {
   const FavoritPage({super.key});
@@ -65,7 +66,7 @@ class _FavoritPageState extends State<FavoritPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff5f8fc),
+      backgroundColor: context.pageBg,
 
       body: SafeArea(
         child: Column(
@@ -405,7 +406,7 @@ class _FavoritPageState extends State<FavoritPage> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -578,7 +579,7 @@ class _FavoritPageState extends State<FavoritPage> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(

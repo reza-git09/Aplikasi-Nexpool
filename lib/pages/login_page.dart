@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
 import 'forgot_password_page.dart';
@@ -27,7 +28,6 @@ class _LoginPageState extends State<LoginPage>
   // Warna disamakan dengan RegisterPage.
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
-  static const Color background = Color(0xFFF3F7FD);
 
   static const Color headerDark = Color(0xFF102E60);
   static const Color headerMiddle = Color(0xFF205BA9);
@@ -257,12 +257,12 @@ class _LoginPageState extends State<LoginPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       body: Stack(
         children: [
           // Gradasi header sama seperti RegisterPage.
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -404,8 +404,8 @@ class _LoginPageState extends State<LoginPage>
                 Expanded(
                   child: Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: background,
+                    decoration: BoxDecoration(
+                      color: context.pageBg,
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(35),
                         topRight: Radius.circular(35),
@@ -427,7 +427,7 @@ class _LoginPageState extends State<LoginPage>
                             width: double.infinity,
                             padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.cardBg,
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: [
                                 BoxShadow(

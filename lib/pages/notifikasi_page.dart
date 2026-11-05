@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import 'tiket_page.dart';
 import 'review_page.dart';
 import 'promo_page.dart';
@@ -337,8 +338,8 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
     return Material(
       color: unread
-          ? const Color(0xffF0FCFE)
-          : Colors.white,
+          ? (context.isDark ? context.softBg : const Color(0xffF0FCFE))
+          : context.cardBg,
       child: InkWell(
         onTap: () {
           showNotificationDetail(data, index);
@@ -522,7 +523,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xffF7FAFC),
+      backgroundColor: context.pageBg,
 
       body: SafeArea(
         bottom: false,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
 import '../services/otp_service.dart';
@@ -32,7 +33,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   static const navy = Color(0xFF173F7A);
   static const blue = Color(0xFF2675D8);
-  static const background = Color(0xFFF3F7FD);
 
   @override
   void dispose() {
@@ -257,7 +257,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: context.pageBg,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -380,7 +380,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.cardBg,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(

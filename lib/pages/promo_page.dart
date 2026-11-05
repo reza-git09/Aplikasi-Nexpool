@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import 'tiket_page.dart';
 
 // ============================================================
@@ -188,7 +189,7 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF0F4FA),
+      backgroundColor: context.pageBg,
       body: RefreshIndicator(
         onRefresh: _load,
         color: _blue,
@@ -565,7 +566,7 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
