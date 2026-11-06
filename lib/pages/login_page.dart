@@ -184,8 +184,8 @@ class _LoginPageState extends State<LoginPage>
   Widget _label(String text) {
     return Text(
       text,
-      style: const TextStyle(
-        color: navy,
+      style: TextStyle(
+        color: context.textMain,
         fontSize: 14,
         fontWeight: FontWeight.w800,
       ),
@@ -208,25 +208,25 @@ class _LoginPageState extends State<LoginPage>
       onSubmitted: onSubmitted,
       autocorrect: false,
       enableSuggestions: !obscureText,
-      style: const TextStyle(
-        color: navy,
+      style: TextStyle(
+        color: context.textMain,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: Color(0xFF8490A3),
+        hintStyle: TextStyle(
+          color: context.mutedText,
           fontSize: 13,
         ),
         prefixIcon: Icon(
           icon,
-          color: navy,
+          color: context.mutedText,
           size: 21,
         ),
         suffixIcon: suffix,
         filled: true,
-        fillColor: const Color(0xFFF8FAFE),
+        fillColor: context.softBg,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 17,
@@ -601,19 +601,19 @@ class _LoginPageState extends State<LoginPage>
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(15),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F7FD),
+                                    color: context.softBg,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: const Color(0xFFE2E9F3),
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Icon(
                                         Icons.verified_user_rounded,
-                                        color: navy,
+                                        color: context.mutedText,
                                         size: 23,
                                       ),
                                       SizedBox(width: 10),
@@ -623,7 +623,7 @@ class _LoginPageState extends State<LoginPage>
                                           'password yang kamu daftarkan '
                                           'di NEXPOOL.',
                                           style: TextStyle(
-                                            color: Color(0xFF758399),
+                                            color: context.mutedText,
                                             fontSize: 12,
                                             height: 1.5,
                                           ),

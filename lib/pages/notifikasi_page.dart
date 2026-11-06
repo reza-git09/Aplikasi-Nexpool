@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import 'tiket_page.dart';
 import 'review_page.dart';
@@ -16,8 +17,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Hari Ini',
       'title': 'Reservasi Berhasil!',
-      'text':
-          'Tiket masuk untuk 2 orang pada Rabu, 27 Agustus 2025 telah terkonfirmasi. Simpan e-ticket Anda.',
+      'text': 'Tiket masuk untuk 2 orang pada Rabu, 27 Agustus 2025 telah terkonfirmasi. Simpan e-ticket Anda.',
       'time': '14 menit lalu',
       'icon': Icons.check_circle,
       'iconColor': const Color(0xff06D6A0),
@@ -29,8 +29,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Hari Ini',
       'title': 'Pembayaran Berhasil',
-      'text':
-          'Pembayaran sebesar Rp32.000 via QRIS berhasil diproses. No. transaksi: #TWS-20250827-001',
+      'text': 'Pembayaran sebesar Rp32.000 via QRIS berhasil diproses. No. transaksi: #TWS-20250827-001',
       'time': '15 menit lalu',
       'icon': Icons.payments,
       'iconColor': const Color(0xff00B4D8),
@@ -42,8 +41,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Hari Ini',
       'title': 'Promo Baru! Paket Keluarga',
-      'text':
-          'Dapatkan diskon 30% untuk Paket Keluarga selama September 2025. Jangan sampai terlewat!',
+      'text': 'Dapatkan diskon 30% untuk Paket Keluarga selama September 2025. Jangan sampai terlewat!',
       'time': '2 jam lalu',
       'icon': Icons.redeem,
       'iconColor': const Color(0xffE65100),
@@ -55,8 +53,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Kemarin',
       'title': 'Pengingat Kunjungan Besok',
-      'text':
-          'Jangan lupa! Kunjungan Anda ke Tiaraswim dijadwalkan besok, Rabu 27 Agustus 2025. Siapkan e-ticket Anda!',
+      'text': 'Jangan lupa! Kunjungan Anda ke Tiaraswim dijadwalkan besok, Rabu 27 Agustus 2025. Siapkan e-ticket Anda!',
       'time': 'Kemarin 18.00',
       'icon': Icons.calendar_today,
       'iconColor': const Color(0xff7B61FF),
@@ -69,8 +66,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Kemarin',
       'title': 'Event Baru: Fun Swimming',
-      'text':
-          'Event Fun Swimming Bersama akan diadakan 6 September 2025. Daftar sekarang sebelum kuota habis!',
+      'text': 'Event Fun Swimming Bersama akan diadakan 6 September 2025. Daftar sekarang sebelum kuota habis!',
       'time': 'Kemarin 10.30',
       'icon': Icons.celebration,
       'iconColor': const Color(0xffEF476F),
@@ -82,8 +78,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Minggu Lalu',
       'title': 'Bagikan Ulasan Anda',
-      'text':
-          'Bagaimana kunjungan Anda 20 Agustus lalu? Bantu pengunjung lain dengan memberikan ulasan Anda.',
+      'text': 'Bagaimana kunjungan Anda 20 Agustus lalu? Bantu pengunjung lain dengan memberikan ulasan Anda.',
       'time': '22 Agu 2025',
       'icon': Icons.star,
       'iconColor': const Color(0xffD4960A),
@@ -95,8 +90,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     {
       'group': 'Minggu Lalu',
       'title': 'Voucher Spesial Untuk Anda!',
-      'text':
-          'Anda mendapatkan voucher diskon 10% untuk kunjungan berikutnya. Berlaku hingga 31 Oktober 2025.',
+      'text': 'Anda mendapatkan voucher diskon 10% untuk kunjungan berikutnya. Berlaku hingga 31 Oktober 2025.',
       'time': '20 Agu 2025',
       'icon': Icons.confirmation_number,
       'iconColor': const Color(0xff06D6A0),
@@ -129,31 +123,22 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     if (type == 'tiket') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const TiketPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const TiketPage()),
       );
     } else if (type == 'promo') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const PromoPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const PromoPage()),
       );
     } else if (type == 'review') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const ReviewPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const ReviewPage()),
       );
     }
   }
 
-  void showNotificationDetail(
-    Map<String, dynamic> data,
-    int index,
-  ) {
+  void showNotificationDetail(Map<String, dynamic> data, int index) {
     readNotification(index);
 
     showModalBottomSheet(
@@ -163,11 +148,9 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       builder: (bottomSheetContext) {
         return Container(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+          decoration: BoxDecoration(
+            color: bottomSheetContext.cardBg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -192,7 +175,9 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: data['iconBg'],
+                      color: bottomSheetContext.isDark
+                          ? bottomSheetContext.softBg
+                          : data['iconBg'],
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -221,7 +206,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
               Text(
                 data['text'],
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: bottomSheetContext.textMain,
                   fontSize: 14,
                   height: 1.6,
                 ),
@@ -234,13 +219,13 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                   Icon(
                     Icons.access_time,
                     size: 17,
-                    color: Colors.grey.shade500,
+                    color: bottomSheetContext.mutedText,
                   ),
                   const SizedBox(width: 7),
                   Text(
                     data['time'],
                     style: TextStyle(
-                      color: Colors.grey.shade500,
+                      color: bottomSheetContext.mutedText,
                       fontSize: 12,
                     ),
                   ),
@@ -260,18 +245,14 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xff00B4D8),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 14,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: Text(
                       data['action'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -286,9 +267,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     Navigator.pop(bottomSheetContext);
                   },
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -303,25 +282,19 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     );
   }
 
-
-
   Widget buildDateGroup(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 7),
       child: Row(
         children: [
-          Icon(
-            Icons.today,
-            size: 15,
-            color: Colors.grey.shade500,
-          ),
+          Icon(Icons.today, size: 15, color: context.mutedText),
           const SizedBox(width: 6),
           Text(
             title.toUpperCase(),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
+              color: context.mutedText,
               letterSpacing: 0.5,
             ),
           ),
@@ -330,10 +303,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     );
   }
 
-  Widget buildNotificationItem(
-    Map<String, dynamic> data,
-    int index,
-  ) {
+  Widget buildNotificationItem(Map<String, dynamic> data, int index) {
     final bool unread = data['unread'] == true;
 
     return Material(
@@ -345,18 +315,9 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
           showNotificationDetail(data, index);
         },
         child: Container(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            14,
-            20,
-            14,
-          ),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Colors.grey.shade200,
-              ),
-            ),
+            border: Border(bottom: BorderSide(color: context.softBg)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,38 +326,30 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 Container(
                   width: 3,
                   height: 65,
-                  margin: const EdgeInsets.only(
-                    right: 12,
-                  ),
+                  margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
                     color: const Color(0xff00B4D8),
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
 
-              if (!unread)
-                const SizedBox(width: 15),
+              if (!unread) const SizedBox(width: 15),
 
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: data['iconBg'],
+                  color: context.isDark ? context.softBg : data['iconBg'],
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  data['icon'],
-                  color: data['iconColor'],
-                  size: 22,
-                ),
+                child: Icon(data['icon'], color: data['iconColor'], size: 22),
               ),
 
               const SizedBox(width: 12),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -416,8 +369,8 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: unread
-                                  ? const Color(0xff007C91)
-                                  : Colors.black87,
+                                  ? const Color(0xff31C4DF)
+                                  : context.textMain,
                             ),
                           ),
                         ),
@@ -430,7 +383,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                       data['text'],
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: context.mutedText,
                         height: 1.5,
                       ),
                     ),
@@ -438,31 +391,23 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     const SizedBox(height: 6),
 
                     Wrap(
-                      crossAxisAlignment:
-                          WrapCrossAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 7,
                       children: [
                         Text(
                           data['time'],
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey.shade500,
+                            color: context.mutedText,
                           ),
                         ),
 
                         if (data['action'] != null) ...[
-                          Text(
-                            '·',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
+                          Text('·', style: TextStyle(color: context.mutedText)),
                           GestureDetector(
                             onTap: () {
                               readNotification(index);
-                              handleAction(
-                                data['actionType'],
-                              );
+                              handleAction(data['actionType']);
                             },
                             child: Text(
                               '${data['action']} →',
@@ -484,10 +429,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                 Container(
                   width: 8,
                   height: 8,
-                  margin: const EdgeInsets.only(
-                    top: 4,
-                    left: 8,
-                  ),
+                  margin: const EdgeInsets.only(top: 4, left: 8),
                   decoration: const BoxDecoration(
                     color: Color(0xff00B4D8),
                     shape: BoxShape.circle,
@@ -510,16 +452,12 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       final data = notifikasi[i];
 
       if (lastGroup != data['group']) {
-        notificationWidgets.add(
-          buildDateGroup(data['group']),
-        );
+        notificationWidgets.add(buildDateGroup(data['group']));
 
         lastGroup = data['group'];
       }
 
-      notificationWidgets.add(
-        buildNotificationItem(data, i),
-      );
+      notificationWidgets.add(buildNotificationItem(data, i));
     }
 
     return Scaffold(
@@ -534,25 +472,16 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
             // =========================
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                20,
-                20,
-                24,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xff0077A8),
-                    Color(0xff00B4D8),
-                  ],
+                  colors: [Color(0xff0077A8), Color(0xff00B4D8)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               child: Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
                     width: 42,
@@ -560,16 +489,11 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(13),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
                     ),
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                      ),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () {
                         Navigator.pop(context);
                       },
@@ -580,8 +504,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
@@ -618,9 +541,7 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
                   ),
 
                   GestureDetector(
-                    onTap: unreadCount == 0
-                        ? null
-                        : markAllRead,
+                    onTap: unreadCount == 0 ? null : markAllRead,
                     child: Text(
                       'Tandai dibaca',
                       style: TextStyle(
@@ -641,26 +562,18 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
             // =========================
             if (unreadCount == 0)
               Container(
-                margin: const EdgeInsets.fromLTRB(
-                  20,
-                  16,
-                  20,
-                  0,
-                ),
+                margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
                   color: const Color(0xffE8FFF8),
-                  border: Border.all(
-                    color: const Color(0xffB9F1E1),
-                  ),
+                  border: Border.all(color: const Color(0xffB9F1E1)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.check_circle,
@@ -685,16 +598,13 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
             // =========================
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.only(
-                  bottom: 16,
-                ),
+                padding: const EdgeInsets.only(bottom: 16),
                 children: notificationWidgets,
               ),
             ),
           ],
         ),
       ),
-
     );
   }
 }

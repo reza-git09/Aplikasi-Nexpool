@@ -227,14 +227,18 @@ class _OtpPageState extends State<OtpPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF6DB),
+                          color: context.isDark
+                              ? const Color(0xFF3B3424)
+                              : const Color(0xFFFFF6DB),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'Mode tes (WA belum dikirim sungguhan). Kode: $_debugCode',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF7A5B00),
+                            color: context.isDark
+                                ? const Color(0xFFFFD166)
+                                : const Color(0xFF7A5B00),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -251,11 +255,11 @@ class _OtpPageState extends State<OtpPage> {
                       textAlign: TextAlign.center,
                       maxLength: 6,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 14,
-                        color: navy,
+                        color: context.textMain,
                       ),
                       decoration: InputDecoration(
                         counterText: '',
@@ -263,10 +267,10 @@ class _OtpPageState extends State<OtpPage> {
                         hintStyle: TextStyle(
                           fontSize: 28,
                           letterSpacing: 14,
-                          color: navy.withValues(alpha: 0.18),
+                          color: context.mutedText.withValues(alpha: 0.5),
                         ),
                         filled: true,
-                        fillColor: const Color(0xFFF8FAFE),
+                        fillColor: context.softBg,
                         contentPadding: const EdgeInsets.symmetric(vertical: 18),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),

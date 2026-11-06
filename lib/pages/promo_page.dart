@@ -13,8 +13,7 @@ import 'tiket_page.dart';
 const List<Map<String, dynamic>> _kFallbackPromos = [
   {
     'nama': 'Promo Weekend Seru',
-    'deskripsi':
-        'Nikmati diskon spesial setiap akhir pekan! Ajak keluarga dan teman untuk berenang bersama dengan harga yang lebih hemat.',
+    'deskripsi': 'Nikmati diskon spesial setiap akhir pekan! Ajak keluarga dan teman untuk berenang bersama dengan harga yang lebih hemat.',
     'label_diskon': 'Diskon 20%',
     'tanggal_mulai': '',
     'tanggal_selesai': '2025-12-31',
@@ -22,8 +21,7 @@ const List<Map<String, dynamic>> _kFallbackPromos = [
   },
   {
     'nama': 'Promo Pelajar & Mahasiswa',
-    'deskripsi':
-        'Tunjukkan kartu pelajar atau KTM dan dapatkan harga tiket spesial. Berlaku setiap hari kerja.',
+    'deskripsi': 'Tunjukkan kartu pelajar atau KTM dan dapatkan harga tiket spesial. Berlaku setiap hari kerja.',
     'label_diskon': 'Diskon 15%',
     'tanggal_mulai': '',
     'tanggal_selesai': '2025-12-31',
@@ -31,8 +29,7 @@ const List<Map<String, dynamic>> _kFallbackPromos = [
   },
   {
     'nama': 'Promo Keluarga Bahagia',
-    'deskripsi':
-        'Beli 4 tiket dewasa, gratis 2 tiket anak! Jadikan liburan bersama keluarga semakin menyenangkan.',
+    'deskripsi': 'Beli 4 tiket dewasa, gratis 2 tiket anak! Jadikan liburan bersama keluarga semakin menyenangkan.',
     'label_diskon': 'Beli 4 Gratis 2',
     'tanggal_mulai': '',
     'tanggal_selesai': '2025-11-30',
@@ -47,7 +44,8 @@ class PromoPage extends StatefulWidget {
   State<PromoPage> createState() => _PromoPageState();
 }
 
-class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMixin {
+class _PromoPageState extends State<PromoPage>
+    with SingleTickerProviderStateMixin {
   bool _loading = true;
   String _error = '';
   List<Map<String, dynamic>> _promos = [];
@@ -56,7 +54,6 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
 
   late AnimationController _shimmerController;
 
-  static const Color _ink = Color(0xff172B4D);
   static const Color _blue = Color(0xff0077B6);
   static const Color _navy = Color(0xff173F7A);
 
@@ -77,8 +74,18 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
   ];
 
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
   ];
 
   @override
@@ -177,7 +184,9 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
       MaterialPageRoute(
         builder: (_) => TiketPage(
           poolId: poolId.isEmpty ? null : poolId,
-          poolName: poolId.isEmpty ? null : poolDisplayName(poolId, 'Kolam Renang'),
+          poolName: poolId.isEmpty
+              ? null
+              : poolDisplayName(poolId, 'Kolam Renang'),
         ),
       ),
     );
@@ -206,7 +215,10 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
             else if (_promos.isEmpty)
               _buildEmpty()
             else
-              ...List.generate(_promos.length, (i) => _promoCard(i, _promos[i])),
+              ...List.generate(
+                _promos.length,
+                (i) => _promoCard(i, _promos[i]),
+              ),
             const SizedBox(height: 60),
           ],
         ),
@@ -272,7 +284,11 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: Icon(Icons.local_offer_rounded, color: Colors.white, size: 40),
+                  child: Icon(
+                    Icons.local_offer_rounded,
+                    color: Colors.white,
+                    size: 40,
+                  ),
                 ),
               ),
             ),
@@ -290,24 +306,39 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.18),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
                       ),
-                      child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   // Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 14),
+                        Icon(
+                          Icons.local_fire_department_rounded,
+                          color: Colors.orangeAccent,
+                          size: 14,
+                        ),
                         SizedBox(width: 5),
                         Text(
                           'PENAWARAN SPESIAL',
@@ -362,18 +393,26 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xffFFF3E0),
+              color: context.softBg,
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Center(
-              child: Icon(Icons.local_fire_department_rounded, color: Color(0xffEF6C35), size: 20),
+              child: Icon(
+                Icons.local_fire_department_rounded,
+                color: Color(0xffEF6C35),
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
               'Promo Aktif',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _ink),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: context.textMain,
+              ),
             ),
           ),
           if (!_loading && _error.isEmpty)
@@ -407,48 +446,62 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
       animation: _shimmerController,
       builder: (context, _) {
         final shimmerColor = ColorTween(
-          begin: Colors.grey.shade200,
-          end: Colors.grey.shade100,
+          begin: context.softBg,
+          end: context.softBg.withValues(alpha: 0.6),
         ).evaluate(_shimmerController)!;
 
         return Column(
-          children: List.generate(2, (i) => Container(
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: shimmerColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
+          children: List.generate(
+            2,
+            (i) => Container(
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: shimmerColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(height: 14, width: 180, color: shimmerColor),
-                      const SizedBox(height: 10),
-                      Container(height: 12, color: shimmerColor),
-                      const SizedBox(height: 6),
-                      Container(height: 12, width: 220, color: shimmerColor),
-                      const SizedBox(height: 20),
-                      Container(height: 48, decoration: BoxDecoration(color: shimmerColor, borderRadius: BorderRadius.circular(16))),
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(height: 14, width: 180, color: shimmerColor),
+                        const SizedBox(height: 10),
+                        Container(height: 12, color: shimmerColor),
+                        const SizedBox(height: 6),
+                        Container(height: 12, width: 220, color: shimmerColor),
+                        const SizedBox(height: 20),
+                        Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: shimmerColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          )),
+          ),
         );
       },
     );
@@ -462,9 +515,14 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
       margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -472,21 +530,33 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: const Color(0xffEEF4FF),
+              color: context.softBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.local_offer_rounded, size: 40, color: _blue),
+            child: const Icon(
+              Icons.local_offer_rounded,
+              size: 40,
+              color: _blue,
+            ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Belum Ada Promo Aktif',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink),
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: context.textMain,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Promo terbaru akan muncul di sini.\nTarik layar ke bawah untuk memuat ulang.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.5),
+            style: TextStyle(
+              fontSize: 13,
+              color: context.mutedText,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -501,9 +571,14 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
       margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 14,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -511,27 +586,40 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xffFFF0F3),
+              color: context.softBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.wifi_off_rounded, size: 36, color: Color(0xffEF476F)),
+            child: const Icon(
+              Icons.wifi_off_rounded,
+              size: 36,
+              color: Color(0xffEF476F),
+            ),
           ),
           const SizedBox(height: 16),
           Text(
             _error,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13.5, color: _ink, height: 1.5),
+            style: TextStyle(
+              fontSize: 13.5,
+              color: context.textMain,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w700)),
+            label: const Text(
+              'Coba Lagi',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _blue,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               elevation: 0,
             ),
           ),
@@ -620,11 +708,16 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                         children: [
                           if (label.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 5,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.25),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                ),
                               ),
                               child: Text(
                                 label.toUpperCase(),
@@ -650,7 +743,11 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                const Icon(Icons.access_time_rounded, color: Colors.white70, size: 13),
+                                const Icon(
+                                  Icons.access_time_rounded,
+                                  color: Colors.white70,
+                                  size: 13,
+                                ),
                                 const SizedBox(width: 5),
                                 Text(
                                   periode,
@@ -698,7 +795,11 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                         color: const Color(0xffEEF7FF),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.pool_rounded, size: 16, color: _blue),
+                      child: const Icon(
+                        Icons.pool_rounded,
+                        size: 16,
+                        color: _blue,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -706,7 +807,7 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                         'Berlaku di: ${_poolLabel(p)}',
                         style: TextStyle(
                           fontSize: 12.5,
-                          color: Colors.grey.shade600,
+                          color: context.mutedText,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -721,25 +822,34 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.6,
-                      color: Colors.grey.shade700,
+                      color: context.textMain,
                     ),
                     maxLines: isExpanded ? null : 2,
-                    overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                    overflow: isExpanded
+                        ? TextOverflow.visible
+                        : TextOverflow.ellipsis,
                   ),
                 ],
 
                 if (selesai.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xffFFF0F3),
+                      color: context.softBg,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.timer_rounded, size: 14, color: Color(0xffEF476F)),
+                        const Icon(
+                          Icons.timer_rounded,
+                          size: 14,
+                          color: Color(0xffEF476F),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Berakhir $selesai',
@@ -762,17 +872,25 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () => _use(p),
-                        icon: const Icon(Icons.confirmation_number_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.confirmation_number_rounded,
+                          size: 18,
+                        ),
                         label: const Text(
                           'Gunakan Promo',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _navy,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -780,7 +898,9 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          isExpanded ? _expanded.remove(index) : _expanded.add(index);
+                          isExpanded
+                              ? _expanded.remove(index)
+                              : _expanded.add(index);
                         });
                       },
                       child: AnimatedContainer(
@@ -788,9 +908,12 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: const Color(0xffEEF4FF),
+                          color: context.softBg,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xffC8DEFF), width: 1.5),
+                          border: Border.all(
+                            color: const Color(0xffC8DEFF),
+                            width: 1.5,
+                          ),
                         ),
                         child: Icon(
                           isExpanded
@@ -811,16 +934,29 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xffF4F8FF),
+                      color: context.softBg,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: const Color(0xffC8DEFF)),
                     ),
                     child: Column(
                       children: [
-                        _detailRow(Icons.pool_rounded, 'Berlaku di', _poolLabel(p)),
-                        if (label.isNotEmpty) _detailRow(Icons.local_offer_rounded, 'Diskon', label),
+                        _detailRow(
+                          Icons.pool_rounded,
+                          'Berlaku di',
+                          _poolLabel(p),
+                        ),
+                        if (label.isNotEmpty)
+                          _detailRow(
+                            Icons.local_offer_rounded,
+                            'Diskon',
+                            label,
+                          ),
                         if (periode.isNotEmpty)
-                          _detailRow(Icons.event_available_rounded, 'Periode', periode),
+                          _detailRow(
+                            Icons.event_available_rounded,
+                            'Periode',
+                            periode,
+                          ),
                         _detailRow(
                           Icons.info_outline_rounded,
                           'Syarat',
@@ -850,13 +986,22 @@ class _PromoPageState extends State<PromoPage> with SingleTickerProviderStateMix
             width: 72,
             child: Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: context.mutedText,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 12.5, color: _ink, fontWeight: FontWeight.w700, height: 1.4),
+              style: TextStyle(
+                fontSize: 12.5,
+                color: context.textMain,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
             ),
           ),
         ],

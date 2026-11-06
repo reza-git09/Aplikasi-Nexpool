@@ -34,7 +34,13 @@ class HomePage extends StatefulWidget {
   final VoidCallback? onSessionChanged;
   final VoidCallback? onOpenProfile;
 
-  final void Function(int poolIndex, String poolId, String poolName, String poolGambar)? onPoolChanged;
+  final void Function(
+    int poolIndex,
+    String poolId,
+    String poolName,
+    String poolGambar,
+  )?
+  onPoolChanged;
 
   // Tidak dipakai lagi untuk status login (sekarang dibaca dari SharedPreferences),
   // tetap dibiarkan supaya kode lain yang memanggil HomePage(userData: ...) tidak error.
@@ -65,9 +71,7 @@ Widget _buildThemeToggleButton() {
               height: 38,
               child: Icon(
                 isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                color: isDark
-                    ? const Color(0xFFFFD166)
-                    : Colors.white,
+                color: isDark ? const Color(0xFFFFD166) : Colors.white,
                 size: 19,
               ),
             ),
@@ -78,7 +82,8 @@ Widget _buildThemeToggleButton() {
   );
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   // ============================================================
   // KOLAM YANG DIPILIH
   // 0 = Semua, 1 = Tiara, 2 = Kebon Agung, 3 = Annasya, 4 = Dira Park, 5 = Jati Park
@@ -269,7 +274,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // Harga tiket diambil dari Laravel dan diperbarui otomatis.
     WidgetsBinding.instance.addObserver(this);
     _loadHargaTiket();
-    _hargaTimer = Timer.periodic(const Duration(seconds: 30), (_) => _loadHargaTiket());
+    _hargaTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _loadHargaTiket(),
+    );
   }
 
   @override
@@ -290,7 +298,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Diperbarui otomatis: saat Home dibuka, tiap 30 detik, dan setiap
   // aplikasi dibuka kembali dari background.
   // ============================================================
-  final Map<String, Map<String, int>> _hargaTiket = {}; // 'POOL-01' -> {weekday, weekend}
+  final Map<String, Map<String, int>> _hargaTiket =
+      {}; // 'POOL-01' -> {weekday, weekend}
   bool _hargaLoaded = false;
   Timer? _hargaTimer;
 
@@ -301,9 +310,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
       for (final item in data) {
         final String poolId = item['pool_id']?.toString() ?? '';
-        final String kategori = item['kategori']?.toString().toLowerCase() ?? '';
-        final String jenisHari = item['jenis_hari']?.toString().toLowerCase() ?? '';
-        final int harga = double.tryParse(item['harga']?.toString() ?? '')?.round() ?? 0;
+        final String kategori =
+            item['kategori']?.toString().toLowerCase() ?? '';
+        final String jenisHari =
+            item['jenis_hari']?.toString().toLowerCase() ?? '';
+        final int harga =
+            double.tryParse(item['harga']?.toString() ?? '')?.round() ?? 0;
 
         // Home menampilkan harga dewasa (sama seperti halaman Tiket).
         if (poolId.isEmpty || kategori != 'dewasa') continue;
@@ -377,7 +389,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   String _shortDate(String raw) {
     final d = DateTime.tryParse(raw);
     if (d == null) return raw;
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
     return '${d.day} ${m[d.month - 1]} ${d.year}';
   }
 
@@ -418,7 +443,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
         list.add({
           'title': item['nama']?.toString() ?? 'Promo',
-          'place': end.isEmpty ? poolName : '$poolName · s/d ${_shortDate(end)}',
+          'place': end.isEmpty
+              ? poolName
+              : '$poolName · s/d ${_shortDate(end)}',
           'discount': item['label_diskon']?.toString() ?? '',
           'color1': colors[0],
           'color2': colors[1],
@@ -446,7 +473,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       final raw = body is Map ? (body['data'] ?? []) : body;
       if (raw is! List) return;
 
-      final String origin = ApiService.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+      final String origin = ApiService.baseUrl.replaceFirst(
+        RegExp(r'/api/?$'),
+        '',
+      );
       final list = <Map<String, dynamic>>[];
       for (final item in raw) {
         if (item is! Map) continue;
@@ -456,7 +486,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           'name': item['nama_fasilitas']?.toString() ?? 'Fasilitas',
           'desc': item['deskripsi']?.toString() ?? '',
           'image': gambar.isEmpty ? '' : '$origin/storage/$gambar',
-          'jenis': (item['jenis'] ?? item['tipe'] ?? item['kategori'] ?? '').toString(),
+          'jenis': (item['jenis'] ?? item['tipe'] ?? item['kategori'] ?? '')
+              .toString(),
           'kedalaman': (item['kedalaman'] ?? '').toString(),
           'usia': (item['usia'] ?? '').toString(),
         });
@@ -505,9 +536,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
         // NAMA KOLAM DARI API
         final String namaKolam =
-            item['nama_kolam'] != null && item['nama_kolam'].toString().trim().isNotEmpty
-                ? item['nama_kolam'].toString().trim()
-                : local['name'].toString();
+            item['nama_kolam'] != null &&
+                item['nama_kolam'].toString().trim().isNotEmpty
+            ? item['nama_kolam'].toString().trim()
+            : local['name'].toString();
 
         // POOL ID
         final String poolId = item['pool_id']?.toString() ?? '';
@@ -706,7 +738,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         Expanded(
                           child: Text(
                             name,
-                            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: context.textMain),
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              color: context.textMain,
+                            ),
                             maxLines: 2,
                           ),
                         ),
@@ -719,7 +755,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               color: context.softBg,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.close_rounded, size: 20, color: context.textMain),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: context.textMain,
+                            ),
                           ),
                         ),
                       ],
@@ -740,20 +780,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             child: image.isEmpty
                                 ? _wahanaSheetPlaceholder(emoji)
                                 : image.startsWith('http')
-                                    ? Image.network(
-                                        image,
-                                        width: double.infinity,
-                                        height: 180,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
-                                      )
-                                    : Image.asset(
-                                        image,
-                                        width: double.infinity,
-                                        height: 180,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => _wahanaSheetPlaceholder(emoji),
-                                      ),
+                                ? Image.network(
+                                    image,
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _wahanaSheetPlaceholder(emoji),
+                                  )
+                                : Image.asset(
+                                    image,
+                                    width: double.infinity,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _wahanaSheetPlaceholder(emoji),
+                                  ),
                           ),
 
                           const SizedBox(height: 18),
@@ -761,7 +803,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           // Description
                           Text(
                             desc,
-                            style: TextStyle(fontSize: 13.5, height: 1.65, color: context.mutedText),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              height: 1.65,
+                              color: context.mutedText,
+                            ),
                           ),
 
                           if (detail1.isNotEmpty || detail2.isNotEmpty) ...[
@@ -770,7 +816,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               decoration: BoxDecoration(
                                 color: context.softBg,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Theme.of(sheetCtx).colorScheme.primary.withOpacity(0.35)),
+                                border: Border.all(
+                                  color: Theme.of(sheetCtx).colorScheme.primary
+                                      .withOpacity(0.35),
+                                ),
                               ),
                               padding: const EdgeInsets.all(14),
                               child: Column(
@@ -783,7 +832,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       color: Theme.of(sheetCtx).dividerColor,
                                     ),
                                   if (detail2.isNotEmpty)
-                                    _sheetDetailRow('👥', 'Pengunjung', detail2),
+                                    _sheetDetailRow(
+                                      '👥',
+                                      'Pengunjung',
+                                      detail2,
+                                    ),
                                 ],
                               ),
                             ),
@@ -796,14 +849,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: () => Navigator.pop(sheetCtx),
-                              icon: const Icon(Icons.check_circle_rounded, size: 18),
-                              label: const Text('Tutup', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                              icon: const Icon(
+                                Icons.check_circle_rounded,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Tutup',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF00B4D8),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
                             ),
                           ),
@@ -825,7 +891,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       width: double.infinity,
       height: 180,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xff90E0EF), Color(0xff00B4D8)]),
+        gradient: LinearGradient(
+          colors: [Color(0xff90E0EF), Color(0xff00B4D8)],
+        ),
       ),
       child: Center(child: Text(emoji, style: const TextStyle(fontSize: 54))),
     );
@@ -841,9 +909,19 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF7EB5CA))),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF7EB5CA)),
+              ),
               const SizedBox(height: 2),
-              Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.textMain)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.textMain,
+                ),
+              ),
             ],
           ),
         ),
@@ -856,44 +934,56 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final bool allPool = selectedPool == 0;
 
     final Map<String, dynamic>? selected =
-        allPool || selectedPool < 1 || selectedPool > pools.length ? null : pools[selectedPool - 1];
+        allPool || selectedPool < 1 || selectedPool > pools.length
+        ? null
+        : pools[selectedPool - 1];
 
     final Map<String, dynamic> detailPool = selected ?? pools[0];
 
-    return Scaffold(
-      backgroundColor: context.pageBg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHero(selected),
-              const SizedBox(height: 20),
-              _buildPoolSelector(),
-              if (!allPool) _buildSelectedPool(selected!),
-              const SizedBox(height: 22),
-              _buildTitle('Menu Cepat', Icons.apps_rounded, const Color(0xff123C73)),
-              const SizedBox(height: 12),
-              _buildQuickMenu(),
-              const SizedBox(height: 28),
-              _buildPromoSection(),
-              const SizedBox(height: 28),
-              if (allPool) _buildPopularPoolsSection(),
-              if (!allPool) ...[
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        backgroundColor: context.pageBg,
+        body: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHero(selected),
+                const SizedBox(height: 20),
+                _buildPoolSelector(),
+                if (!allPool) _buildSelectedPool(selected!),
+                const SizedBox(height: 22),
+                _buildTitle(
+                  'Menu Cepat',
+                  Icons.apps_rounded,
+                  const Color(0xff123C73),
+                ),
+                const SizedBox(height: 12),
+                _buildQuickMenu(),
                 const SizedBox(height: 28),
-                _buildPriceSection(detailPool),
+                _buildPromoSection(),
                 const SizedBox(height: 28),
-                _buildWahanaFasilitasSection(),
-                const SizedBox(height: 28),
-                _buildOperationalSection(detailPool),
-                const SizedBox(height: 28),
-                _buildLocationSection(detailPool),
-                const SizedBox(height: 28),
-                _buildRatingSection(detailPool),
+                if (allPool) _buildPopularPoolsSection(),
+                if (!allPool) ...[
+                  const SizedBox(height: 28),
+                  _buildPriceSection(detailPool),
+                  const SizedBox(height: 28),
+                  _buildWahanaFasilitasSection(),
+                  const SizedBox(height: 28),
+                  _buildOperationalSection(detailPool),
+                  const SizedBox(height: 28),
+                  _buildLocationSection(detailPool),
+                  const SizedBox(height: 28),
+                  _buildRatingSection(detailPool),
+                ],
+                const SizedBox(height: 100), // clearance for floating navbar
               ],
-              const SizedBox(height: 100), // clearance for floating navbar
-            ],
+            ),
           ),
         ),
       ),
@@ -958,7 +1048,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             valueListenable: ProfilePhotoService.photo,
             builder: (_, bytes, __) {
               const Widget icon = Center(
-                child: Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               );
               if (bytes == null) return icon;
               return Image.memory(
@@ -980,6 +1074,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // HERO
   // ============================================================
   Widget _buildHero(Map<String, dynamic>? pool) {
+    final double topInset = MediaQuery.paddingOf(context).top;
     final bool allPool = pool == null;
 
     final String image = allPool
@@ -1000,7 +1095,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     return SizedBox(
       width: double.infinity,
-      height: 285,
+      height: 285 + topInset,
       child: Stack(
         children: [
           // 1. Gambar latar
@@ -1024,7 +1119,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
           // 3. Header Atas: Logo, Teks, Tombol Profil, Notifikasi
           Positioned(
-            top: 16,
+            top: topInset + 16,
             left: 20,
             right: 20,
             child: Row(
@@ -1070,8 +1165,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const NotifikasiPage()),
+                      MaterialPageRoute(builder: (_) => const NotifikasiPage()),
                     );
                   },
                   child: Stack(
@@ -1130,7 +1224,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 11, vertical: 6),
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xffFFD166).withOpacity(0.18),
                     borderRadius: BorderRadius.circular(20),
@@ -1179,17 +1275,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // ============================================================
   Widget _buildImage(String image, {BoxFit fit = BoxFit.cover}) {
     if (image.startsWith('http://') || image.startsWith('https://')) {
-      return Image.network(image, fit: fit, errorBuilder: (_, __, ___) => _imageFallback());
+      return Image.network(
+        image,
+        fit: fit,
+        errorBuilder: (_, __, ___) => _imageFallback(),
+      );
     }
-    return Image.asset(image, fit: fit, errorBuilder: (_, __, ___) => _imageFallback());
+    return Image.asset(
+      image,
+      fit: fit,
+      errorBuilder: (_, __, ___) => _imageFallback(),
+    );
   }
 
   Widget _imageFallback() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xff0077A8), Color(0xff00B4D8)]),
+        gradient: LinearGradient(
+          colors: [Color(0xff0077A8), Color(0xff00B4D8)],
+        ),
       ),
-      child: const Center(child: Icon(Icons.pool, size: 70, color: Colors.white)),
+      child: const Center(
+        child: Icon(Icons.pool, size: 70, color: Colors.white),
+      ),
     );
   }
 
@@ -1204,7 +1312,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         const SizedBox(height: 5),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Text('Pilih destinasi untuk melihat informasi lengkap', style: TextStyle(color: Colors.grey, fontSize: 11)),
+          child: Text(
+            'Pilih destinasi untuk melihat informasi lengkap',
+            style: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
         ),
         const SizedBox(height: 13),
         SizedBox(
@@ -1240,52 +1351,58 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         widget.onPoolChanged?.call(0, '', '', '');
         _loadFasilitas();
       },
-      child: AnimatedScale(
-        scale: selected ? 1.03 : 1.0,
+      child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          width: 120,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xff123C73) : context.cardBg,
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(
-              color: selected ? const Color(0xFF378ADD) : Colors.transparent,
-              width: 2,
+        width: 120,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xff123C73) : context.cardBg,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: selected ? const Color(0xFF378ADD) : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 55,
+              height: 55,
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withOpacity(0.15)
+                    : const Color(0xffE8F7FB),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.waves,
+                color: selected ? Colors.white : const Color(0xff00A4C6),
+                size: 28,
+              ),
             ),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 55,
-                height: 55,
-                decoration: BoxDecoration(
-                  color: selected ? Colors.white.withOpacity(0.15) : const Color(0xffE8F7FB),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.waves, color: selected ? Colors.white : const Color(0xff00A4C6), size: 28),
+            const SizedBox(height: 8),
+            Text(
+              'Semua Kolam',
+              style: TextStyle(
+                color: selected ? Colors.white : context.textMain,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Semua Kolam',
-                style: TextStyle(
-                  color: selected ? Colors.white : context.textMain,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${pools.length} Wisata',
+              style: TextStyle(
+                color: selected ? Colors.white70 : Colors.grey,
+                fontSize: 9,
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${pools.length} Wisata',
-                style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 9),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1308,64 +1425,77 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         });
 
         final pId = pool['pool_id']?.toString() ?? 'pool_id_0$index';
-        final pName = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
+        final pName =
+            pool['fullName']?.toString() ??
+            pool['name']?.toString() ??
+            'Kolam Renang';
         final pGambar = pool['image']?.toString() ?? '';
         TiketPage.globalSelectedPoolId = pId;
         TiketPage.globalSelectedPoolName = pName;
         widget.onPoolChanged?.call(index, pId, pName, pGambar);
         _loadFasilitas(pId);
       },
-      child: AnimatedScale(
-        scale: selected ? 1.03 : 1.0,
+      child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          width: 120,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xff123C73) : context.cardBg,
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(
-              color: selected ? const Color(0xFF378ADD) : Colors.transparent,
-              width: 2,
-            ),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9)],
+        width: 120,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xff123C73) : context.cardBg,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: selected ? const Color(0xFF378ADD) : Colors.transparent,
+            width: 2,
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(width: 104, height: 62, child: _buildImage(image, fit: BoxFit.cover)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 9),
+          ],
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 104,
+                height: 62,
+                child: _buildImage(image, fit: BoxFit.cover),
               ),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: selected ? Colors.white : context.textMain,
-                  ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : context.textMain,
                 ),
               ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('★', style: TextStyle(color: Color(0xffFFD166), fontSize: 9)),
-                  const SizedBox(width: 2),
-                  Text(rating, style: TextStyle(color: selected ? Colors.white70 : Colors.grey, fontSize: 8)),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  '★',
+                  style: TextStyle(color: Color(0xffFFD166), fontSize: 9),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  rating,
+                  style: TextStyle(
+                    color: selected ? Colors.white70 : Colors.grey,
+                    fontSize: 8,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -1383,7 +1513,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       margin: const EdgeInsets.fromLTRB(20, 15, 20, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xff0077A8), Color(0xff00B4D8)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xff0077A8), Color(0xff00B4D8)],
+        ),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -1395,7 +1527,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               color: Colors.white.withOpacity(0.18),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 23))),
+            child: Center(
+              child: Text(icon, style: const TextStyle(fontSize: 23)),
+            ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -1406,14 +1540,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   fullName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   sub,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 9.5),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.78),
+                    fontSize: 9.5,
+                  ),
                 ),
               ],
             ),
@@ -1428,7 +1569,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               widget.onPoolChanged?.call(0, '', '', '');
               _loadFasilitas();
             },
-            child: const Text('← Semua', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+            child: const Text(
+              '← Semua',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
@@ -1444,80 +1592,128 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       child: Row(
         children: [
           Expanded(
-            child: _quickMenu(Icons.add_shopping_cart_rounded, 'Beli Tiket', const Color(0xFF00B4D8), () {
-              if (selectedPool == 0 || selectedPool > pools.length) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Silakan pilih wisata kolam renang terlebih dahulu.'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                return;
-              }
+            child: _quickMenu(
+              Icons.add_shopping_cart_rounded,
+              'Beli Tiket',
+              const Color(0xFF00B4D8),
+              () {
+                if (selectedPool == 0 || selectedPool > pools.length) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Silakan pilih wisata kolam renang terlebih dahulu.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
 
-              final p = pools[selectedPool - 1];
-              final pId = p['pool_id']?.toString() ?? '';
-              final pName = p['fullName']?.toString() ?? p['name']?.toString() ?? '';
-              if (pId.isEmpty || pName.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Data wisata kolam renang belum tersedia. Silakan pilih kolam lain.'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                return;
-              }
+                final p = pools[selectedPool - 1];
+                final pId = p['pool_id']?.toString() ?? '';
+                final pName =
+                    p['fullName']?.toString() ?? p['name']?.toString() ?? '';
+                if (pId.isEmpty || pName.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Data wisata kolam renang belum tersedia. Silakan pilih kolam lain.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
 
-              Navigator.push(context, MaterialPageRoute(builder: (_) => TiketPage(poolId: pId, poolName: pName, initialTab: 0)));
-            }),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _quickMenu(Icons.confirmation_number_rounded, 'Tiket Saya', const Color(0xFFFFB703), () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const TiketPage(initialTab: 1)));
-            }),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _quickMenu(Icons.local_offer_rounded, 'Promo', const Color(0xFFEF476F),
-                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage()))),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _quickMenu(Icons.star_rounded, 'Ulasan', const Color(0xFF7B61FF), () {
-              if (selectedPool == 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Silakan pilih kolam renang terlebih dahulu.'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TiketPage(poolId: pId, poolName: pName, initialTab: 0),
                   ),
                 );
-                return;
-              }
-              final Map<String, dynamic> pool = pools[selectedPool - 1];
-              final String namaKolam = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
-              final String gambarKolam = pool['image']?.toString() ?? '';
-              Navigator.push(
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _quickMenu(
+              Icons.confirmation_number_rounded,
+              'Tiket Saya',
+              const Color(0xFFFFB703),
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TiketPage(initialTab: 1),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _quickMenu(
+              Icons.local_offer_rounded,
+              'Promo',
+              const Color(0xFFEF476F),
+              () => Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ReviewPage(
-                    poolId: pool['pool_id']?.toString() ?? '',
-                    namaKolam: namaKolam,
-                    gambarKolam: gambarKolam,
+                MaterialPageRoute(builder: (_) => const PromoPage()),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _quickMenu(
+              Icons.star_rounded,
+              'Ulasan',
+              const Color(0xFF7B61FF),
+              () {
+                if (selectedPool == 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Silakan pilih kolam renang terlebih dahulu.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
+                final Map<String, dynamic> pool = pools[selectedPool - 1];
+                final String namaKolam =
+                    pool['fullName']?.toString() ??
+                    pool['name']?.toString() ??
+                    'Kolam Renang';
+                final String gambarKolam = pool['image']?.toString() ?? '';
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ReviewPage(
+                      poolId: pool['pool_id']?.toString() ?? '',
+                      namaKolam: namaKolam,
+                      gambarKolam: gambarKolam,
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _quickMenu(IconData icon, String title, Color color, VoidCallback onTap) {
+  Widget _quickMenu(
+    IconData icon,
+    String title,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1525,7 +1721,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         decoration: BoxDecoration(
           color: context.cardBg,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1540,7 +1738,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(height: 5),
-            Text(title, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -1562,7 +1766,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           Icons.local_offer_rounded,
           const Color(0xffD4960A),
           action: 'Lihat Semua',
-          onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage())),
+          onAction: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PromoPage()),
+          ),
         ),
         const SizedBox(height: 12),
         if (promos.isEmpty)
@@ -1573,7 +1780,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             decoration: BoxDecoration(
               color: context.cardBg,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9),
+              ],
             ),
             child: const Row(
               children: [
@@ -1589,70 +1798,94 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
           )
         else
-        SizedBox(
-          height: 125,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: promos.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final promo = promos[index];
-              final String title = promo['title']?.toString() ?? 'Promo';
-              final String place = promo['place']?.toString() ?? '';
-              final String discount = promo['discount']?.toString() ?? '';
-              final Color color1 = promo['color1'] is Color ? promo['color1'] as Color : const Color(0xff0077A8);
-              final Color color2 = promo['color2'] is Color ? promo['color2'] as Color : const Color(0xff00B4D8);
+          SizedBox(
+            height: 125,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: promos.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final promo = promos[index];
+                final String title = promo['title']?.toString() ?? 'Promo';
+                final String place = promo['place']?.toString() ?? '';
+                final String discount = promo['discount']?.toString() ?? '';
+                final Color color1 = promo['color1'] is Color
+                    ? promo['color1'] as Color
+                    : const Color(0xff0077A8);
+                final Color color2 = promo['color2'] is Color
+                    ? promo['color2'] as Color
+                    : const Color(0xff00B4D8);
 
-              return GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PromoPage())),
-                child: Container(
-                  width: 250,
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [color1, color2]),
-                    borderRadius: BorderRadius.circular(18),
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PromoPage()),
                   ),
-                  child: Stack(
-                    children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            place,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 9),
-                          ),
-                        ],
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                          decoration: BoxDecoration(color: const Color(0xffFFD166), borderRadius: BorderRadius.circular(20)),
-                          child: Text(
-                            discount,
-                            style: const TextStyle(color: Color(0xff5A3A00), fontSize: 9, fontWeight: FontWeight.w900),
+                  child: Container(
+                    width: 250,
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [color1, color2]),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Stack(
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              place,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.78),
+                                fontSize: 9,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xffFFD166),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              discount,
+                              style: const TextStyle(
+                                color: Color(0xff5A3A00),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1663,8 +1896,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget _buildPopularPoolsSection() {
     final popularPools = pools.toList()
       ..sort(
-        (a, b) => ((b['dummyTicketsSold'] as num?) ?? 0)
-            .compareTo((a['dummyTicketsSold'] as num?) ?? 0),
+        (a, b) => ((b['dummyTicketsSold'] as num?) ?? 0).compareTo(
+          (a['dummyTicketsSold'] as num?) ?? 0,
+        ),
       );
 
     return Column(
@@ -1698,8 +1932,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               final image = pool['image']?.toString() ?? '';
               final rating = pool['rating']?.toString() ?? '-';
               final String? price = _hargaMulaiDari(pool);
-              final ticketsSold =
-                  ((pool['dummyTicketsSold'] as num?) ?? 0).toInt();
+              final ticketsSold = ((pool['dummyTicketsSold'] as num?) ?? 0)
+                  .toInt();
 
               return GestureDetector(
                 onTap: () {
@@ -1708,8 +1942,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
                   final poolId =
                       pool['pool_id']?.toString() ?? 'pool_id_0$poolIndex';
-                  final fullName =
-                      pool['fullName']?.toString() ?? name;
+                  final fullName = pool['fullName']?.toString() ?? name;
                   final poolImage = pool['image']?.toString() ?? '';
                   TiketPage.globalSelectedPoolId = poolId;
                   TiketPage.globalSelectedPoolName = fullName;
@@ -1812,7 +2045,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              price == null ? 'Harga belum tersedia' : 'Mulai dari $price',
+                              price == null
+                                  ? 'Harga belum tersedia'
+                                  : 'Mulai dari $price',
                               style: const TextStyle(
                                 color: Color(0xff0077A8),
                                 fontSize: 10,
@@ -1854,7 +2089,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             if (poolId.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Data wisata kolam renang belum tersedia untuk pemesanan tiket.'),
+                  content: Text(
+                    'Data wisata kolam renang belum tersedia untuk pemesanan tiket.',
+                  ),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -1873,7 +2110,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xff0077A8), Color(0xff023E58)]),
+            gradient: const LinearGradient(
+              colors: [Color(0xff0077A8), Color(0xff023E58)],
+            ),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
@@ -1884,7 +2123,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 10, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.75),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1893,11 +2136,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   Expanded(
                     child: Column(
                       children: [
-                        Text('Weekday', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10)),
+                        Text(
+                          'Weekday',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(weekday, style: const TextStyle(color: Color(0xffFFD166), fontSize: 19, fontWeight: FontWeight.w900)),
+                        Text(
+                          weekday,
+                          style: const TextStyle(
+                            color: Color(0xffFFD166),
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        const Text('Senin – Jumat', style: TextStyle(color: Colors.white70, fontSize: 8)),
+                        const Text(
+                          'Senin – Jumat',
+                          style: TextStyle(color: Colors.white70, fontSize: 8),
+                        ),
                       ],
                     ),
                   ),
@@ -1905,11 +2164,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   Expanded(
                     child: Column(
                       children: [
-                        Text('Weekend', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10)),
+                        Text(
+                          'Weekend',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(weekend, style: const TextStyle(color: Color(0xffFFD166), fontSize: 19, fontWeight: FontWeight.w900)),
+                        Text(
+                          weekend,
+                          style: const TextStyle(
+                            color: Color(0xffFFD166),
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        const Text('Sabtu – Minggu', style: TextStyle(color: Colors.white70, fontSize: 8)),
+                        const Text(
+                          'Sabtu – Minggu',
+                          style: TextStyle(color: Colors.white70, fontSize: 8),
+                        ),
                       ],
                     ),
                   ),
@@ -2017,7 +2292,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         decoration: BoxDecoration(
           color: context.cardBg,
           borderRadius: BorderRadius.circular(17),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -2039,7 +2320,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   bottom: 6,
                   right: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xff00B4D8).withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
@@ -2049,7 +2333,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       children: [
                         Icon(Icons.info_rounded, color: Colors.white, size: 10),
                         SizedBox(width: 3),
-                        Text('Detail', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
+                        Text(
+                          'Detail',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -2061,15 +2352,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: context.textMain)),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: context.textMain,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Text(desc,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
+                  Text(
+                    desc,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 8.5),
+                  ),
                 ],
               ),
             ),
@@ -2088,22 +2387,38 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final String usia = item['usia']?.toString() ?? '';
     final String jenis = item['jenis']?.toString().toLowerCase() ?? '';
     // Hanya KOLAM yang bisa diketuk (detail). Gazebo, mushola, dll tidak.
-    final bool isKolam = jenis.isNotEmpty ? jenis == 'kolam' : name.toLowerCase().contains('kolam');
-    final Color color = isKolam ? const Color(0xff00B4D8) : const Color(0xff06D6A0);
+    final bool isKolam = jenis.isNotEmpty
+        ? jenis == 'kolam'
+        : name.toLowerCase().contains('kolam');
+    final Color color = isKolam
+        ? const Color(0xff00B4D8)
+        : const Color(0xff06D6A0);
 
     Widget placeholder() => Container(
-          width: double.infinity,
-          height: 96,
-          color: color.withOpacity(0.12),
-          child: Center(child: Icon(isKolam ? Icons.pool_rounded : Icons.deck_rounded, color: color, size: 44)),
-        );
+      width: double.infinity,
+      height: 96,
+      color: color.withOpacity(0.12),
+      child: Center(
+        child: Icon(
+          isKolam ? Icons.pool_rounded : Icons.deck_rounded,
+          color: color,
+          size: 44,
+        ),
+      ),
+    );
 
     final Widget card = Container(
       width: 155,
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(17),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -2125,14 +2440,21 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 bottom: 6,
                 right: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     isKolam ? 'Detail' : 'Fasilitas',
-                    style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -2143,15 +2465,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: context.textMain)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: context.textMain,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(desc,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey, fontSize: 8.5)),
+                Text(
+                  desc,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.grey, fontSize: 8.5),
+                ),
               ],
             ),
           ),
@@ -2178,7 +2508,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Container(
       width: double.infinity,
       height: 96,
-      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xff90E0EF), Color(0xff00B4D8)])),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xff90E0EF), Color(0xff00B4D8)],
+        ),
+      ),
       child: Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
     );
   }
@@ -2189,7 +2523,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Membaca teks jam seperti '07.00 – 17.00 WIB' menjadi [menitBuka, menitTutup]
   // (menit sejak tengah malam). Mengembalikan null kalau formatnya tidak terbaca.
   List<int>? _parseJamOperasional(String text) {
-    final m = RegExp(r'(\d{1,2})[.:](\d{2})\s*[–—-]\s*(\d{1,2})[.:](\d{2})').firstMatch(text);
+    final m = RegExp(r'(\d{1,2})[.:](\d{2})\s*[–—-]\s*(\d{1,2})[.:](\d{2})')
+        .firstMatch(text);
     if (m == null) return null;
     final int buka = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
     final int tutup = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);
@@ -2210,9 +2545,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final List<int>? range = _parseJamOperasional(hours);
     final DateTime wib = DateTime.now().toUtc().add(const Duration(hours: 7));
     final int sekarang = wib.hour * 60 + wib.minute;
-    final bool sedangBuka = range == null || (sekarang >= range[0] && sekarang < range[1]);
+    final bool sedangBuka =
+        range == null || (sekarang >= range[0] && sekarang < range[1]);
 
-    final Color warna = sedangBuka ? const Color(0xff06A87E) : const Color(0xffEF476F);
+    final Color warna = sedangBuka
+        ? const Color(0xff06A87E)
+        : const Color(0xffEF476F);
     final String statusTeks = sedangBuka ? 'Sedang Buka' : 'Sedang Tutup';
 
     String catatan = 'Buka setiap hari';
@@ -2225,7 +2563,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Jam Operasional', Icons.schedule_rounded, const Color(0xff0097A7)),
+        _buildTitle(
+          'Jam Operasional',
+          Icons.schedule_rounded,
+          const Color(0xff0097A7),
+        ),
         const SizedBox(height: 12),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -2233,26 +2575,53 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9),
+            ],
           ),
           child: Row(
             children: [
               Container(
                 width: 46,
                 height: 46,
-                decoration: BoxDecoration(color: warna.withOpacity(0.12), borderRadius: BorderRadius.circular(13)),
-                child: Icon(sedangBuka ? Icons.check_circle_rounded : Icons.cancel_rounded, color: warna, size: 25),
+                decoration: BoxDecoration(
+                  color: warna.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  sedangBuka
+                      ? Icons.check_circle_rounded
+                      : Icons.cancel_rounded,
+                  color: warna,
+                  size: 25,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(statusTeks, style: TextStyle(color: warna, fontSize: 10, fontWeight: FontWeight.w800)),
+                    Text(
+                      statusTeks,
+                      style: TextStyle(
+                        color: warna,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(hours, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    Text(
+                      hours,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(catatan, style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                    Text(
+                      catatan,
+                      style: const TextStyle(color: Colors.grey, fontSize: 9),
+                    ),
                   ],
                 ),
               ),
@@ -2283,7 +2652,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle('Lokasi & Peta', Icons.location_on_rounded, const Color(0xffEF476F)),
+        _buildTitle(
+          'Lokasi & Peta',
+          Icons.location_on_rounded,
+          const Color(0xffEF476F),
+        ),
         const SizedBox(height: 12),
         PoolMapPreview(
           latitude: lat,
@@ -2312,7 +2685,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     bar5 = bar5.clamp(0.0, 1.0);
 
-    final String namaKolam = pool['fullName']?.toString() ?? pool['name']?.toString() ?? 'Kolam Renang';
+    final String namaKolam =
+        pool['fullName']?.toString() ??
+        pool['name']?.toString() ??
+        'Kolam Renang';
     final String gambarKolam = pool['image']?.toString() ?? '';
 
     return Column(
@@ -2324,24 +2700,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           const Color(0xffD4960A),
           action: 'Beri Review',
           onAction: () {
-            if (selectedPool == 0) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.'),
-                  behavior: SnackBarBehavior.floating,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-              return;
-            }
+            if (selectedPool == 0) return;
 
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ReviewPage(
-                poolId: pool['pool_id']?.toString() ?? '',
-                namaKolam: namaKolam,
-                gambarKolam: gambarKolam,
-              )),
+              MaterialPageRoute(
+                builder: (_) => ReviewPage(
+                  poolId: pool['pool_id']?.toString() ?? '',
+                  namaKolam: namaKolam,
+                  gambarKolam: gambarKolam,
+                ),
+              ),
             );
           },
         ),
@@ -2352,7 +2721,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9)],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9),
+            ],
           ),
           child: Row(
             children: [
@@ -2360,10 +2731,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 width: 90,
                 child: Column(
                   children: [
-                    Text(rating, style: const TextStyle(fontSize: 37, fontWeight: FontWeight.w900)),
-                    const Text('★★★★★', style: TextStyle(color: Color(0xffFFD166), fontSize: 14, letterSpacing: 1)),
+                    Text(
+                      rating,
+                      style: const TextStyle(
+                        fontSize: 37,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Text(
+                      '★★★★★',
+                      style: TextStyle(
+                        color: Color(0xffFFD166),
+                        fontSize: 14,
+                        letterSpacing: 1,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(ratingCount, style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                    Text(
+                      ratingCount,
+                      style: const TextStyle(color: Colors.grey, fontSize: 9),
+                    ),
                   ],
                 ),
               ),
@@ -2396,7 +2783,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       padding: const EdgeInsets.only(bottom: 7),
       child: Row(
         children: [
-          SizedBox(width: 10, child: Text(number, style: const TextStyle(color: Colors.grey, fontSize: 9))),
+          SizedBox(
+            width: 10,
+            child: Text(
+              number,
+              style: const TextStyle(color: Colors.grey, fontSize: 9),
+            ),
+          ),
           const SizedBox(width: 5),
           Expanded(
             child: ClipRRect(
@@ -2405,14 +2798,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 value: safeValue,
                 minHeight: 6,
                 backgroundColor: const Color(0xffEEEEEE),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xffFFD166)),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xffFFD166),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 6),
           SizedBox(
             width: 28,
-            child: Text('${(safeValue * 100).round()}%', textAlign: TextAlign.right, style: const TextStyle(color: Colors.grey, fontSize: 8)),
+            child: Text(
+              '${(safeValue * 100).round()}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.grey, fontSize: 8),
+            ),
           ),
         ],
       ),
@@ -2422,7 +2821,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // ============================================================
   // TITLE
   // ============================================================
-  Widget _buildTitle(String title, IconData icon, Color color, {String? action, VoidCallback? onAction}) {
+  Widget _buildTitle(
+    String title,
+    IconData icon,
+    Color color, {
+    String? action,
+    VoidCallback? onAction,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -2430,16 +2835,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 5),
           Expanded(
-            child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: context.textMain)),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: context.textMain,
+              ),
+            ),
           ),
           if (action != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(action, style: const TextStyle(color: Color(0xff00A4C6), fontSize: 10, fontWeight: FontWeight.w800)),
+              child: Text(
+                action,
+                style: const TextStyle(
+                  color: Color(0xff00A4C6),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
         ],
       ),
     );
   }
-
 }

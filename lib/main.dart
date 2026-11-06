@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +17,11 @@ import 'theme/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   await ThemeService.load(); // baca tema terang/gelap yang tersimpan di HP
   // Dimatikan supaya login tetap tersimpan setelah app dibuka ulang.
   // Kalau mau reset login tiap app jalan (untuk tes), aktifkan lagi:
@@ -71,6 +79,8 @@ class _MainShellState extends State<MainShell> {
   bool _loggedIn = false;
   Map<String, dynamic>? _user;
   int _sessionTick = 0; // naik tiap status login berubah -> Home ikut update
+  OverlayEntry? _poolSelectionWarning;
+  Timer? _poolSelectionWarningTimer;
 
   @override
   void initState() {
@@ -131,6 +141,12 @@ class _MainShellState extends State<MainShell> {
     String poolName,
     String poolGambar,
   ) {
+    ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+    _poolSelectionWarningTimer?.cancel();
+    _poolSelectionWarning?.remove();
+    _poolSelectionWarning = null;
+    _poolSelectionWarningTimer = null;
+
     setState(() {
       _homeSelectedPool = poolIndex;
       _poolId = poolId;
@@ -139,33 +155,107 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
+  void _showPoolSelectionWarning(String message) {
+    _poolSelectionWarningTimer?.cancel();
+    _poolSelectionWarning?.remove();
+
+    final overlay = Overlay.of(context);
+    _poolSelectionWarning = OverlayEntry(
+      builder: (overlayContext) {
+        final theme = Theme.of(overlayContext);
+        final accent = theme.colorScheme.primary;
+
+        return Positioned(
+          top: 0,
+          left: 16,
+          right: 16,
+          child: SafeArea(
+            bottom: false,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              builder: (context, progress, child) => Opacity(
+                opacity: progress,
+                child: Transform.translate(
+                  offset: Offset(0, -12 * (1 - progress)),
+                  child: child,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 13,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: accent.withOpacity(0.35)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: accent, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          message,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 13,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(_poolSelectionWarning!);
+    _poolSelectionWarningTimer = Timer(const Duration(seconds: 3), () {
+      _poolSelectionWarning?.remove();
+      _poolSelectionWarning = null;
+      _poolSelectionWarningTimer = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _poolSelectionWarningTimer?.cancel();
+    _poolSelectionWarning?.remove();
+    super.dispose();
+  }
+
   Future<void> _onTabTapped(int index) async {
     if (index == _currentIndex) return;
 
     // Booking requires an explicitly selected pool from the home page.
     if (index == 1 && _homeSelectedPool == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Silakan pilih wisata kolam renang terlebih dahulu sebelum memesan tiket.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
+      _showPoolSelectionWarning(
+        'Silakan pilih wisata kolam renang terlebih dahulu sebelum memesan tiket.',
       );
       return;
     }
 
     // Guard: Ulasan needs a pool selected
     if (index == _tabUlasan && _homeSelectedPool == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
+      _showPoolSelectionWarning(
+        'Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.',
       );
       return;
     }

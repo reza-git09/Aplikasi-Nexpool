@@ -104,20 +104,7 @@ class _ReviewPageState extends State<ReviewPage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!hasSelectedPool && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Silakan pilih kolam renang terlebih dahulu untuk memberikan ulasan.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-      } else {
+      if (hasSelectedPool && mounted) {
         await _loadReviewAccount();
         if (mounted) loadReviews();
       }
@@ -714,23 +701,25 @@ class _ReviewPageState extends State<ReviewPage> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F7FA),
+                      color: context.softBg,
                       borderRadius: BorderRadius.circular(25),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lock_outline,
                       size: 40,
-                      color: Color(0xFF0077A8),
+                      color: context.isDark
+                          ? const Color(0xFF80D9E8)
+                          : const Color(0xFF0077A8),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'Pilih Kolam Renang Terlebih Dahulu',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF172B3A),
+                      color: context.textMain,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -739,7 +728,7 @@ class _ReviewPageState extends State<ReviewPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade600,
+                      color: context.mutedText,
                       height: 1.5,
                     ),
                   ),
@@ -992,7 +981,7 @@ class _ReviewPageState extends State<ReviewPage> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -1005,12 +994,12 @@ class _ReviewPageState extends State<ReviewPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Bagaimana pengalaman Anda?',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF172B3A),
+              color: context.textMain,
             ),
           ),
 
@@ -1078,19 +1067,19 @@ class _ReviewPageState extends State<ReviewPage> {
 
           const SizedBox(height: 18),
 
-          Divider(color: Colors.grey.shade200),
+          Divider(color: context.softBg),
 
           const SizedBox(height: 12),
 
           // ===================================================
           // KOMENTAR
           // ===================================================
-          const Text(
+          Text(
             'Komentar Anda',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF172B3A),
+              color: context.textMain,
             ),
           ),
 
@@ -1099,12 +1088,12 @@ class _ReviewPageState extends State<ReviewPage> {
           TextField(
             controller: commentController,
             maxLines: 4,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF172B3A)),
+            style: TextStyle(fontSize: 13, color: context.textMain),
             decoration: InputDecoration(
               hintText: 'Ceritakan pengalaman Anda di ${widget.namaKolam}...',
               hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: context.softBg,
               contentPadding: const EdgeInsets.all(13),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1126,12 +1115,12 @@ class _ReviewPageState extends State<ReviewPage> {
           // ===================================================
           // FOTO
           // ===================================================
-          const Text(
+          Text(
             'Foto',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF172B3A),
+              color: context.textMain,
             ),
           ),
 
@@ -1231,7 +1220,7 @@ class _ReviewPageState extends State<ReviewPage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 13),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FCFD),
+                color: context.softBg,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFD0E8F5)),
               ),
@@ -1521,7 +1510,7 @@ class _ReviewPageState extends State<ReviewPage> {
                       width: double.infinity,
                       height: 180,
                       alignment: Alignment.center,
-                      color: const Color(0xFFF1F5F9),
+                      color: context.softBg,
                       child: const CircularProgressIndicator(strokeWidth: 2),
                     );
                   },
@@ -1536,7 +1525,7 @@ class _ReviewPageState extends State<ReviewPage> {
                       width: double.infinity,
                       height: 180,
                       alignment: Alignment.center,
-                      color: const Color(0xFFF1F5F9),
+                      color: context.softBg,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1807,7 +1796,7 @@ class _ReviewPageState extends State<ReviewPage> {
                           return Container(
                             width: 75,
                             height: 75,
-                            color: const Color(0xFFF1F5F9),
+                            color: context.softBg,
                             child: const Icon(
                               Icons.broken_image_outlined,
                               color: Colors.grey,

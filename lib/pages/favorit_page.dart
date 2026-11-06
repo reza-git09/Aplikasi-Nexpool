@@ -158,7 +158,7 @@ class _FavoritPageState extends State<FavoritPage> {
             // TAB
             // ==============================
             Container(
-              color: Colors.white,
+              color: context.cardBg,
               child: Row(
                 children: [
                   Expanded(
@@ -510,7 +510,9 @@ class _FavoritPageState extends State<FavoritPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xffffeaf0),
+                    color: context.isDark
+                        ? context.softBg
+                        : const Color(0xffffeaf0),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -681,7 +683,9 @@ class _FavoritPageState extends State<FavoritPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xffffeaf0),
+                    color: context.isDark
+                        ? context.softBg
+                        : const Color(0xffffeaf0),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(

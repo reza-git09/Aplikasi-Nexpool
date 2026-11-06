@@ -160,14 +160,14 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(
-        color: Color(0xFF77849A),
+      labelStyle: TextStyle(
+        color: context.mutedText,
         fontSize: 14,
       ),
-      prefixIcon: Icon(icon, color: navy, size: 21),
+      prefixIcon: Icon(icon, color: context.mutedText, size: 21),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: const Color(0xFFF8FAFE),
+      fillColor: context.softBg,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 17,

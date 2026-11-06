@@ -39,24 +39,31 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
   static const double _pad = 6;
 
   bool _dragging = false;
-  double _dragPos = 0; // posisi lensa dalam satuan index (0..n-1, boleh pecahan)
+  double _dragPos =
+      0; // posisi lensa dalam satuan index (0..n-1, boleh pecahan)
 
   int get _n => widget.items.length;
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = context.isDark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
       child: LayoutBuilder(
         builder: (context, c) {
           final double itemW = (c.maxWidth - _pad * 2) / _n;
-          final double pos = _dragging ? _dragPos : widget.currentIndex.toDouble();
+          final double pos = _dragging
+              ? _dragPos
+              : widget.currentIndex.toDouble();
           final int activeIndex = pos.round().clamp(0, _n - 1);
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (d) {
-              final int i = ((d.localPosition.dx - _pad) / itemW).floor().clamp(0, _n - 1);
+              final int i = ((d.localPosition.dx - _pad) / itemW).floor().clamp(
+                0,
+                _n - 1,
+              );
               if (i != widget.currentIndex) {
                 HapticFeedback.selectionClick();
                 widget.onTap(i);
@@ -69,7 +76,10 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
               });
             },
             onHorizontalDragUpdate: (d) {
-              final double next = (_dragPos + d.delta.dx / itemW).clamp(0.0, (_n - 1).toDouble());
+              final double next = (_dragPos + d.delta.dx / itemW).clamp(
+                0.0,
+                (_n - 1).toDouble(),
+              );
               final int before = _dragPos.round();
               setState(() => _dragPos = next);
               if (next.round() != before) HapticFeedback.selectionClick();
@@ -88,19 +98,22 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                   Positioned.fill(
                     child: _Glass(
                       radius: 40,
-                      blur: 6,
-                      tintTop: 0.18,
-                      tintBottom: 0.12,
-                      borderOpacity: 0.55,
+                      blur: isDark ? 22 : 30,
+                      tintTop: isDark ? 0.72 : 0.48,
+                      tintBottom: isDark ? 0.48 : 0.22,
+                      borderOpacity: isDark ? 0.42 : 0.9,
                       baseColor: context.cardBg,
-                      borderColor: context.softBg,
+                      borderColor: isDark ? context.softBg : Colors.white,
                       shadow: true,
+                      accent: isDark ? null : const Color(0xFFB9EAF4),
                     ),
                   ),
 
                   // ===== LENSA KACA YANG BISA DI-SLIDE =====
                   AnimatedPositioned(
-                    duration: _dragging ? Duration.zero : const Duration(milliseconds: 380),
+                    duration: _dragging
+                        ? Duration.zero
+                        : const Duration(milliseconds: 380),
                     curve: Curves.easeOutBack,
                     left: _pad + pos * itemW,
                     top: _pad,
@@ -112,14 +125,20 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                       curve: Curves.easeOutCubic,
                       child: _Glass(
                         radius: 34,
-                        blur: 3,
-                        tintTop: _dragging ? 0.32 : 0.24,
-                        tintBottom: _dragging ? 0.22 : 0.16,
-                        borderOpacity: 0.75,
+                        blur: isDark ? 12 : 16,
+                        tintTop: isDark
+                            ? (_dragging ? 0.84 : 0.76)
+                            : (_dragging ? 0.68 : 0.58),
+                        tintBottom: isDark
+                            ? (_dragging ? 0.66 : 0.56)
+                            : (_dragging ? 0.42 : 0.32),
+                        borderOpacity: isDark ? 0.62 : 0.95,
                         baseColor: context.cardBg,
-                        borderColor: context.softBg,
+                        borderColor: isDark ? context.softBg : Colors.white,
                         shadow: _dragging,
-                        accent: Theme.of(context).colorScheme.primary,
+                        accent: isDark
+                            ? Theme.of(context).colorScheme.primary
+                            : const Color(0xFF62C6DF),
                       ),
                     ),
                   ),
@@ -152,7 +171,9 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                                   duration: const Duration(milliseconds: 200),
                                   style: TextStyle(
                                     fontSize: 10.5,
-                                    fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                                    fontWeight: active
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
                                     color: active
                                         ? Theme.of(context).colorScheme.primary
                                         : context.mutedText,
@@ -228,10 +249,8 @@ class _Glass extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color.lerp(baseColor, borderColor, tintTop)!,
-                  accent == null
-                      ? Color.lerp(baseColor, borderColor, tintBottom)!
-                      : Color.lerp(baseColor, accent!, tintBottom)!,
+                  baseColor.withOpacity(tintTop),
+                  (accent ?? borderColor).withOpacity(tintBottom),
                 ],
               ),
               border: Border.all(
@@ -243,7 +262,7 @@ class _Glass extends StatelessWidget {
                 width: 1.3,
               ),
             ),
-            // Pantulan mengikuti warna tema agar tidak muncul semburat putih di mode gelap.
+            // Reflect theme light across the glass surface without washing it out.
             child: Align(
               alignment: Alignment.topCenter,
               child: FractionallySizedBox(
@@ -251,18 +270,24 @@ class _Glass extends StatelessWidget {
                 widthFactor: 0.85,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(radius),
+                    ),
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.08),
-                        Theme.of(context)
-                            .colorScheme
-                            .primary
+                        (Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.white)
+                            .withOpacity(
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 0.20
+                                  : 0.38,
+                            ),
+                        (Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.white)
                             .withOpacity(0),
                       ],
                     ),

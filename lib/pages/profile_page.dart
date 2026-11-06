@@ -161,7 +161,10 @@ class _ProfilePageState extends State<ProfilePage>
               : 'Pengguna NexPool',
         ),
         transitionsBuilder: (_, anim, __, child) {
-          final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+          final curved = CurvedAnimation(
+            parent: anim,
+            curve: Curves.easeOutCubic,
+          );
           return FadeTransition(
             opacity: curved,
             child: ScaleTransition(
@@ -672,10 +675,10 @@ class _ProfilePageState extends State<ProfilePage>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: navy,
+                    color: context.textMain,
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -770,10 +773,10 @@ class _ProfilePageState extends State<ProfilePage>
                       )
                     : Text(
                         controller.text.isNotEmpty ? controller.text : '-',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: navy,
+                          color: context.textMain,
                         ),
                       ),
               ],
@@ -821,7 +824,7 @@ class _ProfilePageState extends State<ProfilePage>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: isLocked ? const Color(0xFF4A5568) : navy,
+                    color: context.textMain,
                   ),
                 ),
               ],
@@ -850,7 +853,7 @@ class _ProfilePageState extends State<ProfilePage>
                 end: Alignment.bottomRight,
               )
             : null,
-        color: active ? null : background,
+        color: active ? null : (context.isDark ? context.softBg : background),
         borderRadius: BorderRadius.circular(12),
         boxShadow: active
             ? [BoxShadow(color: blue.withOpacity(0.3), blurRadius: 8)]
@@ -1149,25 +1152,28 @@ class _PhotoViewerPage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 6, 16, 0),
                 child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Text(
-                      nama,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Text(
+                        nama,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -224,7 +224,7 @@ class _EventPageState extends State<EventPage> {
 
   Widget _buildFilterChips() {
     return Container(
-      color: Colors.white,
+      color: context.cardBg,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: SizedBox(
         height: 34,
@@ -573,8 +573,8 @@ class _EventPageState extends State<EventPage> {
       builder: (context) {
         return Container(
           height: MediaQuery.of(context).size.height * .7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: context.cardBg,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(

@@ -190,15 +190,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
       onSubmitted: (_) => onSubmit?.call(),
       autocorrect: false,
       enableSuggestions: !obscure,
-      style: const TextStyle(
-        color: navy,
+      style: TextStyle(
+        color: context.textMain,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF8490A3), fontSize: 13),
-        prefixIcon: Icon(icon, color: navy, size: 21),
+        hintStyle: TextStyle(color: context.mutedText, fontSize: 13),
+        prefixIcon: Icon(icon, color: context.mutedText, size: 21),
         suffixIcon: onToggleObscure != null
             ? IconButton(
                 onPressed: onToggleObscure,
@@ -212,7 +212,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               )
             : null,
         filled: true,
-        fillColor: const Color(0xFFF8FAFE),
+        fillColor: context.softBg,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 17,
@@ -360,11 +360,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF0F5FF),
+            color: context.softBg,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFD6E4FF)),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.info_outline_rounded, color: blue, size: 20),
@@ -373,7 +373,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                 child: Text(
                   'Pastikan username atau email sesuai yang terdaftar di NEXPOOL.',
                   style: TextStyle(
-                    color: Color(0xFF4A6FA5),
+                    color: context.mutedText,
                     fontSize: 12,
                     height: 1.5,
                   ),

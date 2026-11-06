@@ -521,7 +521,6 @@ class _TiketPageState extends State<TiketPage>
 
     setState(() {
       currentStep = step;
-      if (step == 4) paySubStep = 'select';
 
       // Pembayaran yang kedaluwarsa direset kalau user meninggalkan langkah Bayar
       if (step != 4 && statusPembayaran == 'expired') {
@@ -529,6 +528,7 @@ class _TiketPageState extends State<TiketPage>
         paymentExpired = false;
       }
     });
+    if (step == 4) _startPayTimer();
   }
 
   String _generateOrderId() {
@@ -543,21 +543,6 @@ class _TiketPageState extends State<TiketPage>
   //   final ms = now.millisecondsSinceEpoch.toString();
   //   return '${selectedPoolId}_${ms.substring(ms.length - 8)}';
   // }
-
-  void proceedToPaymentProcess() {
-    if (selectedPoolId.isEmpty) {
-      showMessage('Silakan pilih wisata kolam renang terlebih dahulu.');
-      return;
-    }
-    if (adultPrice <= 0) {
-      showMessage(
-        'Harga tiket untuk ${isWeekend ? 'Weekend' : 'Weekday'} belum tersedia.',
-      );
-      return;
-    }
-    setState(() => paySubStep = 'process');
-    _startPayTimer(); // QR / VA berlaku 5 menit
-  }
 
   Future<void> simulatePaymentSuccess() async {
     if (selectedPoolId.isEmpty) {
@@ -717,19 +702,7 @@ class _TiketPageState extends State<TiketPage>
   // }
 
   String _paymentLabel() {
-    if (payMethod == 'qris') {
-      final wallet = kEWallets.firstWhere(
-        (w) => w['id'] == selectedWallet,
-        orElse: () => kEWallets.first,
-      );
-      return 'QRIS (${wallet['name']})';
-    } else {
-      final bank = kBankOptions.firstWhere(
-        (b) => b['id'] == selectedBank,
-        orElse: () => kBankOptions.first,
-      );
-      return 'Transfer Bank (${bank['name']})';
-    }
+    return 'QRIS';
   }
 
   void cancelTransaction(int ticketIndex) {
@@ -931,7 +904,7 @@ class _TiketPageState extends State<TiketPage>
   Widget recapDate() {
     return pad20(
       infoBox(
-        color: kSoft,
+        color: context.softBg,
         radius: 14,
         pad: 14,
         child: Row(
@@ -976,7 +949,7 @@ class _TiketPageState extends State<TiketPage>
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.cardBg,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: kBlue.withOpacity(0.3)),
                 ),
@@ -1002,7 +975,7 @@ class _TiketPageState extends State<TiketPage>
   Widget pemesanCard() {
     return pad20(
       infoBox(
-        color: Colors.white,
+        color: context.cardBg,
         radius: 14,
         pad: 12,
         border: Colors.grey.shade200,
@@ -1019,11 +992,11 @@ class _TiketPageState extends State<TiketPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'PEMESAN (AKUN KAMU)',
                     style: TextStyle(
                       fontSize: 9,
-                      color: Colors.grey,
+                      color: context.mutedText,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
                     ),
@@ -1039,9 +1012,9 @@ class _TiketPageState extends State<TiketPage>
                   const SizedBox(height: 1),
                   Text(
                     phoneDisplay,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey,
+                      color: context.mutedText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1192,7 +1165,7 @@ class _TiketPageState extends State<TiketPage>
                     colorfulIcon(
                       icon: Icons.pool_rounded,
                       color: kBlue,
-                      bgColor: kSoft,
+                      bgColor: context.softBg,
                       boxSize: 70,
                       size: 36,
                       isCircle: true,
@@ -1524,7 +1497,7 @@ class _TiketPageState extends State<TiketPage>
 
         pad20(
           infoBox(
-            color: Colors.white,
+            color: context.cardBg,
             radius: 16,
             pad: 16,
             child: Column(
@@ -1539,12 +1512,12 @@ class _TiketPageState extends State<TiketPage>
                       size: 16,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'INFORMASI KUOTA HARI INI',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: Colors.grey,
+                        color: context.mutedText,
                       ),
                     ),
                   ],
@@ -1618,7 +1591,7 @@ class _TiketPageState extends State<TiketPage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardBg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: kGold.withOpacity(0.7), width: 1.5),
                 boxShadow: [
@@ -1635,7 +1608,9 @@ class _TiketPageState extends State<TiketPage>
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: kYellowSoft,
+                      color: context.isDark
+                          ? const Color(0xFF3B3424)
+                          : kYellowSoft,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -1649,12 +1624,12 @@ class _TiketPageState extends State<TiketPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Lihat Tiket Saya',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xff172B4D),
+                            color: context.textMain,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1662,7 +1637,7 @@ class _TiketPageState extends State<TiketPage>
                           '${myTickets.length} tiket tersimpan · Tap untuk lihat detail',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade500,
+                            color: context.mutedText,
                           ),
                         ),
                       ],
@@ -1687,9 +1662,9 @@ class _TiketPageState extends State<TiketPage>
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.grey,
+                    color: context.mutedText,
                     size: 20,
                   ),
                 ],
@@ -1826,7 +1801,7 @@ class _TiketPageState extends State<TiketPage>
                           poolInfo['location'] ?? 'Jember, Jawa Timur',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade600,
+                            color: context.mutedText,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1978,14 +1953,16 @@ class _TiketPageState extends State<TiketPage>
 
         pad20(
           infoBox(
-            color: kYellowSoft,
+            color: context.isDark ? const Color(0xFF3B3424) : kYellowSoft,
             radius: 10,
             pad: 10,
             child: Row(
               children: [
                 colorfulIcon(
                   icon: Icons.info_rounded,
-                  color: const Color(0xff9a6c00),
+                  color: context.isDark
+                      ? const Color(0xFFFFD166)
+                      : const Color(0xff9a6c00),
                   boxSize: 30,
                   size: 16,
                 ),
@@ -1993,9 +1970,11 @@ class _TiketPageState extends State<TiketPage>
                 Expanded(
                   child: Text(
                     'Harga ${isWeekend ? 'weekend' : 'weekday'} untuk $selectedPoolName mengikuti tarif resmi server. Anak ≤100cm gratis.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: Color(0xff7a5800),
+                      color: context.isDark
+                          ? const Color(0xFFFFD166)
+                          : const Color(0xff7a5800),
                       height: 1.4,
                     ),
                   ),
@@ -2050,7 +2029,7 @@ class _TiketPageState extends State<TiketPage>
               hintText:
                   'Contoh: Kunjungan rombongan keluarga, ulang tahun, dll...',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: context.softBg,
               border: fieldBorder(),
               enabledBorder: fieldBorder(),
               focusedBorder: fieldBorder(color: kBlue, width: 1.5),
@@ -2153,7 +2132,7 @@ class _TiketPageState extends State<TiketPage>
   ) {
     return pad20(
       infoBox(
-        color: Colors.white,
+        color: context.cardBg,
         radius: 14,
         pad: 12,
         border: Colors.grey.shade200,
@@ -2207,7 +2186,7 @@ class _TiketPageState extends State<TiketPage>
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: kSoft,
+          color: context.softBg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: kBlue.withOpacity(0.2)),
         ),
@@ -2307,13 +2286,8 @@ class _TiketPageState extends State<TiketPage>
   }
 
   Widget buildStep4() {
-    if (paySubStep == 'process') {
-      if (paymentExpired) return buildPaymentExpired();
-      return payMethod == 'qris'
-          ? buildQrisPayment()
-          : buildBankTransferPayment();
-    }
-    return buildPaymentSelect();
+    if (paymentExpired) return buildPaymentExpired();
+    return buildQrisPayment();
   }
 
   Widget buildPaymentSelect() {
@@ -2332,7 +2306,7 @@ class _TiketPageState extends State<TiketPage>
 
         pad20(
           infoBox(
-            color: Colors.white,
+            color: context.cardBg,
             radius: 16,
             pad: 16,
             border: Colors.grey.shade200,
@@ -2473,7 +2447,7 @@ class _TiketPageState extends State<TiketPage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: kOrangeSoft,
+        color: context.isDark ? kOrange.withOpacity(.14) : kOrangeSoft,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: kOrange.withOpacity(.4)),
       ),
@@ -2705,13 +2679,17 @@ class _TiketPageState extends State<TiketPage>
                     width: (MediaQuery.of(context).size.width - 76) / 2,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? wallet['bgColor']
+                      color: context.isDark
+                          ? context.softBg
+                          : isSelected
+                          ? wallet['bgColor'] as Color
                           : Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? wallet['color']
+                            : context.isDark
+                            ? context.softBg
                             : Colors.grey.shade200,
                         width: isSelected ? 2 : 1,
                       ),
@@ -2808,11 +2786,17 @@ class _TiketPageState extends State<TiketPage>
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected ? bank['bgColor'] : Colors.grey.shade50,
+                      color: context.isDark
+                          ? context.softBg
+                          : isSelected
+                          ? bank['bgColor'] as Color
+                          : Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? bank['color']
+                            : context.isDark
+                            ? context.softBg
                             : Colors.grey.shade200,
                         width: isSelected ? 2 : 1,
                       ),
@@ -2869,27 +2853,22 @@ class _TiketPageState extends State<TiketPage>
   }
 
   Widget buildQrisPayment() {
-    final activeWallet = kEWallets.firstWhere(
-      (w) => w['id'] == selectedWallet,
-      orElse: () => kEWallets.first,
-    );
-
     return Column(
       children: [
         pad20(_paymentInfoHeader(), top: 14),
         pad20(_countdownBanner(), top: 10),
 
         sectionTitle(
-          'Scan QR Code (${activeWallet['name']})',
+          'Scan QRIS',
           icon: Icons.qr_code_scanner_rounded,
-          iconColor: activeWallet['color'] as Color,
+          iconColor: kAqua,
         ),
 
         pad20(
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardBg,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
@@ -2908,25 +2887,19 @@ class _TiketPageState extends State<TiketPage>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: activeWallet['bgColor'] as Color,
+                    color: context.softBg,
                     borderRadius: BorderRadius.circular(50),
-                    border: Border.all(
-                      color: (activeWallet['color'] as Color).withOpacity(0.4),
-                    ),
+                    border: Border.all(color: kAqua.withOpacity(0.4)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        activeWallet['icon'] as IconData,
-                        size: 14,
-                        color: activeWallet['color'] as Color,
-                      ),
+                      Icon(Icons.qr_code_rounded, size: 14, color: kAqua),
                       const SizedBox(width: 6),
                       Text(
-                        'Pembayaran via ${activeWallet['name']}',
+                        'QRIS • QR Dummy',
                         style: TextStyle(
-                          color: activeWallet['color'] as Color,
+                          color: context.textMain,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2967,8 +2940,8 @@ class _TiketPageState extends State<TiketPage>
                         ),
                         child: Center(
                           child: Icon(
-                            activeWallet['icon'] as IconData,
-                            color: activeWallet['color'] as Color,
+                            Icons.qr_code_rounded,
+                            color: kAqua,
                             size: 24,
                           ),
                         ),
@@ -3017,24 +2990,24 @@ class _TiketPageState extends State<TiketPage>
 
         pad20(
           infoBox(
-            color: activeWallet['bgColor'] as Color,
+            color: context.softBg,
             radius: 12,
             pad: 12,
             child: Row(
               children: [
                 colorfulIcon(
                   icon: Icons.lightbulb_rounded,
-                  color: activeWallet['color'] as Color,
+                  color: kAqua,
                   boxSize: 32,
                   size: 18,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Buka aplikasi ${activeWallet['name']} Anda, lalu scan QR Code di atas atau upload tangkapan layar untuk menyelesaikan pembayaran.',
+                    'Scan QRIS ini menggunakan aplikasi pembayaran pilihan Anda. QR ini masih dummy untuk simulasi.',
                     style: TextStyle(
                       fontSize: 11,
-                      color: activeWallet['color'] as Color,
+                      color: context.textMain,
                       height: 1.4,
                       fontWeight: FontWeight.w600,
                     ),
@@ -3055,7 +3028,7 @@ class _TiketPageState extends State<TiketPage>
               onPressed: simulatePaymentSuccess,
               icon: const Icon(Icons.check_circle_rounded, size: 20),
               label: const Text(
-                'Simulasikan Pembayaran Berhasil',
+                'Lanjutkan Pembayaran',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               style: successStyle.copyWith(
@@ -3065,21 +3038,6 @@ class _TiketPageState extends State<TiketPage>
               ),
             ),
           ),
-        ),
-
-        pad20(
-          OutlinedButton(
-            onPressed: _backToSelect,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text('← Pilih Metode / Dompet Lain'),
-          ),
-          top: 8,
-          bottom: 20,
         ),
       ],
     );
@@ -3109,7 +3067,7 @@ class _TiketPageState extends State<TiketPage>
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardBg,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
@@ -3162,7 +3120,9 @@ class _TiketPageState extends State<TiketPage>
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: activeBank['bgColor'] as Color,
+                    color: context.isDark
+                        ? context.softBg
+                        : activeBank['bgColor'] as Color,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: (activeBank['color'] as Color).withOpacity(0.3),
@@ -3227,24 +3187,30 @@ class _TiketPageState extends State<TiketPage>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: kYellowSoft,
+                    color: context.isDark
+                        ? const Color(0xFF3B3424)
+                        : kYellowSoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     children: [
                       colorfulIcon(
                         icon: Icons.warning_amber_rounded,
-                        color: const Color(0xff9a6c00),
+                        color: context.isDark
+                            ? const Color(0xFFFFD166)
+                            : const Color(0xff9a6c00),
                         boxSize: 28,
                         size: 16,
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Transfer tepat sesuai nominal tagihan melalui M-Banking atau ATM bank terkait.',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Color(0xff7a5800),
+                            color: context.isDark
+                                ? const Color(0xFFFFD166)
+                                : const Color(0xff7a5800),
                             height: 1.4,
                           ),
                         ),
@@ -3390,21 +3356,22 @@ class _TiketPageState extends State<TiketPage>
     _payTimer = null;
   }
 
-  /// Kembali ke pilihan metode pembayaran (timer dihentikan)
+  /// Keberadaan helper ini hanya dipakai oleh tampilan pembayaran lama.
   void _backToSelect() {
     _stopPayTimer();
     setState(() => paySubStep = 'select');
   }
 
-  /// Bayar ulang setelah waktu habis: Order ID baru, kembali pilih metode
+  /// Buat ulang QRIS dummy dan mulai ulang batas waktu pembayaran.
   void _restartPayment() {
     _stopPayTimer();
     setState(() {
       orderId = _generateOrderId();
       statusPembayaran = 'pending';
       paymentExpired = false;
-      paySubStep = 'select';
+      paySubStep = 'process';
     });
+    _startPayTimer();
   }
 
   String get countdownLabel {
@@ -3471,7 +3438,7 @@ class _TiketPageState extends State<TiketPage>
         const SizedBox(height: 24),
         pad20(
           infoBox(
-            color: Colors.white,
+            color: context.cardBg,
             radius: 20,
             pad: 24,
             border: kRed.withOpacity(.3),
@@ -3687,7 +3654,7 @@ class _TiketPageState extends State<TiketPage>
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardBg,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -3778,7 +3745,7 @@ class _TiketPageState extends State<TiketPage>
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: kSoft,
+                          color: context.softBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: kBlue.withOpacity(0.2)),
                         ),
@@ -3947,7 +3914,7 @@ class _TiketPageState extends State<TiketPage>
                   width: double.infinity,
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: kSoft.withOpacity(.5),
+                    color: context.softBg.withOpacity(.5),
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(24),
                     ),
@@ -4200,7 +4167,7 @@ class _TiketPageState extends State<TiketPage>
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: kSoft,
+                color: context.softBg,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
@@ -4219,12 +4186,12 @@ class _TiketPageState extends State<TiketPage>
 
             const SizedBox(height: 20),
 
-            const Text(
+            Text(
               'Belum Ada Tiket',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: Color(0xff172B4D),
+                color: context.textMain,
               ),
             ),
 
@@ -4234,7 +4201,7 @@ class _TiketPageState extends State<TiketPage>
               'Kamu belum punya tiket.\nPesan tiket sekarang untuk mulai berwisata!',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.grey.shade500,
+                color: context.mutedText,
                 fontSize: 13,
                 height: 1.55,
               ),
@@ -4311,7 +4278,7 @@ class _TiketPageState extends State<TiketPage>
 
     return pad20(
       infoBox(
-        color: Colors.white,
+        color: context.cardBg,
         radius: 18,
         pad: 16,
         border: status == 'cancelled'
@@ -4850,7 +4817,9 @@ class _TiketPageState extends State<TiketPage>
                           const SizedBox(height: 14),
 
                           infoBox(
-                            color: kYellowSoft,
+                            color: context.isDark
+                                ? const Color(0xFF3B3424)
+                                : kYellowSoft,
                             radius: 14,
                             pad: 14,
                             border: kGold.withOpacity(.5),

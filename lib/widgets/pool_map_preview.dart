@@ -7,8 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../theme/app_theme.dart';
 import 'pool_map_surface_stub.dart'
-    if (dart.library.html) 'pool_map_surface_web.dart' as map_surface;
+    if (dart.library.html) 'pool_map_surface_web.dart'
+    as map_surface;
 
 // KEY PETA CARTO (opsional, gratis, tanpa akun): https://carto.com/basemaps/apikey
 // Kosong  -> peta HP memakai Esri World Street Map (tanpa key).
@@ -254,7 +256,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -412,7 +414,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                 if (_mapError != null)
                   Positioned.fill(
                     child: ColoredBox(
-                      color: Color(0xffF5F8FC),
+                      color: context.pageBg,
                       child: Center(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -428,8 +430,8 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                               Text(
                                 _mapError!,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xff123C73),
+                                style: TextStyle(
+                                  color: context.textMain,
                                   fontSize: 12,
                                 ),
                               ),
@@ -455,10 +457,10 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                   widget.fullName ?? widget.poolName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xff172B4D),
+                    color: context.textMain,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -478,7 +480,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
                       child: Text(
                         '${widget.address ?? 'Kabupaten Jember'}\nJawa Timur, Indonesia',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: context.mutedText,
                           fontSize: 11,
                           height: 1.4,
                           fontWeight: FontWeight.w500,
