@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show ImageByteFormat;
 
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -239,6 +243,7 @@ class _TiketPageState extends State<TiketPage>
   // ============================================================
   int currentStep = 1;
   String? currentQrUrl;
+  Future<Uint8List>? currentQrImage;
   late int selectedTab;
 
   late String selectedPoolId;
@@ -251,6 +256,7 @@ class _TiketPageState extends State<TiketPage>
   // Data pemesan (diambil dari akun yang login)
   bool isLoggedIn = false;
   String nama = '';
+  String email = '';
   String telepon = '';
   String alamat = '';
   String keterangan = '';
@@ -266,13 +272,19 @@ class _TiketPageState extends State<TiketPage>
   String paySubStep = 'select';
 
   String orderId = '';
+  String reservationCode = '';
   String ticketId = '';
   String statusPembayaran = 'pending';
   DateTime? paidAt;
+  DateTime? reservedAt;
+  bool isCreatingPayment = false;
+  bool isCheckingPaymentStatus = false;
+  bool _receiptWasShownForPayment = false;
 
   // ── Timer pembayaran (5 menit) ──────────────────────────────────
   static const int payDurationSeconds = 300;
   Timer? _payTimer;
+  Timer? _paymentStatusTimer;
   int _remainingSeconds = payDurationSeconds;
   bool paymentExpired = false;
 
@@ -329,6 +341,7 @@ class _TiketPageState extends State<TiketPage>
     debugPrint('====================================');
 
     _loadAccount();
+    _loadSavedTickets();
     if (selectedPoolId.isNotEmpty) {
       loadHargaTiket();
     }
@@ -337,6 +350,7 @@ class _TiketPageState extends State<TiketPage>
   @override
   void dispose() {
     _payTimer?.cancel();
+    _paymentStatusTimer?.cancel();
     _successAnimController.dispose();
     keteranganController.dispose();
     super.dispose();
@@ -352,9 +366,52 @@ class _TiketPageState extends State<TiketPage>
     setState(() {
       isLoggedIn = prefs.getBool('is_logged_in') ?? false;
       nama = prefs.getString('user_name') ?? '';
+      email = prefs.getString('user_email') ?? '';
       telepon = prefs.getString('user_no_hp') ?? '';
       alamat = prefs.getString('user_alamat') ?? '';
     });
+  }
+
+  String _ticketHistoryKey(SharedPreferences prefs) {
+    final accountKey =
+        prefs.getString('user_email') ??
+        prefs.getString('user_username') ??
+        prefs.getString('user_no_hp') ??
+        'guest';
+    return 'saved_tickets_${accountKey.trim().toLowerCase()}';
+  }
+
+  Future<void> _loadSavedTickets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawTickets = prefs.getString(_ticketHistoryKey(prefs));
+    if (rawTickets == null || rawTickets.isEmpty) return;
+
+    try {
+      final decoded = jsonDecode(rawTickets);
+      if (decoded is! List) {
+        throw const FormatException('Format riwayat tiket bukan daftar.');
+      }
+
+      final tickets = decoded
+          .whereType<Map>()
+          .map((ticket) => Map<String, dynamic>.from(ticket))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        TiketPage.savedTickets = tickets;
+      });
+    } catch (e) {
+      debugPrint('Gagal membaca riwayat tiket tersimpan: $e');
+      if (mounted) showMessage('Gagal memuat riwayat tiket tersimpan.');
+    }
+  }
+
+  Future<void> _persistSavedTickets() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _ticketHistoryKey(prefs),
+      jsonEncode(TiketPage.savedTickets),
+    );
   }
 
   /// Nomor HP untuk ditampilkan, contoh: 0858xxx -> +62 858xxx
@@ -527,13 +584,6 @@ class _TiketPageState extends State<TiketPage>
         paymentExpired = false;
       }
     });
-    if (step == 4) _startPayTimer();
-  }
-
-  String _generateOrderId() {
-    final now = DateTime.now();
-    final ms = now.millisecondsSinceEpoch.toString();
-    return 'NXP-${ms.substring(ms.length - 8)}';
   }
 
   /// Kode tiket menyertakan ID Pool kolam yang dipilih user (contoh: pool_id_01_83232942)
@@ -543,24 +593,15 @@ class _TiketPageState extends State<TiketPage>
   //   return '${selectedPoolId}_${ms.substring(ms.length - 8)}';
   // }
 
-  Future<void> simulatePaymentSuccess() async {
+  Future<void> _createReservationAndQris() async {
+    if (isCreatingPayment) return;
     if (selectedPoolId.isEmpty) {
       showMessage('Silakan pilih wisata kolam renang terlebih dahulu.');
       return;
     }
 
-    if (statusPembayaran == 'cancelled') {
-      showMessage('Transaksi ini sudah dibatalkan.');
-      return;
-    }
-
     if (statusPembayaran == 'paid') {
       showMessage('Transaksi ini sudah terbayar.');
-      return;
-    }
-
-    if (paymentExpired || statusPembayaran == 'expired') {
-      showMessage('Waktu pembayaran habis. Silakan bayar ulang.');
       return;
     }
 
@@ -585,94 +626,218 @@ class _TiketPageState extends State<TiketPage>
       return;
     }
 
+    setState(() => isCreatingPayment = true);
     final tanggalKunjungan =
         '${selectedDate!.year}-'
         '${selectedDate!.month.toString().padLeft(2, '0')}-'
         '${selectedDate!.day.toString().padLeft(2, '0')}';
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
     try {
-      debugPrint('========================================');
-      debugPrint('MENGIRIM RESERVASI DARI TIKET PAGE');
-      debugPrint('POOL ID        : $selectedPoolId');
-      debugPrint('NAMA           : $nama');
-      debugPrint('NO HP          : $telepon');
-      debugPrint('TANGGAL        : $tanggalKunjungan');
-      debugPrint('JUMLAH DEWASA  : $qtyAdult');
-      debugPrint('JUMLAH ANAK    : $qtyChild');
-      debugPrint('TOTAL HARGA    : $totalPrice');
-      debugPrint('========================================');
+      if (reservationCode.isEmpty) {
+        final response = await ApiService.createReservasi(
+          poolId: selectedPoolId,
+          namaPengunjung: nama,
+          noHp: telepon,
+          tanggalKunjungan: tanggalKunjungan,
+          jumlahDewasa: qtyAdult,
+          jumlahAnak: qtyChild,
+          totalHarga: totalPrice.toDouble(),
+        );
 
-      final response = await ApiService.createReservasi(
-        poolId: selectedPoolId,
-        namaPengunjung: nama,
-        noHp: telepon,
-        tanggalKunjungan: tanggalKunjungan,
-        jumlahDewasa: qtyAdult,
-        jumlahAnak: qtyChild,
-        totalHarga: totalPrice.toDouble(),
+        if (response['success'] != true) {
+          throw Exception(
+            response['message']?.toString() ?? 'Reservasi gagal dibuat.',
+          );
+        }
+
+        final responseData = Map<String, dynamic>.from(response['data'] ?? {});
+        reservationCode = responseData['kode_reservasi']?.toString() ?? '';
+        if (reservationCode.isEmpty) {
+          throw Exception('Kode reservasi tidak diterima dari server.');
+        }
+        reservedAt =
+            DateTime.tryParse(responseData['created_at']?.toString() ?? '') ??
+            DateTime.now();
+      }
+
+      final paymentResponse = await ApiService.createQrisPayment(
+        reservationCode: reservationCode,
+        customerName: nama,
+        customerEmail: email.isEmpty ? 'user@nexpool.test' : email,
       );
+      final paymentData = Map<String, dynamic>.from(
+        paymentResponse['data'] ?? paymentResponse,
+      );
+      final returnedStatus =
+          paymentData['status_pembayaran']?.toString().toLowerCase() ??
+          'pending';
+
+      if (returnedStatus == 'paid') {
+        await _completePayment(paymentData);
+        return;
+      }
+
+      final returnedOrderId = paymentData['order_id']?.toString() ?? '';
+      if (returnedOrderId.isEmpty) {
+        throw Exception('QRIS belum tersedia dari server pembayaran.');
+      }
 
       if (!mounted) return;
-
-      Navigator.of(context, rootNavigator: true).pop();
-
-      if (response['success'] != true) {
-        showMessage(
-          response['message']?.toString() ?? 'Reservasi gagal dibuat.',
-        );
-        return;
+      setState(() {
+        orderId = returnedOrderId;
+        ticketId = reservationCode;
+        currentQrUrl =
+            '${ApiService.baseUrl}/midtrans/qr/${Uri.encodeComponent(returnedOrderId)}';
+        currentQrImage = ApiService.getMidtransQrImage(returnedOrderId);
+        statusPembayaran = 'pending';
+        paymentExpired = false;
+        currentStep = 4;
+        paySubStep = 'process';
+      });
+      _startPayTimer();
+      _startPaymentStatusPolling();
+    } catch (e) {
+      debugPrint('GAGAL MEMBUAT RESERVASI/QRIS: $e');
+      if (mounted) {
+        showMessage('Gagal menyiapkan pembayaran: $e');
       }
+    } finally {
+      if (mounted) setState(() => isCreatingPayment = false);
+    }
+  }
 
-      // ========================================================
-      // AMBIL KODE RESERVASI & PANGGIL QRIS MIDTRANS
-      // ========================================================
-      final Map<String, dynamic> responseData = Map<String, dynamic>.from(
-        response['data'] ?? {},
-      );
-      final String orderKode =
-          responseData['kode_reservasi']?.toString() ??
-          'NEXPOOL-${DateTime.now().millisecondsSinceEpoch}';
+  void _startPaymentStatusPolling() {
+    _paymentStatusTimer?.cancel();
+    _paymentStatusTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkPaymentStatus(),
+    );
+    _checkPaymentStatus();
+  }
 
-      try {
-        // 1. Panggil API QRIS ke Laravel (Midtrans Core API)
-        final paymentRes = await ApiService.createQrisPayment(
-          totalPrice: totalPrice.toDouble(),
-          customerName: nama,
-          customerEmail: 'user@nexpool.test',
-          orderId: orderKode,
-        );
+  Future<void> _checkPaymentStatus({bool showPendingMessage = false}) async {
+    if (orderId.isEmpty ||
+        isCheckingPaymentStatus ||
+        statusPembayaran == 'paid') {
+      return;
+    }
 
-        // 2. Ambil URL gambar barcode QRIS dari respons Midtrans
-        if (paymentRes['status'] == 'success' && paymentRes['qr_url'] != null) {
-          setState(() {
-            currentQrUrl =
-                paymentRes['qr_url']; // 1. Simpan gambar barcode dari Midtrans
-            currentStep = 4; // 2. Tetap di Step Bayar
-            paySubStep = 'process'; // 3. Alihkan layar ke tampilan kartu QR
-          });
-          _startPayTimer(); // 4. Mulai countdown timer 5 menit di sini!
-          return;
-        } else {
-          showMessage(
-            'Gagal memuat QRIS: ${paymentRes['message'] ?? 'Respons tidak valid'}',
-          );
-          return;
-        }
-      } catch (payErr) {
-        debugPrint('GAGAL MEMBUAT QRIS: $payErr');
-        showMessage('Gagal memproses QRIS: $payErr');
-        return;
+    if (mounted) {
+      setState(() => isCheckingPaymentStatus = true);
+    } else {
+      isCheckingPaymentStatus = true;
+    }
+    try {
+      final paymentStatus = await ApiService.getMidtransPaymentStatus(orderId);
+      final status =
+          paymentStatus['status_pembayaran']?.toString().toLowerCase() ??
+          'pending';
+
+      if (status == 'paid') {
+        await _completePayment(paymentStatus);
+      } else if (status == 'expired' ||
+          status == 'cancelled' ||
+          status == 'failed' ||
+          status == 'refunded') {
+        _paymentStatusTimer?.cancel();
+        _stopPayTimer();
+        if (!mounted) return;
+        setState(() {
+          statusPembayaran = status;
+          paymentExpired = true;
+        });
+      } else if (showPendingMessage && mounted) {
+        showMessage('Pembayaran belum terkonfirmasi. Kami akan cek otomatis.');
       }
     } catch (e) {
-      // Menutup blok try utama pemesanan tiket
-      debugPrint('ERROR RESERVASI: $e');
-      showMessage('Terjadi kesalahan saat reservasi: $e');
+      debugPrint('Belum dapat memeriksa status Midtrans: $e');
+      if (showPendingMessage && mounted) {
+        showMessage('Status belum dapat diperiksa. Coba lagi sebentar.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isCheckingPaymentStatus = false);
+      } else {
+        isCheckingPaymentStatus = false;
+      }
+    }
+  }
+
+  Future<void> _completePayment(Map<String, dynamic> paymentData) async {
+    if (statusPembayaran == 'paid') return;
+
+    final confirmedOrderId =
+        paymentData['order_id']?.toString().isNotEmpty == true
+        ? paymentData['order_id'].toString()
+        : orderId;
+    final paidTime =
+        DateTime.tryParse(paymentData['paid_at']?.toString() ?? '') ??
+        DateTime.now();
+    final ticket = <String, dynamic>{
+      'orderId': confirmedOrderId,
+      'ticketId': reservationCode,
+      'reservationCode': reservationCode,
+      'poolId': normalizePoolId(selectedPoolId),
+      'rawPoolId': selectedPoolId,
+      'poolName': selectedPoolName,
+      'name': 'Tiket Masuk',
+      'date': selectedDate == null
+          ? selectedDateLabel
+          : formatShortDate(selectedDate!),
+      'visitDate': selectedDate?.toIso8601String(),
+      'reservedAt': reservedAt?.toIso8601String(),
+      'qty': qtyChild > 0
+          ? '$qtyAdult Dewasa, $qtyChild Anak'
+          : '$qtyAdult Dewasa',
+      'payment': _paymentLabel(),
+      'total': totalPrice,
+      'status': 'paid',
+      'paidAt': formatDateTime(paidTime),
+      'paidAtIso': paidTime.toIso8601String(),
+      'customerName': nama,
+      'customerPhone': telepon,
+      'reschedule': 0,
+    };
+
+    final existingIndex = myTickets.indexWhere(
+      (savedTicket) =>
+          savedTicket['reservationCode']?.toString() == reservationCode,
+    );
+    if (existingIndex < 0) {
+      myTickets.insert(0, ticket);
+    } else {
+      myTickets[existingIndex] = ticket;
+    }
+
+    try {
+      await _persistSavedTickets();
+    } catch (e) {
+      debugPrint('Gagal menyimpan tiket lunas ke riwayat lokal: $e');
+      if (mounted) {
+        showMessage(
+          'Pembayaran berhasil, tetapi tiket gagal disimpan ke riwayat lokal.',
+        );
+      }
+    }
+    if (!mounted) return;
+
+    _paymentStatusTimer?.cancel();
+    _stopPayTimer();
+    setState(() {
+      statusPembayaran = 'paid';
+      paidAt = paidTime;
+      ticketId = reservationCode;
+      orderId = confirmedOrderId;
+      currentStep = 5;
+      paymentExpired = false;
+    });
+    _successAnimController.forward();
+
+    if (!_receiptWasShownForPayment) {
+      _receiptWasShownForPayment = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showReceiptFromTicket(ticket);
+      });
     }
   }
 
@@ -2043,19 +2208,14 @@ class _TiketPageState extends State<TiketPage>
         // Kembali -> langsung ke langkah Tanggal (langkah 1)
         navButtons(
           1,
-          'Lanjut Pembayaran →',
+          isCreatingPayment ? 'Menyiapkan QRIS...' : 'Lanjut Pembayaran →',
           isPriceLoading ||
                   priceError.isNotEmpty ||
                   adultPrice <= 0 ||
-                  qtyAdult <= 0
+                  qtyAdult <= 0 ||
+                  isCreatingPayment
               ? null
-              : () {
-                  setState(() {
-                    orderId = _generateOrderId();
-                    statusPembayaran = 'pending';
-                  });
-                  goStep(4);
-                },
+              : _createReservationAndQris,
         ),
       ],
     );
@@ -2394,7 +2554,7 @@ class _TiketPageState extends State<TiketPage>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: adultPrice <= 0 ? null : simulatePaymentSuccess,
+              onPressed: adultPrice <= 0 ? null : _createReservationAndQris,
               icon: Icon(
                 payMethod == 'qris'
                     ? Icons.qr_code_rounded
@@ -2920,38 +3080,25 @@ class _TiketPageState extends State<TiketPage>
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300, width: 2),
                   ),
-                  child: currentQrUrl != null && currentQrUrl!.isNotEmpty
-                      ? Image.network(
-                          currentQrUrl!,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
+                  child: currentQrImage != null
+                      ? FutureBuilder<Uint8List>(
+                          future: currentQrImage,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              return Image.memory(
+                                snapshot.data!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildQrImageError(),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return _buildQrImageError();
+                            }
                             return const Center(
                               child: CircularProgressIndicator(color: kBlue),
                             );
                           },
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.broken_image_rounded,
-                                      color: Colors.grey,
-                                      size: 36,
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Gagal memuat QRIS',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
                         )
                       : const Center(
                           child: Column(
@@ -3030,7 +3177,7 @@ class _TiketPageState extends State<TiketPage>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Scan QRIS ini menggunakan aplikasi pembayaran pilihan Anda. QR ini masih dummy untuk simulasi.',
+                    'Scan QRIS menggunakan aplikasi pembayaran pilihan Anda. Status pembayaran akan diperbarui otomatis setelah Midtrans mengonfirmasi transaksi.',
                     style: TextStyle(
                       fontSize: 11,
                       color: context.textMain,
@@ -3051,13 +3198,26 @@ class _TiketPageState extends State<TiketPage>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: simulatePaymentSuccess,
-              icon: const Icon(Icons.check_circle_rounded, size: 20),
-              label: const Text(
-                'Lanjutkan Pembayaran',
+              onPressed: isCheckingPaymentStatus
+                  ? null
+                  : () => _checkPaymentStatus(showPendingMessage: true),
+              icon: isCheckingPaymentStatus
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.sync_rounded, size: 20),
+              label: Text(
+                isCheckingPaymentStatus
+                    ? 'Memeriksa Pembayaran...'
+                    : 'Cek Status Pembayaran',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
-              style: successStyle.copyWith(
+              style: primaryStyle.copyWith(
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -3255,13 +3415,15 @@ class _TiketPageState extends State<TiketPage>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: simulatePaymentSuccess,
-              icon: const Icon(Icons.check_circle_rounded, size: 20),
+              onPressed: isCheckingPaymentStatus
+                  ? null
+                  : () => _checkPaymentStatus(showPendingMessage: true),
+              icon: const Icon(Icons.sync_rounded, size: 20),
               label: const Text(
-                'Simulasikan Pembayaran Berhasil',
+                'Cek Status Pembayaran',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
-              style: successStyle.copyWith(
+              style: primaryStyle.copyWith(
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -3367,9 +3529,8 @@ class _TiketPageState extends State<TiketPage>
         timer.cancel();
         setState(() {
           _remainingSeconds = 0;
-          paymentExpired = true;
-          statusPembayaran = 'expired';
         });
+        _checkPaymentStatus();
         return;
       }
 
@@ -3388,22 +3549,53 @@ class _TiketPageState extends State<TiketPage>
     setState(() => paySubStep = 'select');
   }
 
-  /// Buat ulang QRIS dummy dan mulai ulang batas waktu pembayaran.
+  /// Minta QRIS baru setelah Midtrans menyatakan transaksi lama kedaluwarsa.
   void _restartPayment() {
     _stopPayTimer();
     setState(() {
-      orderId = _generateOrderId();
+      orderId = '';
+      currentQrUrl = null;
+      currentQrImage = null;
       statusPembayaran = 'pending';
       paymentExpired = false;
       paySubStep = 'process';
     });
-    _startPayTimer();
+    _createReservationAndQris();
   }
 
   String get countdownLabel {
     final m = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
     final s = (_remainingSeconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+
+  Widget _buildQrImageError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.broken_image_rounded,
+            color: Colors.grey,
+            size: 36,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Gagal memuat QRIS',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          TextButton(
+            onPressed: orderId.isEmpty
+                ? null
+                : () => setState(() {
+                    currentQrImage = ApiService.getMidtransQrImage(orderId);
+                  }),
+            child: const Text('Coba lagi'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _countdownBanner() {
@@ -3424,7 +3616,9 @@ class _TiketPageState extends State<TiketPage>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Selesaikan pembayaran sebelum waktu habis',
+                  _remainingSeconds == 0
+                      ? 'Memeriksa status pembayaran ke Midtrans...'
+                      : 'Selesaikan pembayaran sebelum waktu habis',
                   style: TextStyle(
                     fontSize: 11,
                     color: color,
@@ -3457,8 +3651,19 @@ class _TiketPageState extends State<TiketPage>
     );
   }
 
-  /// Tampilan kalau waktu pembayaran habis
+  /// Tampilan untuk status pembayaran yang tidak bisa lagi diproses.
   Widget buildPaymentExpired() {
+    final canRetry = statusPembayaran != 'refunded';
+    final title = switch (statusPembayaran) {
+      'cancelled' => 'Pembayaran Dibatalkan',
+      'failed' => 'Pembayaran Gagal',
+      'refunded' => 'Pembayaran Dikembalikan',
+      _ => 'QRIS Kedaluwarsa',
+    };
+    final message = statusPembayaran == 'refunded'
+        ? 'Transaksi untuk pesanan $orderId telah dikembalikan. Periksa riwayat tiket atau hubungi petugas jika membutuhkan bantuan.'
+        : 'Status pembayaran untuk pesanan $orderId adalah ${statusPembayaran.toUpperCase()}. Buat QRIS baru untuk melanjutkan pembayaran.';
+
     return Column(
       children: [
         const SizedBox(height: 24),
@@ -3479,9 +3684,9 @@ class _TiketPageState extends State<TiketPage>
                   isCircle: true,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Waktu Pembayaran Habis',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: kRed,
@@ -3489,51 +3694,58 @@ class _TiketPageState extends State<TiketPage>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Pesanan $orderId dibatalkan otomatis karena belum dibayar dalam 5 menit.\nSilakan buat pembayaran baru.',
+                  message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: context.mutedText,
                     height: 1.5,
                   ),
                 ),
                 const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _restartPayment,
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    label: const Text(
-                      'Bayar Ulang',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                if (canRetry)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _restartPayment,
+                      icon: const Icon(Icons.refresh_rounded, size: 20),
+                      label: const Text(
+                        'Bayar Ulang',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    style: primaryStyle.copyWith(
-                      padding: const WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      style: primaryStyle.copyWith(
+                        padding: const WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        shape: WidgetStatePropertyAll(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () => goStep(3),
+                    onPressed: canRetry
+                        ? () => goStep(3)
+                        : () => setState(() => selectedTab = 1),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text('← Kembali ke Pilih Tiket'),
+                    child: Text(
+                      canRetry
+                          ? '← Kembali ke Pilih Tiket'
+                          : 'Lihat Riwayat Tiket',
+                    ),
                   ),
                 ),
               ],
@@ -4545,37 +4757,8 @@ class _TiketPageState extends State<TiketPage>
 
   void showReceiptFromTicket(Map<String, dynamic> ticket) {
     final status = ticket['status']?.toString() ?? 'pending';
-
-    Color statusFg;
-    Color statusBg;
-    String statusLabel;
-    IconData statusIcon;
-
-    switch (status) {
-      case 'paid':
-        statusFg = const Color(0xff087f65);
-        statusBg = const Color(0xffe3fff7);
-        statusLabel = 'PAID — LUNAS';
-        statusIcon = Icons.check_circle_rounded;
-        break;
-      case 'cancelled':
-        statusFg = kRed;
-        statusBg = kRedSoft;
-        statusLabel = 'CANCELLED';
-        statusIcon = Icons.cancel_rounded;
-        break;
-      default:
-        statusFg = kOrange;
-        statusBg = kOrangeSoft;
-        statusLabel = 'PENDING';
-        statusIcon = Icons.access_time_filled_rounded;
-    }
-
-    final cardPoolName = ticket['poolName']?.toString() ?? selectedPoolName;
-    final cardPoolId =
-        ticket['poolId']?.toString() ?? normalizePoolId(selectedPoolId);
-    final cardTicketId =
-        ticket['ticketId']?.toString() ?? ticket['orderId']?.toString() ?? '—';
+    final receiptKey = GlobalKey();
+    final isPaid = status == 'paid';
 
     showModalBottomSheet(
       context: context,
@@ -4597,94 +4780,54 @@ class _TiketPageState extends State<TiketPage>
 
               const SizedBox(height: 8),
 
-              badge(statusLabel, statusFg, statusBg, icon: statusIcon),
+              badge(
+                isPaid ? 'PAID — LUNAS' : status.toUpperCase(),
+                isPaid ? kGreen : kOrange,
+                isPaid ? kGreen.withOpacity(.12) : kOrange.withOpacity(.12),
+                icon: isPaid
+                    ? Icons.check_circle_rounded
+                    : Icons.access_time_filled_rounded,
+              ),
 
               const SizedBox(height: 16),
 
               Expanded(
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      receiptRow(
-                        Icons.pin_rounded,
-                        kBlue,
-                        'Order ID',
-                        ticket['orderId']?.toString() ?? '—',
-                      ),
-                      receiptRow(
-                        Icons.confirmation_number_rounded,
-                        kOrange,
-                        'Kode Tiket',
-                        cardTicketId,
-                      ),
-                      receiptRow(
-                        Icons.pool_rounded,
-                        kAqua,
-                        'ID Pool',
-                        cardPoolId,
-                      ),
-                      receiptRow(
-                        Icons.water_rounded,
-                        kBlue,
-                        'Kolam Renang',
-                        cardPoolName,
-                      ),
-                      receiptRow(
-                        Icons.local_activity_rounded,
-                        kPurple,
-                        'Kategori',
-                        ticket['name']?.toString() ?? '—',
-                      ),
-                      receiptRow(
-                        Icons.calendar_month_rounded,
-                        kBlue,
-                        'Tanggal',
-                        ticket['date']?.toString() ?? '—',
-                      ),
-                      receiptRow(
-                        Icons.group_rounded,
-                        kGreen,
-                        'Jumlah',
-                        ticket['qty']?.toString() ?? '—',
-                      ),
-                      receiptRow(
-                        Icons.payment_rounded,
-                        kDarkBlue,
-                        'Pembayaran',
-                        ticket['payment']?.toString() ?? '—',
-                      ),
-                      receiptRow(
-                        Icons.monetization_on_rounded,
-                        kGold,
-                        'Total',
-                        rupiah(ticket['total'] as int? ?? 0),
-                      ),
-                      receiptRow(
-                        Icons.info_rounded,
-                        statusFg,
-                        'Status Pembayaran',
-                        status.toUpperCase(),
-                      ),
-                      if (ticket['paidAt'] != null &&
-                          ticket['paidAt'].toString().isNotEmpty)
-                        receiptRow(
-                          Icons.access_time_filled_rounded,
-                          kGreen,
-                          'Waktu Pembayaran',
-                          ticket['paidAt'].toString(),
-                        ),
-                    ],
+                  child: RepaintBoundary(
+                    key: receiptKey,
+                    child: _buildPrintableReceipt(ticket, status),
                   ),
                 ),
               ),
 
               const SizedBox(height: 10),
 
+              if (isPaid) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _downloadReceiptImage(receiptKey, ticket),
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text('Unduh Bukti Pembayaran (PNG)'),
+                    style: primaryStyle.copyWith(
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: primaryStyle,
                   child: const Text('Tutup'),
                 ),
               ),
@@ -4693,6 +4836,209 @@ class _TiketPageState extends State<TiketPage>
         );
       },
     );
+  }
+
+  Widget _buildPrintableReceipt(
+    Map<String, dynamic> ticket,
+    String paymentStatus,
+  ) {
+    final visitDate = _receiptDate(
+      ticket['visitDate']?.toString() ?? ticket['date']?.toString(),
+    );
+    final reservationDate = _receiptDate(
+      ticket['reservedAt']?.toString(),
+      includeTime: true,
+    );
+    final paymentDate = _receiptDate(
+      ticket['paidAtIso']?.toString() ?? ticket['paidAt']?.toString(),
+      includeTime: true,
+    );
+
+    Widget detail(String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 12, color: context.mutedText),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: context.textMain,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: context.isDark
+              ? Colors.white.withOpacity(.12)
+              : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.pool_rounded, color: kBlue, size: 34),
+          const SizedBox(height: 6),
+          Text(
+            'NEXPOOL',
+            style: TextStyle(
+              color: context.textMain,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+            ),
+          ),
+          Text(
+            'BUKTI PEMBAYARAN TIKET',
+            style: TextStyle(
+              color: context.mutedText,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(height: 1, color: context.mutedText.withOpacity(.25)),
+          const SizedBox(height: 10),
+          detail('Status', paymentStatus.toUpperCase()),
+          detail('Kode tiket', ticket['ticketId']?.toString() ?? '—'),
+          detail('ID transaksi', ticket['orderId']?.toString() ?? '—'),
+          detail('Kolam renang', ticket['poolName']?.toString() ?? '—'),
+          detail('Nama pemesan', ticket['customerName']?.toString() ?? nama),
+          detail('Nomor telepon', ticket['customerPhone']?.toString() ?? '—'),
+          detail('Tanggal pemesanan', reservationDate),
+          detail('Tanggal kunjungan', visitDate),
+          detail('Jumlah tiket', ticket['qty']?.toString() ?? '—'),
+          detail('Metode pembayaran', ticket['payment']?.toString() ?? 'QRIS'),
+          detail('Waktu pembayaran', paymentDate),
+          const SizedBox(height: 7),
+          Container(height: 1, color: context.mutedText.withOpacity(.25)),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'TOTAL DIBAYAR',
+                  style: TextStyle(
+                    color: context.mutedText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  rupiah((ticket['total'] as num?)?.round() ?? 0),
+                  style: const TextStyle(
+                    color: kBlue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: context.isDark
+                  ? const Color(0xFF3B3424)
+                  : const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'PENTING: Tiket hanya berlaku pada tanggal kunjungan yang tercantum. Jika tidak digunakan sampai tanggal tersebut terlewat, tiket hangus dan tidak dapat dipakai pada hari lain.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: context.isDark
+                    ? const Color(0xFFFFD166)
+                    : const Color(0xFF765500),
+                fontSize: 10,
+                height: 1.4,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tunjukkan bukti ini kepada petugas loket.',
+            style: TextStyle(
+              color: context.mutedText,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _receiptDate(String? value, {bool includeTime = false}) {
+    if (value == null || value.trim().isEmpty) return '—';
+    final date = DateTime.tryParse(value);
+    if (date == null) return value;
+    return includeTime
+        ? formatDateTime(date.toLocal())
+        : formatDate(date.toLocal());
+  }
+
+  Future<void> _downloadReceiptImage(
+    GlobalKey receiptKey,
+    Map<String, dynamic> ticket,
+  ) async {
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      final renderObject = receiptKey.currentContext?.findRenderObject();
+      if (renderObject is! RenderRepaintBoundary) {
+        throw StateError('Gambar struk belum siap dibuat.');
+      }
+
+      final image = await renderObject.toImage(pixelRatio: 3);
+      final byteData = await image.toByteData(format: ImageByteFormat.png);
+      image.dispose();
+      if (byteData == null) {
+        throw StateError('Gagal mengubah struk menjadi gambar PNG.');
+      }
+
+      final fileName =
+          'NexPool-Struk-${ticket['ticketId']?.toString() ?? 'Tiket'}'
+              .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
+      final savedPath = await FileSaver.instance.saveAs(
+        name: fileName,
+        bytes: byteData.buffer.asUint8List(),
+        fileExtension: 'png',
+        mimeType: MimeType.png,
+        dialogTitle: 'Unduh bukti pembayaran',
+      );
+      if (savedPath != null && mounted) {
+        showMessage('Bukti pembayaran berhasil diunduh.');
+      }
+    } catch (e) {
+      debugPrint('Gagal mengunduh bukti pembayaran: $e');
+      if (mounted) showMessage('Gagal mengunduh bukti pembayaran: $e');
+    }
   }
 
   Widget sheetHandle() {

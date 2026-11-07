@@ -9,7 +9,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.161:8000/api';
+  static const String baseUrl = 'http://192.168.1.8:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -474,10 +474,9 @@ class ApiService {
   // =========================================================
 
   static Future<Map<String, dynamic>> createQrisPayment({
-    required double totalPrice,
+    required String reservationCode,
     required String customerName,
     required String customerEmail,
-    String? orderId,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/midtrans/create-qris');
@@ -491,10 +490,9 @@ class ApiService {
               'Content-Type': 'application/json',
             },
             body: jsonEncode({
-              'total_price': totalPrice.toInt(),
+              'reservation_code': reservationCode,
               'customer_name': customerName,
               'customer_email': customerEmail,
-              'order_id': orderId,
             }),
           )
           .timeout(_timeout);
@@ -504,13 +502,62 @@ class ApiService {
 
       final data = _decodeResponse(response);
 
-      if (response.statusCode == 200 && data['status'] == 'success') {
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          data['status'] == 'success') {
         return data;
       }
 
       throw Exception(data['message'] ?? 'Gagal membuat transaksi QRIS.');
     } catch (e) {
       debugPrint('ERROR CREATE QRIS: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMidtransPaymentStatus(
+    String orderId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/midtrans/status/${Uri.encodeComponent(orderId)}',
+      );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(_timeout);
+
+      final data = _decodeResponse(response);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      throw Exception(data['message'] ?? 'Gagal memeriksa status pembayaran.');
+    } catch (e) {
+      debugPrint('ERROR GET STATUS PEMBAYARAN: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Uint8List> getMidtransQrImage(String orderId) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/midtrans/qr/${Uri.encodeComponent(orderId)}',
+      );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(_timeout);
+      final data = _decodeResponse(response);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        final encodedImage = data['image']?.toString();
+        if (encodedImage == null || encodedImage.isEmpty) {
+          throw Exception('Gambar QRIS tidak diterima dari server.');
+        }
+        return base64Decode(encodedImage);
+      }
+
+      throw Exception(data['message'] ?? 'Gagal memuat gambar QRIS.');
+    } catch (e) {
+      debugPrint('ERROR GET QR IMAGE: $e');
       rethrow;
     }
   }

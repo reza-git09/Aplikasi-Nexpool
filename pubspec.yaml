@@ -27,6 +27,7 @@ dependencies:
   # Peta native yang bisa digeser dan di-zoom pakai jari
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  file_saver: ^0.7.0
 
 dev_dependencies:
   flutter_test:
