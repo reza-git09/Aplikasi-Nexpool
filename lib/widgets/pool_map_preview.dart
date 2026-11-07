@@ -200,7 +200,7 @@ class _PoolMapPreviewState extends State<PoolMapPreview> {
     HapticFeedback.selectionClick();
     setState(() => _isSatellite = !_isSatellite);
     if (kIsWeb) return; // web: widget dibangun ulang dengan URL baru
-    _runMapJs('setSatellite(${_isSatellite});');
+    _runMapJs('setSatellite($_isSatellite);');
   }
 
   Future<void> _launchMaps() async {
