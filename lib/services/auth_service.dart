@@ -40,12 +40,14 @@ class AuthService {
   static Future<void> login({
     required String username,
     required String name,
+    required String token,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setBool('is_logged_in', true);
     await prefs.setString('user_username', username);
     await prefs.setString('user_name', name);
+    await prefs.setString(_kToken, token);
   }
 
   // =====================================================

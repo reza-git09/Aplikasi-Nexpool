@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:url_launcher/url_launcher.dart';
-
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'home_page.dart';
@@ -240,6 +238,7 @@ class _TiketPageState extends State<TiketPage>
   // Data pemesan diambil otomatis dari akun yang login.
   // ============================================================
   int currentStep = 1;
+  String? currentQrUrl;
   late int selectedTab;
 
   late String selectedPoolId;
@@ -646,7 +645,7 @@ class _TiketPageState extends State<TiketPage>
       }
 
       // ========================================================
-      // TAMBAHKAN KODE INI DI SINI (SEBELUM UPDATE STATE/TIKET)
+      // AMBIL KODE RESERVASI & PANGGIL QRIS MIDTRANS
       // ========================================================
       final Map<String, dynamic> responseData = Map<String, dynamic>.from(
         response['data'] ?? {},
@@ -656,41 +655,38 @@ class _TiketPageState extends State<TiketPage>
           'NEXPOOL-${DateTime.now().millisecondsSinceEpoch}';
 
       try {
-        final paymentRes = await ApiService.createPayment(
+        // 1. Panggil API QRIS ke Laravel (Midtrans Core API)
+        final paymentRes = await ApiService.createQrisPayment(
           totalPrice: totalPrice.toDouble(),
           customerName: nama,
-          customerEmail:
-              'user@nexpool.test', // atau variabel email jika tersedia
+          customerEmail: 'user@nexpool.test',
           orderId: orderKode,
         );
 
-        final String? redirectUrl = paymentRes['redirect_url'];
-        if (redirectUrl != null && redirectUrl.isNotEmpty) {
-          final Uri paymentUri = Uri.parse(redirectUrl);
-          if (await canLaunchUrl(paymentUri)) {
-            await launchUrl(
-              paymentUri,
-              mode: LaunchMode.inAppWebView, // Membuka browser langsung di dalam tampilan aplikasi Flutter
-            );
+        // 2. Ambil URL gambar barcode QRIS dari respons Midtrans
+        if (paymentRes['status'] == 'success' && paymentRes['qr_url'] != null) {
+          setState(() {
+            currentQrUrl = paymentRes['qr_url']; // 1. Simpan gambar barcode dari Midtrans
+            currentStep = 4;                     // 2. Tetap di Step Bayar
+            paySubStep = 'process';              // 3. Alihkan layar ke tampilan kartu QR
+          });
+          _startPayTimer();                      // 4. Mulai countdown timer 5 menit di sini!
             return;
-          } else {
-            showMessage('Tidak dapat membuka browser pembayaran.');
-            return;
-          }
         } else {
-          showMessage('Gagal mendapatkan tautan pembayaran Midtrans.');
+          showMessage('Gagal memuat QRIS: ${paymentRes['message'] ?? 'Respons tidak valid'}');
           return;
         }
       } catch (payErr) {
-        debugPrint('GAGAL MEMBUKA MIDTRANS: $payErr');
-        showMessage('Gagal memproses Midtrans: $payErr');
+        debugPrint('GAGAL MEMBUAT QRIS: $payErr');
+        showMessage('Gagal memproses QRIS: $payErr');
         return;
       }
     } catch (e) {
+      // Menutup blok try utama pemesanan tiket
       debugPrint('ERROR RESERVASI: $e');
-      showMessage('Terjadi kesalahan: $e');
+      showMessage('Terjadi kesalahan saat reservasi: $e');
     }
-  }
+  } 
 
   // void _addTicketToMyTickets() {
   //   final normalizedPoolId = normalizePoolId(selectedPoolId);
@@ -2938,44 +2934,53 @@ class _TiketPageState extends State<TiketPage>
                 const SizedBox(height: 16),
 
                 Container(
-                  width: 200,
-                  height: 200,
+                  width: 220,
+                  height: 220,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300, width: 2),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CustomPaint(
-                        size: const Size(200, 200),
-                        painter: _QrPatternPainter(),
-                      ),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(.1),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            activeWallet['icon'] as IconData,
-                            color: activeWallet['color'] as Color,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+      ),
+  child: currentQrUrl != null && currentQrUrl!.isNotEmpty
+      ? Image.network(
+          currentQrUrl!,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(color: kBlue),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) => const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image_rounded, color: Colors.grey, size: 36),
+                SizedBox(height: 6),
+                Text(
+                  'Gagal memuat QRIS',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  textAlign: TextAlign.center,
                 ),
+              ],
+            ),
+          ),
+        )
+      : const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: kBlue),
+              SizedBox(height: 10),
+              Text(
+                'Menyiapkan QRIS...',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
 
                 const SizedBox(height: 14),
 
@@ -5008,100 +5013,6 @@ class _TiketPageState extends State<TiketPage>
       ),
     );
   }
-}
-
-class _QrPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xff0077b6)
-      ..style = PaintingStyle.fill;
-
-    final cellSize = size.width / 21;
-
-    void drawFinder(double x, double y) {
-      canvas.drawRect(Rect.fromLTWH(x, y, cellSize * 7, cellSize * 7), paint);
-      final bgPaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(
-        Rect.fromLTWH(x + cellSize, y + cellSize, cellSize * 5, cellSize * 5),
-        bgPaint,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x + cellSize * 2,
-          y + cellSize * 2,
-          cellSize * 3,
-          cellSize * 3,
-        ),
-        paint,
-      );
-    }
-
-    drawFinder(0, 0);
-    drawFinder(size.width - cellSize * 7, 0);
-    drawFinder(0, size.height - cellSize * 7);
-
-    final modules = [
-      [8, 8],
-      [9, 8],
-      [10, 8],
-      [11, 8],
-      [12, 8],
-      [8, 9],
-      [10, 9],
-      [12, 9],
-      [8, 10],
-      [9, 10],
-      [10, 10],
-      [12, 10],
-      [8, 11],
-      [10, 11],
-      [12, 11],
-      [8, 12],
-      [9, 12],
-      [10, 12],
-      [11, 12],
-      [12, 12],
-      [14, 8],
-      [15, 8],
-      [16, 8],
-      [14, 10],
-      [16, 10],
-      [14, 11],
-      [15, 11],
-      [8, 14],
-      [9, 14],
-      [11, 14],
-      [8, 15],
-      [10, 15],
-      [11, 15],
-      [9, 16],
-      [10, 16],
-      [14, 14],
-      [15, 14],
-      [16, 14],
-      [15, 15],
-      [14, 16],
-      [16, 16],
-    ];
-
-    for (final m in modules) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          m[0].toDouble() * cellSize,
-          m[1].toDouble() * cellSize,
-          cellSize,
-          cellSize,
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ConfettiParticlesPainter extends CustomPainter {

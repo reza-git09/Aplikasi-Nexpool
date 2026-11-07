@@ -9,7 +9,7 @@ class ApiService {
   // ALAMAT API LARAVEL
   // =========================================================
 
-  static const String baseUrl = 'http://192.168.1.1:8000/api';
+  static const String baseUrl = 'http://10.212.237.105:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -473,16 +473,15 @@ class ApiService {
   // CREATE PAYMENT (MIDTRANS)
   // =========================================================
 
-  static Future<Map<String, dynamic>> createPayment({
+  static Future<Map<String, dynamic>> createQrisPayment({
     required double totalPrice,
     required String customerName,
     required String customerEmail,
     String? orderId,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/midtrans/create-payment');
-
-      debugPrint('MENGIRIM REQUEST PAYMENT MIDTRANS: $url');
+      final url = Uri.parse('$baseUrl/midtrans/create-qris');
+      debugPrint('MENGIRIM REQUEST QRIS MIDTRANS: $url');
 
       final response = await http
           .post(
@@ -500,8 +499,8 @@ class ApiService {
           )
           .timeout(_timeout);
 
-      debugPrint('STATUS API PAYMENT: ${response.statusCode}');
-      debugPrint('RESPONSE PAYMENT: ${response.body}');
+      debugPrint('STATUS API QRIS: ${response.statusCode}');
+      debugPrint('RESPONSE QRIS: ${response.body}');
 
       final data = _decodeResponse(response);
 
@@ -509,9 +508,9 @@ class ApiService {
         return data;
       }
 
-      throw Exception(data['message'] ?? 'Gagal membuat transaksi pembayaran.');
+      throw Exception(data['message'] ?? 'Gagal membuat transaksi QRIS.');
     } catch (e) {
-      debugPrint('ERROR CREATE PAYMENT: $e');
+      debugPrint('ERROR CREATE QRIS: $e');
       rethrow;
     }
   }
