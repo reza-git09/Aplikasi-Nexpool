@@ -158,7 +158,7 @@ class _HomePageState extends State<HomePage>
   // ============================================================
   // DATA KOLAM CADANGAN
   // Digunakan untuk gambar, rating, harga, jam, dll yang belum tersedia dari API.
-  // ============================================================
+
   List<Map<String, dynamic>> pools = [
     {
       'name': 'Tiara Jember Park',
@@ -310,15 +310,12 @@ class _HomePageState extends State<HomePage>
 
       for (final item in data) {
         final String poolId = item['pool_id']?.toString() ?? '';
-        final String kategori =
-            item['kategori']?.toString().toLowerCase() ?? '';
         final String jenisHari =
             item['jenis_hari']?.toString().toLowerCase() ?? '';
         final int harga =
             double.tryParse(item['harga']?.toString() ?? '')?.round() ?? 0;
 
-        // Home menampilkan harga dewasa (sama seperti halaman Tiket).
-        if (poolId.isEmpty || kategori != 'dewasa') continue;
+        if (poolId.isEmpty) continue;
         if (jenisHari != 'weekday' && jenisHari != 'weekend') continue;
 
         hasil.putIfAbsent(normalizePoolId(poolId), () => {})[jenisHari] = harga;
@@ -2206,7 +2203,8 @@ class _HomePageState extends State<HomePage>
     final List<Map<String, String>> wahana = [
       {
         'name': 'Kolam Utama',
-        'desc': 'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
+        'desc':
+            'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
         'image': 'assets/images/pool_main.png',
         'emoji': '🏊',
         'detail1': 'Kedalaman: 1.2m – 1.5m',
@@ -2214,7 +2212,8 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Balap',
-        'desc': 'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
+        'desc':
+            'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
         'image': 'assets/images/waterslide_fun.png',
         'emoji': '🏆',
         'detail1': 'Lintasan balap air',
@@ -2222,7 +2221,8 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Keluarga',
-        'desc': 'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
+        'desc':
+            'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
         'image': 'assets/images/family_pool.png',
         'emoji': '👨‍👩‍👧‍👦',
         'detail1': 'Kedalaman: 0.5m – 1m',
@@ -2230,7 +2230,8 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Cangkir',
-        'desc': 'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
+        'desc':
+            'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
         'image': '',
         'emoji': '🍵',
         'detail1': 'Wahana Air',
@@ -2523,8 +2524,9 @@ class _HomePageState extends State<HomePage>
   // Membaca teks jam seperti '07.00 – 17.00 WIB' menjadi [menitBuka, menitTutup]
   // (menit sejak tengah malam). Mengembalikan null kalau formatnya tidak terbaca.
   List<int>? _parseJamOperasional(String text) {
-    final m = RegExp(r'(\d{1,2})[.:](\d{2})\s*[–—-]\s*(\d{1,2})[.:](\d{2})')
-        .firstMatch(text);
+    final m = RegExp(
+      r'(\d{1,2})[.:](\d{2})\s*[–—-]\s*(\d{1,2})[.:](\d{2})',
+    ).firstMatch(text);
     if (m == null) return null;
     final int buka = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
     final int tutup = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);

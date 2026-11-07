@@ -7,9 +7,9 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
+  // Ganti IP sesuai IP laptop kamu (cek dengan `ipconfig`).
   // =========================================================
-
-  static const String baseUrl = 'http://192.168.1.8:8000/api';
+  static const String baseUrl = 'http://192.168.1.21:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -20,61 +20,51 @@ class ApiService {
   static const List<Map<String, dynamic>> _defaultHarga = [
     {
       'pool_id': 'pool_id_01',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekday',
       'harga': '15000',
     },
     {
       'pool_id': 'pool_id_01',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekend',
       'harga': '20000',
     },
     {
       'pool_id': 'pool_id_02',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekday',
       'harga': '10000',
     },
     {
       'pool_id': 'pool_id_02',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekend',
       'harga': '15000',
     },
     {
       'pool_id': 'pool_id_03',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekday',
       'harga': '12000',
     },
     {
       'pool_id': 'pool_id_03',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekend',
       'harga': '18000',
     },
     {
       'pool_id': 'pool_id_04',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekday',
       'harga': '15000',
     },
     {
       'pool_id': 'pool_id_04',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekend',
       'harga': '22000',
     },
     {
       'pool_id': 'pool_id_05',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekday',
       'harga': '12000',
     },
     {
       'pool_id': 'pool_id_05',
-      'kategori': 'Dewasa',
       'jenis_hari': 'weekend',
       'harga': '18000',
     },
@@ -469,6 +459,7 @@ class ApiService {
       rethrow;
     }
   }
+
   // =========================================================
   // CREATE PAYMENT (MIDTRANS)
   // =========================================================

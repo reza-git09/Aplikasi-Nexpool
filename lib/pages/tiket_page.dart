@@ -451,7 +451,6 @@ class _TiketPageState extends State<TiketPage>
 
       for (final item in data) {
         final poolId = item['pool_id']?.toString() ?? '';
-        final kategori = item['kategori']?.toString().toLowerCase() ?? '';
         final jenisHari = item['jenis_hari']?.toString().toLowerCase() ?? '';
         final hargaString = item['harga']?.toString() ?? '0';
         final harga = double.tryParse(hargaString)?.round() ?? 0;
@@ -460,7 +459,6 @@ class _TiketPageState extends State<TiketPage>
             normalizePoolId(poolId) != normalizePoolId(selectedPoolId)) {
           continue;
         }
-        if (kategori != 'dewasa') continue;
 
         if (jenisHari == 'weekday') weekday = harga;
         if (jenisHari == 'weekend') weekend = harga;
