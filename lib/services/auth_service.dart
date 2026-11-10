@@ -12,9 +12,9 @@ class AuthService {
   static String lastError = '';
 
   static Map<String, String> get _headers => {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      };
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  };
 
   // =====================================================
   // STATUS LOGIN
@@ -38,15 +38,14 @@ class AuthService {
   // =====================================================
 
   static Future<void> login({
-    required String username,
     required String name,
     required String token,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setBool('is_logged_in', true);
-    await prefs.setString('user_username', username);
     await prefs.setString('user_name', name);
+    await prefs.setString('user_nama_lengkap', name);
     await prefs.setString(_kToken, token);
   }
 
@@ -76,10 +75,8 @@ class AuthService {
   static Future<String?> register({
     required String name,
     required String email,
-    required String username,
     required String password,
     required String noHp,
-    required String alamat,
     String? otpToken, // bukti verifikasi OTP WhatsApp (dari /otp/verify)
   }) async {
     lastError = '';
@@ -92,10 +89,8 @@ class AuthService {
             body: jsonEncode({
               'nama': name.trim(),
               'email': email.trim(),
-              'username': username.trim(),
               'password': password,
               'no_hp': noHp.trim(),
-              'alamat': alamat.trim(),
               'otp_token': ?otpToken,
             }),
           )
@@ -117,16 +112,12 @@ class AuthService {
         return null;
       }
 
-      lastError = _errorMessage(
-        response,
-        'Registrasi gagal.',
-      );
+      lastError = _errorMessage(response, 'Registrasi gagal.');
 
       return lastError;
     } catch (e) {
       debugPrint('REGISTER ERROR: $e');
-      lastError =
-          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
     }
   }
@@ -137,10 +128,7 @@ class AuthService {
   // Return: nama user kalau sukses, null kalau gagal
   // =====================================================
 
-  static Future<String?> verifyLogin(
-    String username,
-    String password,
-  ) async {
+  static Future<String?> verifyLogin(String identifier, String password) async {
     lastError = '';
 
     try {
@@ -149,7 +137,7 @@ class AuthService {
             Uri.parse('${ApiService.baseUrl}/login'),
             headers: _headers,
             body: jsonEncode({
-              'login': username.trim(),
+              'login': identifier.trim(),
               'password': password,
             }),
           )
@@ -189,26 +177,27 @@ class AuthService {
           'user_name',
           (data['nama'] ?? data['name'] ?? '').toString(),
         );
-
         await prefs.setString(
-          'user_email',
-          (data['email'] ?? '').toString(),
+          'user_nama_lengkap',
+          (data['nama'] ?? data['name'] ?? '').toString(),
         );
 
-        await prefs.setString(
-          'user_username',
-          (data['username'] ?? username).toString(),
-        );
+        await prefs.setString('user_email', (data['email'] ?? '').toString());
 
-        await prefs.setString(
-          'user_no_hp',
-          (data['no_hp'] ?? '').toString(),
-        );
+        await prefs.setString('user_no_hp', (data['no_hp'] ?? '').toString());
+        final username = data['username']?.toString() ?? '';
+        if (username.isNotEmpty) {
+          await prefs.setString('user_username', username);
+        } else {
+          await prefs.remove('user_username');
+        }
 
-        await prefs.setString(
-          'user_alamat',
-          (data['alamat'] ?? '').toString(),
-        );
+        final alamat = data['alamat']?.toString() ?? '';
+        if (alamat.isNotEmpty) {
+          await prefs.setString('user_alamat', alamat);
+        } else {
+          await prefs.remove('user_alamat');
+        }
 
         // Simpan token kalau backend mengirimnya
         // (token bisa ada di body atau di dalam data).
@@ -221,31 +210,30 @@ class AuthService {
           await prefs.remove(_kToken);
         }
 
-        return (data['nama'] ?? data['name'] ?? username).toString();
+        return (data['nama'] ?? data['name'] ?? identifier).toString();
       }
 
       lastError = _errorMessage(
         response,
-        'Username/email atau password salah.',
+        'Email/nomor HP atau password salah.',
       );
 
       return null;
     } catch (e) {
       debugPrint('LOGIN ERROR: $e');
-      lastError =
-          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return null;
     }
   }
 
   // =====================================================
-  // LUPA PASSWORD - LANGKAH 1: CEK AKUN
-  // POST /api/check-account   { login }
+  // LUPA PASSWORD - LANGKAH 1: CEK NOMOR HP
+  // POST /api/check-account   { no_hp }
   // Return: true = akun ditemukan, false = tidak ada / gagal
   // (alasan gagal ada di AuthService.lastError)
   // =====================================================
 
-  static Future<bool> checkAccountExists(String login) async {
+  static Future<bool> checkPhoneExists(String noHp) async {
     lastError = '';
 
     try {
@@ -253,7 +241,7 @@ class AuthService {
           .post(
             Uri.parse('${ApiService.baseUrl}/check-account'),
             headers: _headers,
-            body: jsonEncode({'login': login.trim()}),
+            body: jsonEncode({'no_hp': noHp.trim()}),
           )
           .timeout(const Duration(seconds: 15));
 
@@ -266,8 +254,7 @@ class AuthService {
           response.statusCode == 200 || response.statusCode == 201;
       final bool notFailed = body['success'] != false;
       // Kalau backend mengirim penanda "exists"/"found", hormati itu.
-      final bool notMissing =
-          body['exists'] != false && body['found'] != false;
+      final bool notMissing = body['exists'] != false && body['found'] != false;
 
       if (statusOk && notFailed && notMissing) {
         return true;
@@ -275,14 +262,13 @@ class AuthService {
 
       lastError = _errorMessage(
         response,
-        'Akun dengan username/email tersebut tidak ditemukan.',
+        'Akun dengan nomor HP tersebut tidak ditemukan.',
       );
 
       return false;
     } catch (e) {
       debugPrint('CHECK ACCOUNT ERROR: $e');
-      lastError =
-          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return false;
     }
   }
@@ -294,7 +280,8 @@ class AuthService {
   // =====================================================
 
   static Future<String?> resetPassword({
-    required String login,
+    required String noHp,
+    required String otpToken,
     required String newPassword,
     required String confirmPassword,
   }) async {
@@ -306,14 +293,10 @@ class AuthService {
             Uri.parse('${ApiService.baseUrl}/reset-password'),
             headers: _headers,
             body: jsonEncode({
-              'login': login.trim(),
-              // Nama field password dikirim dalam beberapa bentuk umum
-              // supaya cocok dengan validasi di Laravel.
+              'no_hp': noHp.trim(),
+              'otp_token': otpToken,
               'password': newPassword,
               'password_confirmation': confirmPassword,
-              'new_password': newPassword,
-              'new_password_confirmation': confirmPassword,
-              'confirm_password': confirmPassword,
             }),
           )
           .timeout(const Duration(seconds: 15));
@@ -335,8 +318,7 @@ class AuthService {
       return lastError;
     } catch (e) {
       debugPrint('RESET PASSWORD ERROR: $e');
-      lastError =
-          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
     }
   }
@@ -345,9 +327,7 @@ class AuthService {
   // BACA RESPONSE JSON
   // =====================================================
 
-  static Map<String, dynamic> _decodeResponse(
-    http.Response response,
-  ) {
+  static Map<String, dynamic> _decodeResponse(http.Response response) {
     try {
       final decoded = jsonDecode(response.body);
 
@@ -363,10 +343,7 @@ class AuthService {
   // PESAN ERROR DARI LARAVEL
   // =====================================================
 
-  static String _errorMessage(
-    http.Response response,
-    String fallback,
-  ) {
+  static String _errorMessage(http.Response response, String fallback) {
     final body = _decodeResponse(response);
 
     final errors = body['errors'];

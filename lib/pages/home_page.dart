@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import '../services/operating_hours.dart';
 import '../services/profile_photo_service.dart';
 import '../theme/theme_service.dart';
 import 'login_page.dart';
@@ -95,6 +96,9 @@ class _HomePageState extends State<HomePage>
   // ============================================================
   bool _isLoggedIn = false;
   Map<String, dynamic>? _user;
+  static const OperatingHours _operatingHours = OperatingHours();
+  late DateTime _operationalNowUtc;
+  Timer? _operationalHoursTimer;
 
   Future<void> _loadSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -175,7 +179,6 @@ class _HomePageState extends State<HomePage>
       'ratingCount': '1.2k ulasan',
       'bar5': 0.85,
       'location': 'Jl. Kaliurang, Sumbersari, Kabupaten Jember',
-      'hours': '08.00 – 17.00 WIB.',
       'lat': -8.1662879,
       'lng': 113.7281353,
       'mapsUrl': 'https://maps.app.goo.gl/vPjhgv3KZdqJsq1Q8',
@@ -195,7 +198,6 @@ class _HomePageState extends State<HomePage>
       'ratingCount': '980 ulasan',
       'bar5': 0.75,
       'location': 'Jl. Kebon Agung, Patrang, Kabupaten Jember',
-      'hours': '05.00 – 17.30 WIB',
       'lat': -8.1624937,
       'lng': 113.6758968,
       'mapsUrl': 'https://maps.app.goo.gl/gMSdLEMkycGgpBmk7',
@@ -215,7 +217,6 @@ class _HomePageState extends State<HomePage>
       'ratingCount': '756 ulasan',
       'bar5': 0.82,
       'location': 'Jl. Kalisat-Mayang, Glagahwero, Kalisat, Kabupaten Jember',
-      'hours': '07.30 – 16.30 WIB',
       'lat': -8.1500932,
       'lng': 113.7796128,
       'mapsUrl': 'https://maps.app.goo.gl/k4inAgdpurtPiwuLA',
@@ -235,7 +236,6 @@ class _HomePageState extends State<HomePage>
       'ratingCount': '612 ulasan',
       'bar5': 0.70,
       'location': 'Jl. Kota Blater KM. 4, Ambulu, Kabupaten Jember',
-      'hours': '07.30 - 17.00 WIB.',
       'lat': -8.3642237,
       'lng': 113.6325732,
       'mapsUrl': 'https://maps.app.goo.gl/oCJMZNMysCqrhhTe9',
@@ -255,7 +255,6 @@ class _HomePageState extends State<HomePage>
       'ratingCount': '890 ulasan',
       'bar5': 0.83,
       'location': 'Wedan Gunung, Wonojati, Jenggawah, Kabupaten Jember',
-      'hours': '07.00 – 17.00 WIB',
       'lat': -8.2726348,
       'lng': 113.650029,
       'mapsUrl': 'https://maps.app.goo.gl/W1duyx6wUDUMsxbF8',
@@ -265,6 +264,8 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+    // TODO: Prefer a trusted server time source when the API supports one.
+    _operationalNowUtc = DateTime.now().toUtc();
     debugPrint('🔥 HOME PAGE INIT JALAN');
     _loadSession();
     _loadPromos();
@@ -278,17 +279,28 @@ class _HomePageState extends State<HomePage>
       const Duration(seconds: 30),
       (_) => _loadHargaTiket(),
     );
+    _operationalHoursTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) {
+        if (!mounted) return;
+        setState(() => _operationalNowUtc = DateTime.now().toUtc());
+      },
+    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Aplikasi dibuka lagi dari background -> ambil harga terbaru.
-    if (state == AppLifecycleState.resumed) _loadHargaTiket();
+    if (state == AppLifecycleState.resumed) {
+      _loadHargaTiket();
+      setState(() => _operationalNowUtc = DateTime.now().toUtc());
+    }
   }
 
   @override
   void dispose() {
     _hargaTimer?.cancel();
+    _operationalHoursTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -2521,46 +2533,38 @@ class _HomePageState extends State<HomePage>
   // ============================================================
   // JAM OPERASIONAL — Tanpa tombol Lokasi
   // ============================================================
-  // Membaca teks jam seperti '07.00 – 17.00 WIB' menjadi [menitBuka, menitTutup]
-  // (menit sejak tengah malam). Mengembalikan null kalau formatnya tidak terbaca.
-  List<int>? _parseJamOperasional(String text) {
-    final m = RegExp(
-      r'(\d{1,2})[.:](\d{2})\s*[–—-]\s*(\d{1,2})[.:](\d{2})',
-    ).firstMatch(text);
-    if (m == null) return null;
-    final int buka = int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
-    final int tutup = int.parse(m.group(3)!) * 60 + int.parse(m.group(4)!);
-    return [buka, tutup];
-  }
-
-  String _formatMenit(int menit) {
-    final String h = (menit ~/ 60).toString().padLeft(2, '0');
-    final String m = (menit % 60).toString().padLeft(2, '0');
-    return '$h.$m';
-  }
-
   Widget _buildOperationalSection(Map<String, dynamic> pool) {
-    final String hours = pool['hours']?.toString() ?? '07.00 – 17.00 WIB';
-
-    // Status buka/tutup dihitung dari jam kolam yang dipilih, memakai waktu WIB
-    // (UTC+7) supaya hasilnya sama walau zona waktu HP berbeda.
-    final List<int>? range = _parseJamOperasional(hours);
-    final DateTime wib = DateTime.now().toUtc().add(const Duration(hours: 7));
-    final int sekarang = wib.hour * 60 + wib.minute;
-    final bool sedangBuka =
-        range == null || (sekarang >= range[0] && sekarang < range[1]);
+    final hours = OperatingHours.dailyHours;
+    final openingTime = OperatingHours.formatWibTime(hours.openMinuteUtc);
+    final closingTime = OperatingHours.formatWibTime(hours.closeMinuteUtc);
+    final sedangBuka = _operatingHours.isOpen(_operationalNowUtc);
+    final nextOpen = sedangBuka
+        ? null
+        : _operatingHours.nextOpenTime(_operationalNowUtc);
+    final nextOpenTime = nextOpen == null
+        ? openingTime
+        : OperatingHours.formatWibTime(
+            nextOpen.hour * 60 + nextOpen.minute,
+          );
+    final todayUtc = DateTime.utc(
+      _operationalNowUtc.year,
+      _operationalNowUtc.month,
+      _operationalNowUtc.day,
+    );
+    final opensTomorrow =
+        nextOpen != null &&
+        DateTime.utc(nextOpen.year, nextOpen.month, nextOpen.day)
+            .isAfter(todayUtc);
 
     final Color warna = sedangBuka
         ? const Color(0xff06A87E)
         : const Color(0xffEF476F);
-    final String statusTeks = sedangBuka ? 'Sedang Buka' : 'Sedang Tutup';
-
-    String catatan = 'Buka setiap hari';
-    if (range != null) {
-      catatan = sedangBuka
-          ? 'Buka setiap hari · tutup pukul ${_formatMenit(range[1])} WIB'
-          : 'Buka setiap hari · buka lagi pukul ${_formatMenit(range[0])} WIB';
-    }
+    final statusTeks = sedangBuka ? 'Sedang Buka' : 'Tutup';
+    final displayedHours = '$openingTime – $closingTime WIB';
+    final catatan = sedangBuka
+        ? 'Buka setiap hari · tutup pukul $closingTime WIB'
+        : 'Buka kembali pukul $nextOpenTime WIB'
+              '${opensTomorrow ? ' · besok' : ''}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2613,7 +2617,7 @@ class _HomePageState extends State<HomePage>
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      hours,
+                      displayedHours,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,

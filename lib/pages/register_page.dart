@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
@@ -18,16 +19,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
-  final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final noHpController = TextEditingController();
-  final alamatController = TextEditingController();
 
   bool passwordVisible = false;
   bool isLoading = false;
 
   // Bukti verifikasi OTP. Disimpan supaya kalau registrasi gagal karena
-  // email/username dobel, pengguna tidak perlu minta OTP lagi.
+  // Email ganda tidak mengharuskan pengguna meminta OTP lagi.
   String? _otpToken;
   String? _otpPhone;
 
@@ -38,10 +37,8 @@ class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    usernameController.dispose();
     passwordController.dispose();
     noHpController.dispose();
-    alamatController.dispose();
     super.dispose();
   }
 
@@ -89,10 +86,8 @@ class _RegisterPageState extends State<RegisterPage> {
       final String? error = await AuthService.register(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
-        username: usernameController.text.trim(),
         password: passwordController.text,
         noHp: noHp,
-        alamat: alamatController.text.trim(),
         otpToken: _otpToken,
       );
 
@@ -145,9 +140,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ? const Color(0xFFD93645)
             : const Color(0xFF16865B),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -160,18 +153,12 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(
-        color: context.mutedText,
-        fontSize: 14,
-      ),
+      labelStyle: TextStyle(color: context.mutedText, fontSize: 14),
       prefixIcon: Icon(icon, color: context.mutedText, size: 21),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: context.softBg,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 17,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Color(0xFFE2E9F3)),
@@ -212,10 +199,7 @@ class _RegisterPageState extends State<RegisterPage> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF8490A3),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF8490A3)),
           ),
         ],
       ),
@@ -239,12 +223,9 @@ class _RegisterPageState extends State<RegisterPage> {
       maxLines: obscureText ? 1 : maxLines,
       obscureText: obscureText,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      decoration: inputDecoration(
-        label,
-        icon,
-        suffixIcon: suffixIcon,
-      ),
-      validator: validator ??
+      decoration: inputDecoration(label, icon, suffixIcon: suffixIcon),
+      validator:
+          validator ??
           (value) {
             if (value == null || value.trim().isEmpty) {
               return errorMessage;
@@ -419,14 +400,6 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
 
                         field(
-                          label: 'Nama Lengkap',
-                          icon: Icons.person_outline_rounded,
-                          controller: nameController,
-                          errorMessage: 'Nama wajib diisi',
-                        ),
-                        const SizedBox(height: 15),
-
-                        field(
                           label: 'Email',
                           icon: Icons.alternate_email_rounded,
                           controller: emailController,
@@ -436,9 +409,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Email wajib diisi';
                             }
-                            if (!RegExp(
-                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                            ).hasMatch(value.trim())) {
+                            if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                .hasMatch(value.trim())) {
                               return 'Masukkan alamat email yang valid';
                             }
                             return null;
@@ -456,7 +428,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             final v = (value ?? '').trim();
                             if (v.isEmpty) return 'Nomor HP wajib diisi';
                             final digits = v.replaceAll(RegExp(r'\D'), '');
-                            if (!RegExp(r'^(0|62|8)\d{8,13}$').hasMatch(digits)) {
+                            if (!RegExp(r'^(0|62|8)\d{8,13}$')
+                                .hasMatch(digits)) {
                               return 'Gunakan nomor WhatsApp aktif, contoh 08123456789';
                             }
                             return null;
@@ -464,26 +437,18 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 15),
 
-                        field(
-                          label: 'Alamat Lengkap',
-                          icon: Icons.location_on_outlined,
-                          controller: alamatController,
-                          maxLines: 3,
-                          errorMessage: 'Alamat wajib diisi',
-                        ),
-
                         const SizedBox(height: 27),
 
                         sectionTitle(
                           'Informasi Akun',
-                          'Gunakan username dan password yang aman.',
+                          'Gunakan nama lengkap dan password yang aman.',
                         ),
 
                         field(
-                          label: 'Username',
-                          icon: Icons.account_circle_outlined,
-                          controller: usernameController,
-                          errorMessage: 'Username wajib diisi',
+                          label: 'Nama Lengkap',
+                          icon: Icons.person_outline_rounded,
+                          controller: nameController,
+                          errorMessage: 'Nama wajib diisi',
                         ),
                         const SizedBox(height: 15),
 
@@ -642,10 +607,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                 ),
                                 SizedBox(width: 7),
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 18,
-                                ),
+                                Icon(Icons.arrow_forward_rounded, size: 18),
                               ],
                             ),
                           ),

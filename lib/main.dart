@@ -296,6 +296,9 @@ class _MainShellState extends State<MainShell> {
                         key: ValueKey('tiket_${_poolId}_$_loggedIn'),
                         poolId: _poolId,
                         poolName: _poolName,
+                        onReturnHome: () {
+                          setState(() => _currentIndex = _tabHome);
+                        },
                       )
                     : _GuestTiket(
                         key: const ValueKey('tiket_guest'),

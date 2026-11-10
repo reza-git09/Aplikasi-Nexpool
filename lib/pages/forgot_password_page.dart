@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
+import '../services/otp_service.dart';
+import 'otp_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -14,16 +16,17 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     with SingleTickerProviderStateMixin {
   // ─── Controllers ───────────────────────────────────────────────
-  final TextEditingController _loginCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
   final TextEditingController _passCtrl = TextEditingController();
   final TextEditingController _confirmCtrl = TextEditingController();
 
   // ─── State ─────────────────────────────────────────────────────
-  int _step = 0; // 0 = masukkan akun, 1 = buat password baru
+  int _step = 0; // 0 = verifikasi nomor HP, 1 = buat password baru
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
-  String? _verifiedLogin; // username/email yang sudah diverifikasi
+  String? _verifiedPhone;
+  String? _otpToken;
 
   late AnimationController _bubbleCtrl;
 
@@ -46,38 +49,62 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   @override
   void dispose() {
     _bubbleCtrl.dispose();
-    _loginCtrl.dispose();
+    _phoneCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
   }
 
-  // ─── Langkah 1: verifikasi akun ────────────────────────────────
+  // ─── Langkah 1: verifikasi nomor HP ────────────────────────────
   Future<void> _verifyAccount() async {
-    final login = _loginCtrl.text.trim();
-    if (login.isEmpty) {
-      _snack('Masukkan username atau email terlebih dahulu.', isError: true);
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      _snack('Masukkan nomor HP yang terdaftar.', isError: true);
       return;
     }
     setState(() => _isLoading = true);
 
-    final exists = await AuthService.checkAccountExists(login);
+    try {
+      final exists = await AuthService.checkPhoneExists(phone);
+      if (!mounted) return;
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!exists) {
+        _snack(
+          AuthService.lastError.isNotEmpty
+              ? AuthService.lastError
+              : 'Akun dengan nomor HP tersebut tidak ditemukan.',
+          isError: true,
+        );
+        return;
+      }
 
-    if (exists) {
+      final sent = await OtpService.send(phone);
+      if (!mounted) return;
+      if (sent.error != null) {
+        _snack(sent.error!, isError: true);
+        return;
+      }
+
+      final token = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpPage(
+            noHp: phone,
+            initialResendIn: sent.resendIn,
+            initialExpiresIn: sent.expiresIn,
+            debugCode: sent.debugCode,
+          ),
+        ),
+      );
+      if (!mounted || token == null) return;
+
       setState(() {
-        _verifiedLogin = login;
+        _verifiedPhone = phone;
+        _otpToken = token;
         _step = 1;
       });
-    } else {
-      _snack(
-        AuthService.lastError.isNotEmpty
-            ? AuthService.lastError
-            : 'Akun dengan username/email tersebut tidak ditemukan.',
-        isError: true,
-      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -102,7 +129,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     setState(() => _isLoading = true);
 
     final error = await AuthService.resetPassword(
-      login: _verifiedLogin!,
+      noHp: _verifiedPhone!,
+      otpToken: _otpToken!,
       newPassword: pass,
       confirmPassword: confirm,
     );
@@ -178,6 +206,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    TextInputType? keyboardType,
     bool obscure = false,
     VoidCallback? onToggleObscure,
     TextInputAction action = TextInputAction.next,
@@ -186,6 +215,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     return TextField(
       controller: controller,
       obscureText: obscure,
+      keyboardType: keyboardType,
       textInputAction: action,
       onSubmitted: (_) => onSubmit?.call(),
       autocorrect: false,
@@ -328,13 +358,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         ),
         const SizedBox(height: 8),
         const Text(
-          'Masukkan username atau email yang kamu daftarkan untuk memverifikasi akunmu.',
+          'Masukkan nomor HP yang terdaftar. Kami akan mengirim kode verifikasi ke WhatsApp-mu.',
           style: TextStyle(color: Color(0xFF8490A3), fontSize: 13, height: 1.6),
         ),
         const SizedBox(height: 28),
 
         const Text(
-          'Username atau Email',
+          'Nomor HP (WhatsApp)',
           style: TextStyle(
             color: navy,
             fontSize: 14,
@@ -343,15 +373,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         ),
         const SizedBox(height: 9),
         _input(
-          controller: _loginCtrl,
-          hint: 'Masukkan username atau email',
+          controller: _phoneCtrl,
+          hint: 'Masukkan nomor HP yang terdaftar',
           icon: Icons.person_search_rounded,
+          keyboardType: TextInputType.phone,
           action: TextInputAction.done,
           onSubmit: _verifyAccount,
         ),
 
         const SizedBox(height: 28),
-        _primaryButton(label: 'VERIFIKASI AKUN', onPressed: _verifyAccount),
+        _primaryButton(label: 'KIRIM KODE OTP', onPressed: _verifyAccount),
 
         const SizedBox(height: 16),
 
@@ -371,7 +402,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Pastikan username atau email sesuai yang terdaftar di NEXPOOL.',
+                  'Pastikan nomor HP WhatsApp aktif dan sesuai dengan akun NEXPOOL.',
                   style: TextStyle(
                     color: context.mutedText,
                     fontSize: 12,
@@ -411,7 +442,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             children: [
               const TextSpan(text: 'Akun '),
               TextSpan(
-                text: _verifiedLogin ?? '',
+                text: _verifiedPhone ?? '',
                 style: const TextStyle(
                   color: navy,
                   fontWeight: FontWeight.w700,
@@ -478,6 +509,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                 ? null
                 : () => setState(() {
                     _step = 0;
+                    _verifiedPhone = null;
+                    _otpToken = null;
                     _passCtrl.clear();
                     _confirmCtrl.clear();
                   }),

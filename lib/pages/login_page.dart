@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
@@ -14,11 +15,9 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
-  final TextEditingController usernameController =
-      TextEditingController();
+  final TextEditingController identifierController = TextEditingController();
 
-  final TextEditingController passwordController =
-      TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   bool obscurePassword = true;
   bool isLoading = false;
@@ -46,7 +45,7 @@ class _LoginPageState extends State<LoginPage>
   @override
   void dispose() {
     bubbleController.dispose();
-    usernameController.dispose();
+    identifierController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -54,12 +53,12 @@ class _LoginPageState extends State<LoginPage>
   Future<void> login() async {
     if (isLoading) return;
 
-    final username = usernameController.text.trim();
+    final identifier = identifierController.text.trim();
     final password = passwordController.text;
 
-    if (username.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       _showMessage(
-        'Username dan password wajib diisi.',
+        'Email/nomor HP dan password wajib diisi.',
         Colors.orange.shade700,
       );
       return;
@@ -69,10 +68,7 @@ class _LoginPageState extends State<LoginPage>
 
     try {
       // Tetap menggunakan API Laravel yang sudah ada.
-      final nama = await AuthService.verifyLogin(
-        username,
-        password,
-      );
+      final nama = await AuthService.verifyLogin(identifier, password);
 
       if (!mounted) return;
 
@@ -82,9 +78,7 @@ class _LoginPageState extends State<LoginPage>
           Colors.green.shade700,
         );
 
-        await Future.delayed(
-          const Duration(milliseconds: 400),
-        );
+        await Future.delayed(const Duration(milliseconds: 400));
 
         if (!mounted) return;
 
@@ -93,7 +87,7 @@ class _LoginPageState extends State<LoginPage>
         _showMessage(
           AuthService.lastError.isNotEmpty
               ? AuthService.lastError
-              : 'Username atau password salah.',
+              : 'Email/nomor HP atau password salah.',
           Colors.red.shade600,
         );
       }
@@ -118,9 +112,7 @@ class _LoginPageState extends State<LoginPage>
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -130,9 +122,7 @@ class _LoginPageState extends State<LoginPage>
 
     final bool? registered = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const RegisterPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const RegisterPage()),
     );
 
     if (!mounted) return;
@@ -172,10 +162,7 @@ class _LoginPageState extends State<LoginPage>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withOpacity(0.10),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.25),
-            width: 1.5,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
         ),
       ),
     );
@@ -215,15 +202,8 @@ class _LoginPageState extends State<LoginPage>
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(
-          color: context.mutedText,
-          fontSize: 13,
-        ),
-        prefixIcon: Icon(
-          icon,
-          color: context.mutedText,
-          size: 21,
-        ),
+        hintStyle: TextStyle(color: context.mutedText, fontSize: 13),
+        prefixIcon: Icon(icon, color: context.mutedText, size: 21),
         suffixIcon: suffix,
         filled: true,
         fillColor: context.softBg,
@@ -233,22 +213,15 @@ class _LoginPageState extends State<LoginPage>
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: Color(0xFFE2E9F3),
-          ),
+          borderSide: const BorderSide(color: Color(0xFFE2E9F3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: Color(0xFFE2E9F3),
-          ),
+          borderSide: const BorderSide(color: Color(0xFFE2E9F3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(
-            color: blue,
-            width: 1.7,
-          ),
+          borderSide: const BorderSide(color: blue, width: 1.7),
         ),
       ),
     );
@@ -266,11 +239,7 @@ class _LoginPageState extends State<LoginPage>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  headerDark,
-                  headerMiddle,
-                  headerLight,
-                ],
+                colors: [headerDark, headerMiddle, headerLight],
                 stops: [0.0, 0.55, 1.0],
               ),
             ),
@@ -412,17 +381,10 @@ class _LoginPageState extends State<LoginPage>
                       ),
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(
-                        22,
-                        28,
-                        22,
-                        25,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(22, 28, 22, 25),
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: 440,
-                          ),
+                          constraints: const BoxConstraints(maxWidth: 440),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(22),
@@ -473,11 +435,11 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                                 const SizedBox(height: 27),
 
-                                _label('Username atau Email'),
+                                _label('Email atau Nomor HP'),
                                 const SizedBox(height: 9),
                                 _input(
-                                  controller: usernameController,
-                                  hint: 'Masukkan username atau email',
+                                  controller: identifierController,
+                                  hint: 'Masukkan email atau nomor HP',
                                   icon: Icons.person_outline_rounded,
                                   textInputAction: TextInputAction.next,
                                 ),
@@ -517,7 +479,9 @@ class _LoginPageState extends State<LoginPage>
                                 // LUPA PASSWORD
                                 Center(
                                   child: TextButton(
-                                    onPressed: isLoading ? null : _goToForgotPassword,
+                                    onPressed: isLoading
+                                        ? null
+                                        : _goToForgotPassword,
                                     style: TextButton.styleFrom(
                                       foregroundColor: blue,
                                       padding: const EdgeInsets.symmetric(
@@ -528,7 +492,10 @@ class _LoginPageState extends State<LoginPage>
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.lock_reset_rounded, size: 16),
+                                        Icon(
+                                          Icons.lock_reset_rounded,
+                                          size: 16,
+                                        ),
                                         SizedBox(width: 6),
                                         Text(
                                           'Lupa Password?',
@@ -552,8 +519,9 @@ class _LoginPageState extends State<LoginPage>
                                     onPressed: isLoading ? null : login,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: navy,
-                                      disabledBackgroundColor:
-                                          navy.withOpacity(0.65),
+                                      disabledBackgroundColor: navy.withOpacity(
+                                        0.65,
+                                      ),
                                       foregroundColor: Colors.white,
                                       elevation: 3,
                                       shadowColor: navy.withOpacity(0.25),
@@ -619,8 +587,8 @@ class _LoginPageState extends State<LoginPage>
                                       SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          'Gunakan username atau email dan '
-                                          'password yang kamu daftarkan '
+                                          'Gunakan email atau nomor HP '
+                                          'dan password yang kamu daftarkan '
                                           'di NEXPOOL.',
                                           style: TextStyle(
                                             color: context.mutedText,
@@ -638,9 +606,7 @@ class _LoginPageState extends State<LoginPage>
                                 Row(
                                   children: [
                                     const Expanded(
-                                      child: Divider(
-                                        color: Color(0xFFE5EAF2),
-                                      ),
+                                      child: Divider(color: Color(0xFFE5EAF2)),
                                     ),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -657,9 +623,7 @@ class _LoginPageState extends State<LoginPage>
                                       ),
                                     ),
                                     const Expanded(
-                                      child: Divider(
-                                        color: Color(0xFFE5EAF2),
-                                      ),
+                                      child: Divider(color: Color(0xFFE5EAF2)),
                                     ),
                                   ],
                                 ),
@@ -682,9 +646,7 @@ class _LoginPageState extends State<LoginPage>
                                 // TOMBOL DAFTAR SEKARANG
                                 Center(
                                   child: TextButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : _goToRegister,
+                                    onPressed: isLoading ? null : _goToRegister,
                                     style: TextButton.styleFrom(
                                       foregroundColor: navy,
                                       padding: const EdgeInsets.symmetric(

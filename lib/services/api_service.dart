@@ -9,14 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
-  // Ganti IP sesuai IP laptop kamu (cek dengan `ipconfig`).
-  // Bisa juga diubah dari dalam aplikasi lewat setBaseUrl().
-  // =========================================================
-  static const String defaultBaseUrl = 'http://10.212.237.105:8000/api';
+  static const String defaultBaseUrl = 'http://192.168.1.25:8000/api';
   static String _baseUrl = defaultBaseUrl;
 
   static String get baseUrl => _baseUrl;
   static set baseUrl(String value) => _baseUrl = value.trim();
+  
 
   /// Inisialisasi baseUrl dari SharedPreferences jika pernah diubah pengguna
   static Future<void> init() async {

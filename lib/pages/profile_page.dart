@@ -40,12 +40,9 @@ class _ProfilePageState extends State<ProfilePage>
 
   // ─── State ─────────────────────────────────────────────────────
   late TextEditingController _namaController;
-  late TextEditingController _namaLengkapController;
 
   String _email = '';
-  String _username = '';
   String _noHp = '';
-  String _alamat = '';
 
   bool _isEditing = false;
   bool _isSaving = false;
@@ -62,9 +59,6 @@ class _ProfilePageState extends State<ProfilePage>
     super.initState();
 
     _namaController = TextEditingController(
-      text: _pick(['name', 'nama'], 'Pengguna NexPool'),
-    );
-    _namaLengkapController = TextEditingController(
       text: _pick([
         'full_name',
         'nama_lengkap',
@@ -74,9 +68,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
 
     _email = _pick(['email'], '-');
-    _username = _pick(['username'], '-');
     _noHp = _pick(['no_hp', 'phone', 'telepon'], '-');
-    _alamat = _pick(['alamat', 'address'], '-');
 
     _headerAnim = AnimationController(
       vsync: this,
@@ -111,7 +103,6 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   void dispose() {
     _namaController.dispose();
-    _namaLengkapController.dispose();
     _headerAnim.dispose();
     _cardAnim.dispose();
     super.dispose();
@@ -231,11 +222,10 @@ class _ProfilePageState extends State<ProfilePage>
 
   // ─── Simpan Perubahan ──────────────────────────────────────────
   Future<void> _saveProfile() async {
-    final newNama = _namaController.text.trim();
-    final newNamaLengkap = _namaLengkapController.text.trim();
+    final fullName = _namaController.text.trim();
 
-    if (newNama.isEmpty || newNamaLengkap.isEmpty) {
-      _showSnack('Nama dan nama lengkap tidak boleh kosong.', isError: true);
+    if (fullName.isEmpty) {
+      _showSnack('Nama lengkap tidak boleh kosong.', isError: true);
       return;
     }
 
@@ -243,8 +233,8 @@ class _ProfilePageState extends State<ProfilePage>
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', newNama);
-      await prefs.setString('user_nama_lengkap', newNamaLengkap);
+      await prefs.setString('user_name', fullName);
+      await prefs.setString('user_nama_lengkap', fullName);
 
       setState(() {
         _isEditing = false;
@@ -392,15 +382,8 @@ class _ProfilePageState extends State<ProfilePage>
                         children: [
                           _buildEditableTile(
                             icon: Icons.badge_outlined,
-                            label: 'Nama (Username Display)',
-                            controller: _namaController,
-                            editable: _isEditing,
-                          ),
-                          _buildDivider(),
-                          _buildEditableTile(
-                            icon: Icons.person_outline_rounded,
                             label: 'Nama Lengkap',
-                            controller: _namaLengkapController,
+                            controller: _namaController,
                             editable: _isEditing,
                           ),
                         ],
@@ -414,12 +397,6 @@ class _ProfilePageState extends State<ProfilePage>
                         subtitle: 'Tidak dapat diubah',
                         children: [
                           _buildReadOnlyTile(
-                            icon: Icons.alternate_email_rounded,
-                            label: 'Username',
-                            value: _username,
-                          ),
-                          _buildDivider(),
-                          _buildReadOnlyTile(
                             icon: Icons.email_outlined,
                             label: 'Email Terdaftar',
                             value: _email,
@@ -430,13 +407,6 @@ class _ProfilePageState extends State<ProfilePage>
                             icon: Icons.phone_outlined,
                             label: 'Nomor HP / WhatsApp',
                             value: _noHp,
-                            isLocked: true,
-                          ),
-                          _buildDivider(),
-                          _buildReadOnlyTile(
-                            icon: Icons.location_on_outlined,
-                            label: 'Alamat',
-                            value: _alamat,
                             isLocked: true,
                           ),
                         ],
@@ -582,24 +552,6 @@ class _ProfilePageState extends State<ProfilePage>
                   ),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '@$_username',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 16),
 
@@ -884,10 +836,6 @@ class _ProfilePageState extends State<ProfilePage>
                   _isEditing = false;
                   // Reset ke nilai awal
                   _namaController.text = _pick([
-                    'name',
-                    'nama',
-                  ], 'Pengguna NexPool');
-                  _namaLengkapController.text = _pick([
                     'full_name',
                     'nama_lengkap',
                     'name',

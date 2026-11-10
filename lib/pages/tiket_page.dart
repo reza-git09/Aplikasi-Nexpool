@@ -11,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
-import 'home_page.dart';
 
 const kBlue = Color(0xff00b4d8);
 const kDarkBlue = Color(0xff0077b6);
@@ -222,11 +221,18 @@ class TiketPage extends StatefulWidget {
   /// Tiket hanya akan muncul di Tiket Saya setelah pengguna melakukan pemesanan.
   static List<Map<String, dynamic>> savedTickets = [];
 
-  const TiketPage({super.key, this.poolId, this.poolName, this.initialTab = 0});
+  const TiketPage({
+    super.key,
+    this.poolId,
+    this.poolName,
+    this.initialTab = 0,
+    this.onReturnHome,
+  });
 
   final String? poolId;
   final String? poolName;
   final int initialTab;
+  final VoidCallback? onReturnHome;
 
   @override
   State<TiketPage> createState() => _TiketPageState();
@@ -831,6 +837,10 @@ class _TiketPageState extends State<TiketPage>
       'qty': qtyChild > 0
           ? '$qtyAdult Dewasa, $qtyChild Anak'
           : '$qtyAdult Dewasa',
+      'adultQty': qtyAdult,
+      'childQty': qtyChild,
+      'unitPrice': adultPrice,
+      'adminFee': adminFee,
       'payment': _paymentLabel(),
       'total': totalPrice,
       'status': 'paid',
@@ -1447,7 +1457,7 @@ class _TiketPageState extends State<TiketPage>
                           if (currentStep == 1) buildStep1(),
                           if (currentStep == 3) buildStep3(),
                           if (currentStep == 4) buildStep4(),
-                          if (currentStep == 5) buildStep5(),
+                          if (currentStep == 5) _buildThermalStep5(),
                           const SizedBox(
                             height: 88,
                           ), // Clearance for floating navbar
@@ -3386,7 +3396,7 @@ class _TiketPageState extends State<TiketPage>
         throw StateError('Tampilan struk belum siap untuk disimpan.');
       }
 
-      final image = await boundary.toImage(pixelRatio: 3.0);
+      final image = await boundary.toImage(pixelRatio: 2);
       final byteData =
           await image.toByteData(format: ImageByteFormat.png);
       image.dispose();
@@ -4001,6 +4011,151 @@ class _TiketPageState extends State<TiketPage>
     );
   }
 
+  Map<String, dynamic> _currentReceiptTicket() {
+    return {
+      'orderId': orderId,
+      'ticketId': ticketId.isNotEmpty ? ticketId : reservationCode,
+      'poolName': selectedPoolName,
+      'customerName': nama,
+      'customerPhone': telepon,
+      'visitDate': selectedDate?.toIso8601String(),
+      'date': selectedDate == null ? selectedDateLabel : formatShortDate(selectedDate!),
+      'paidAt': paidAt == null ? '' : formatDateTime(paidAt!),
+      'paidAtIso': paidAt?.toIso8601String(),
+      'adultQty': qtyAdult,
+      'childQty': qtyChild,
+      'qty': qtyChild > 0
+          ? '$qtyAdult Dewasa, $qtyChild Anak'
+          : '$qtyAdult Dewasa',
+      'unitPrice': adultPrice,
+      'adminFee': adminFee,
+      'total': totalPrice,
+      'payment': _paymentLabel(),
+    };
+  }
+
+  Widget _buildThermalStep5() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: Container(
+            width: 76,
+            height: 76,
+            decoration: const BoxDecoration(
+              color: kGreen,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_rounded, color: Colors.white, size: 46),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Pembayaran Berhasil!',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Tiket Anda telah dikonfirmasi dan siap digunakan.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: RepaintBoundary(
+            key: _step5ReceiptKey,
+            child: _buildReceiptCanvas(_currentReceiptTicket(), 'paid'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      _isDownloadingReceipt ? null : _downloadStep5Receipt,
+                  icon: _isDownloadingReceipt
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download_rounded, size: 20),
+                  label: Text(
+                    _isDownloadingReceipt ? 'Menyimpan Struk...' : 'Unduh Struk',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() => selectedTab = 1);
+                    goStep(1);
+                  },
+                  icon: const Icon(Icons.confirmation_number_rounded, size: 18),
+                  label: const Text('Lihat Tiket Saya'),
+                  style: primaryStyle.copyWith(
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _returnToHome,
+                  icon: const Icon(Icons.home_rounded, size: 18),
+                  label: const Text('Kembali ke Home'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _returnToHome() {
+    final onReturnHome = widget.onReturnHome;
+    if (onReturnHome != null) {
+      onReturnHome();
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   Widget buildStep5() {
     final normalizedPoolId = normalizePoolId(selectedPoolId);
     final payLabel = _paymentLabel();
@@ -4472,11 +4627,7 @@ class _TiketPageState extends State<TiketPage>
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HomePage()),
-                      (route) => false,
-                    );
+                    _returnToHome();
                   },
                   icon: const Icon(Icons.home_rounded, size: 18),
                   label: const Text('Kembali ke Beranda'),
@@ -5016,19 +5167,8 @@ class _TiketPageState extends State<TiketPage>
               const SizedBox(height: 16),
 
               const Text(
-                'Detail Transaksi Tiket',
+                'Struk Pembayaran',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-
-              const SizedBox(height: 8),
-
-              badge(
-                isPaid ? 'PAID — LUNAS' : status.toUpperCase(),
-                isPaid ? kGreen : kOrange,
-                isPaid ? kGreen.withOpacity(.12) : kOrange.withOpacity(.12),
-                icon: isPaid
-                    ? Icons.check_circle_rounded
-                    : Icons.access_time_filled_rounded,
               ),
 
               const SizedBox(height: 16),
@@ -5037,7 +5177,7 @@ class _TiketPageState extends State<TiketPage>
                 child: SingleChildScrollView(
                   child: RepaintBoundary(
                     key: receiptKey,
-                    child: _buildPrintableReceipt(ticket, status),
+                    child: _buildReceiptCanvas(ticket, status),
                   ),
                 ),
               ),
@@ -5050,7 +5190,7 @@ class _TiketPageState extends State<TiketPage>
                   child: ElevatedButton.icon(
                     onPressed: () => _downloadReceiptImage(receiptKey, ticket),
                     icon: const Icon(Icons.download_rounded),
-                    label: const Text('Unduh Bukti Pembayaran (PNG)'),
+                    label: const Text('Unduh Struk'),
                     style: primaryStyle.copyWith(
                       padding: const WidgetStatePropertyAll(
                         EdgeInsets.symmetric(vertical: 14),
@@ -5080,161 +5220,307 @@ class _TiketPageState extends State<TiketPage>
     );
   }
 
-  Widget _buildPrintableReceipt(
+  Widget _buildReceiptCanvas(
     Map<String, dynamic> ticket,
     String paymentStatus,
   ) {
-    final visitDate = _receiptDate(
-      ticket['visitDate']?.toString() ?? ticket['date']?.toString(),
+    final quantity = ticket['qty']?.toString() ?? '';
+    final adultMatch = RegExp(r'(\d+)\s*Dewasa', caseSensitive: false)
+        .firstMatch(quantity);
+    final childMatch = RegExp(r'(\d+)\s*Anak', caseSensitive: false)
+        .firstMatch(quantity);
+    final adultCount = _receiptInteger(
+      ticket['adultQty'],
+      fallback: int.tryParse(adultMatch?.group(1) ?? '') ??
+          int.tryParse(quantity) ??
+          0,
     );
-    final reservationDate = _receiptDate(
-      ticket['reservedAt']?.toString(),
-      includeTime: true,
+    final childCount = _receiptInteger(
+      ticket['childQty'],
+      fallback: int.tryParse(childMatch?.group(1) ?? '') ?? 0,
     );
+    final fee = _receiptInteger(ticket['adminFee'], fallback: adminFee);
+    final paidTotal = _receiptInteger(ticket['total']);
+    final unitPrice = _receiptInteger(
+      ticket['unitPrice'],
+      fallback: _receiptInteger(
+        ticket['adultPrice'],
+        fallback: adultCount > 0
+            ? ((paidTotal > 0 ? paidTotal : fee) - fee) ~/ adultCount
+            : 0,
+      ),
+    );
+    final itemsTotal = adultCount * unitPrice;
+    final ticketCode = ticket['ticketId']?.toString() ??
+        ticket['reservationCode']?.toString() ??
+        '—';
+    final orderIdValue = ticket['orderId']?.toString() ?? '—';
     final paymentDate = _receiptDate(
       ticket['paidAtIso']?.toString() ?? ticket['paidAt']?.toString(),
       includeTime: true,
     );
+    final visitDate = _receiptVisitDate(ticket);
+    final phone = _receiptPhone(ticket['customerPhone']?.toString() ?? '');
+    final rawPoolName = ticket['poolName']?.toString().trim() ?? '';
+    final poolName = rawPoolName.isNotEmpty ? rawPoolName : selectedPoolName;
+    final mono = const TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 13,
+      color: Color(0xff1f2937),
+      height: 1.35,
+    );
+    final secondary = mono.copyWith(color: const Color(0xff4b5563));
 
-    Widget detail(String label, String value) {
+    Widget detail(String label, String value, {bool bold = false}) {
+      final style = bold ? mono.copyWith(fontWeight: FontWeight.w700) : mono;
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 12, color: context.mutedText),
-              ),
-            ),
-            const SizedBox(width: 12),
+            Expanded(child: Text(label, style: style)),
+            const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: context.textMain,
-                ),
-              ),
+              child: Text(value, textAlign: TextAlign.right, style: style),
             ),
           ],
         ),
       );
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: context.isDark
-              ? Colors.white.withOpacity(.12)
-              : Colors.grey.shade200,
+    Widget itemAmount(String description, String amount) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(child: Text(description, style: mono)),
+            const SizedBox(width: 8),
+            Text(amount, style: mono),
+          ],
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.pool_rounded, color: kBlue, size: 34),
-          const SizedBox(height: 6),
-          Text(
-            'NEXPOOL',
-            style: TextStyle(
-              color: context.textMain,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
-            ),
-          ),
-          Text(
-            'BUKTI PEMBAYARAN TIKET',
-            style: TextStyle(
-              color: context.mutedText,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: context.mutedText.withOpacity(.25)),
-          const SizedBox(height: 10),
-          detail('Status', paymentStatus.toUpperCase()),
-          detail('Kode tiket', ticket['ticketId']?.toString() ?? '—'),
-          detail('ID transaksi', ticket['orderId']?.toString() ?? '—'),
-          detail('Kolam renang', ticket['poolName']?.toString() ?? '—'),
-          detail('Nama pemesan', ticket['customerName']?.toString() ?? nama),
-          detail('Nomor telepon', ticket['customerPhone']?.toString() ?? '—'),
-          detail('Tanggal pemesanan', reservationDate),
-          detail('Tanggal kunjungan', visitDate),
-          detail('Jumlah tiket', ticket['qty']?.toString() ?? '—'),
-          detail('Metode pembayaran', ticket['payment']?.toString() ?? 'QRIS'),
-          detail('Waktu pembayaran', paymentDate),
-          const SizedBox(height: 7),
-          Container(height: 1, color: context.mutedText.withOpacity(.25)),
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'TOTAL DIBAYAR',
-                  style: TextStyle(
-                    color: context.mutedText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 360.0;
+        final canvasWidth = math.min(360.0, availableWidth);
+        final paperWidth = math.min(320.0, math.max(0.0, canvasWidth - 24));
+
+        return SizedBox(
+          width: canvasWidth,
+          child: ColoredBox(
+            color: const Color(0xffd1d5db),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: (canvasWidth - paperWidth) / 2,
+                vertical: 18,
+              ),
+              child: ClipPath(
+                clipper: _ReceiptTearClipper(),
+                child: Container(
+                  width: paperWidth,
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'NEXPOOL',
+                        style: mono.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(poolName, textAlign: TextAlign.center, style: mono),
+                      Text(
+                        'STRUK PEMBAYARAN TIKET',
+                        textAlign: TextAlign.center,
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 12),
+                      _receiptDashedLine(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'KODE TIKET',
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 3),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            ticketCode,
+                            maxLines: 1,
+                            style: mono.copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _receiptDashedLine(),
+                      const SizedBox(height: 10),
+                      detail('Kunjungan', visitDate, bold: true),
+                      detail(
+                        'Pemesan',
+                        ticket['customerName']?.toString() ?? '—',
+                      ),
+                      detail('Telepon', phone),
+                      detail('Dibayar', paymentDate),
+                      const SizedBox(height: 10),
+                      _receiptDashedLine(),
+                      const SizedBox(height: 10),
+                      if (adultCount > 0) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Tiket Dewasa', style: mono),
+                        ),
+                        itemAmount(
+                          '$adultCount x ${_receiptAmount(unitPrice)}',
+                          _receiptAmount(itemsTotal),
+                        ),
+                      ],
+                      if (childCount > 0) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Tiket Anak', style: mono),
+                        ),
+                        itemAmount('$childCount x Gratis', '0'),
+                      ],
+                      itemAmount('Biaya admin', _receiptAmount(fee)),
+                      const SizedBox(height: 10),
+                      _receiptDashedLine(),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'TOTAL',
+                              style: mono.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            rupiah(itemsTotal + fee),
+                            style: mono.copyWith(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      detail('Metode', ticket['payment']?.toString() ?? '—'),
+                      const SizedBox(height: 12),
+                      Transform.rotate(
+                        angle: -3 * math.pi / 180,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: const Color(0xff1f2937),
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            paymentStatus == 'paid'
+                                ? 'LUNAS'
+                                : paymentStatus.toUpperCase(),
+                            style: mono.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 3,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _receiptDashedLine(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Order ID',
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        orderIdValue,
+                        textAlign: TextAlign.center,
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Tunjukkan struk ini ke petugas di pintu masuk. '
+                        'Berlaku pada tanggal kunjungan.',
+                        textAlign: TextAlign.center,
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Terima kasih, selamat berenang!',
+                        textAlign: TextAlign.center,
+                        style: secondary.copyWith(fontSize: 11),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  rupiah((ticket['total'] as num?)?.round() ?? 0),
-                  style: const TextStyle(
-                    color: kBlue,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: context.isDark
-                  ? const Color(0xFF3B3424)
-                  : const Color(0xFFFFF8E1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              'PENTING: Tiket hanya berlaku pada tanggal kunjungan yang tercantum. Jika tidak digunakan sampai tanggal tersebut terlewat, tiket hangus dan tidak dapat dipakai pada hari lain.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: context.isDark
-                    ? const Color(0xFFFFD166)
-                    : const Color(0xFF765500),
-                fontSize: 10,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Tunjukkan bukti ini kepada petugas loket.',
-            style: TextStyle(
-              color: context.mutedText,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Widget _receiptDashedLine() {
+    return CustomPaint(
+      painter: _DashedLinePainter(const Color(0xff9ca3af)),
+      child: const SizedBox(width: double.infinity, height: 1),
+    );
+  }
+
+  int _receiptInteger(Object? value, {int fallback = 0}) {
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  String _receiptAmount(int value) {
+    return value.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (match) => '${match.group(1)}.',
+    );
+  }
+
+  String _receiptPhone(String value) {
+    final phone = value.trim();
+    if (phone.isEmpty) return '—';
+    if (phone.startsWith('+')) return phone;
+    if (phone.startsWith('0')) return '+62 ${phone.substring(1)}';
+    if (phone.startsWith('62')) return '+$phone';
+    return '+62 $phone';
+  }
+
+  String _receiptVisitDate(Map<String, dynamic> ticket) {
+    final date = DateTime.tryParse(ticket['visitDate']?.toString() ?? '');
+    final displayDate = ticket['date']?.toString();
+    if (date != null) {
+      final localDate = date.toLocal();
+      if (displayDate != null &&
+          displayDate.isNotEmpty &&
+          displayDate != formatShortDate(localDate)) {
+        return displayDate;
+      }
+      return formatDate(localDate);
+    }
+    return displayDate?.isNotEmpty == true ? displayDate! : '—';
   }
 
   String _receiptDate(String? value, {bool includeTime = false}) {
@@ -5257,7 +5543,7 @@ class _TiketPageState extends State<TiketPage>
         throw StateError('Gambar struk belum siap dibuat.');
       }
 
-      final image = await renderObject.toImage(pixelRatio: 3);
+      final image = await renderObject.toImage(pixelRatio: 2);
       final byteData = await image.toByteData(format: ImageByteFormat.png);
       image.dispose();
       if (byteData == null) {
@@ -5625,5 +5911,64 @@ class _ConfettiParticlesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiParticlesPainter oldDelegate) {
     return oldDelegate.progress != progress;
+  }
+}
+
+class _ReceiptTearClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    const toothStep = 5.0;
+    const toothDepth = 8.0;
+    final path = Path()..moveTo(0, toothDepth);
+
+    for (var x = toothStep; x < size.width; x += toothStep) {
+      final y = (x / toothStep).round().isOdd ? 0.0 : toothDepth;
+      path.lineTo(x, y);
+    }
+
+    path
+      ..lineTo(size.width, toothDepth)
+      ..lineTo(size.width, size.height - toothDepth);
+
+    for (var x = size.width - toothStep; x > 0; x -= toothStep) {
+      final y = (x / toothStep).round().isOdd
+          ? size.height
+          : size.height - toothDepth;
+      path.lineTo(x, y);
+    }
+
+    path
+      ..lineTo(0, size.height - toothDepth)
+      ..close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _ReceiptTearClipper oldClipper) => false;
+}
+
+class _DashedLinePainter extends CustomPainter {
+  const _DashedLinePainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.8;
+
+    for (var x = 0.0; x < size.width; x += 8) {
+      canvas.drawLine(
+        Offset(x, size.height / 2),
+        Offset(math.min(x + 4, size.width), size.height / 2),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
