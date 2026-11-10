@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -280,7 +279,6 @@ class _TiketPageState extends State<TiketPage>
   DateTime? reservedAt;
   bool isCreatingPayment = false;
   bool isCheckingPaymentStatus = false;
-  bool _receiptWasShownForPayment = false;
   final GlobalKey _step5ReceiptKey = GlobalKey();
   final GlobalKey _qrisCardKey = GlobalKey();
   bool _isDownloadingQris = false;
