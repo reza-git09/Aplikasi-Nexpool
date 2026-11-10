@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -459,11 +460,8 @@ class _ReviewPageState extends State<ReviewPage> {
       // FOTO PERTAMA YANG DIKIRIM
       // =====================================================
 
-      String? fotoPath;
-
-      if (selectedPhotos.isNotEmpty) {
-        fotoPath = selectedPhotos.first.path;
-      }
+      final XFile? fotoUtama =
+          selectedPhotos.isNotEmpty ? selectedPhotos.first : null;
 
       // =====================================================
       // DEBUG SEBELUM KIRIM
@@ -483,7 +481,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
       debugPrint('JUMLAH FOTO   : ${selectedPhotos.length}');
 
-      debugPrint('FOTO PATH     : $fotoPath');
+      debugPrint('FOTO NAMA     : ${fotoUtama?.name}');
 
       debugPrint('========================================');
 
@@ -496,7 +494,7 @@ class _ReviewPageState extends State<ReviewPage> {
         namaPengunjung: submittingName,
         rating: overallRating,
         komentar: comment,
-        fotoPath: fotoPath,
+        foto: fotoUtama,
       );
 
       if (!mounted) return;
@@ -600,7 +598,8 @@ class _ReviewPageState extends State<ReviewPage> {
       return _reviewNotice(
         icon: Icons.lock_outline_rounded,
         title: 'Login untuk memberi ulasan',
-        message: 'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
+        message:
+            'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
         actionLabel: 'Login',
         onAction: _openLogin,
       );
@@ -973,6 +972,43 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   // ===========================================================
+  // GAMBAR FOTO YANG DIPILIH (WEB + MOBILE)
+  // ===========================================================
+
+  Widget buildPickedImage(
+    String path, {
+    required double width,
+    required double height,
+  }) {
+    final Widget errorWidget = Container(
+      width: width,
+      height: height,
+      color: context.softBg,
+      child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+    );
+
+    if (kIsWeb) {
+      // Di web, path dari image_picker adalah blob URL,
+      // jadi harus ditampilkan dengan Image.network.
+      return Image.network(
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => errorWidget,
+      );
+    }
+
+    return Image.file(
+      File(path),
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => errorWidget,
+    );
+  }
+
+  // ===========================================================
   // FORM REVIEW
   // ===========================================================
 
@@ -1148,11 +1184,10 @@ class _ReviewPageState extends State<ReviewPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          File(selectedPhotos[index].path),
+                        child: buildPickedImage(
+                          selectedPhotos[index].path,
                           width: 82,
                           height: 82,
-                          fit: BoxFit.cover,
                         ),
                       ),
 
@@ -1787,22 +1822,10 @@ class _ReviewPageState extends State<ReviewPage> {
                   itemBuilder: (context, index) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        File(review.photoPaths[index]),
+                      child: buildPickedImage(
+                        review.photoPaths[index],
                         width: 75,
                         height: 75,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 75,
-                            height: 75,
-                            color: context.softBg,
-                            child: const Icon(
-                              Icons.broken_image_outlined,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
                       ),
                     );
                   },
@@ -1813,10 +1836,6 @@ class _ReviewPageState extends State<ReviewPage> {
       ),
     );
   }
-
-  // ===========================================================
-  // BOTTOM NAV ITEM
-  // ===========================================================
 }
 
 // =============================================================

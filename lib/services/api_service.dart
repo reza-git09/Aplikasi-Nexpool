@@ -3,13 +3,14 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
   // Ganti IP sesuai IP laptop kamu (cek dengan `ipconfig`).
   // =========================================================
-  static const String baseUrl = 'http://192.168.1.21:8000/api';
+  static const String baseUrl = 'http://10.10.190.170:8000/api';
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -265,7 +266,9 @@ class ApiService {
   }
 
   // =========================================================
-  // SUBMIT REVIEW + FOTO
+  // SUBMIT REVIEW + FOTO (WEB + MOBILE)
+  // Foto dikirim sebagai bytes dari XFile, sehingga jalan
+  // di Flutter Web maupun Android/iOS.
   // =========================================================
 
   static Future<Map<String, dynamic>> submitReview({
@@ -273,7 +276,7 @@ class ApiService {
     required String namaPengunjung,
     required int rating,
     required String komentar,
-    String? fotoPath,
+    XFile? foto,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/reviews');
@@ -285,8 +288,16 @@ class ApiService {
       request.fields['rating'] = rating.toString();
       request.fields['komentar'] = komentar;
 
-      if (fotoPath != null && fotoPath.trim().isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath('foto', fotoPath));
+      if (foto != null) {
+        final Uint8List bytes = await foto.readAsBytes();
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'foto',
+            bytes,
+            filename: foto.name.isNotEmpty ? foto.name : 'foto.jpg',
+          ),
+        );
       }
 
       debugPrint('KIRIM REVIEW KE: $url');
