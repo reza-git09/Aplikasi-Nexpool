@@ -4,13 +4,70 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
   // Ganti IP sesuai IP laptop kamu (cek dengan `ipconfig`).
+  // Bisa juga diubah dari dalam aplikasi lewat setBaseUrl().
   // =========================================================
-  static const String baseUrl = 'http://10.10.190.170:8000/api';
+  static const String defaultBaseUrl = 'http://10.212.237.105:8000/api';
+  static String _baseUrl = defaultBaseUrl;
+
+  static String get baseUrl => _baseUrl;
+  static set baseUrl(String value) => _baseUrl = value.trim();
+
+  /// Inisialisasi baseUrl dari SharedPreferences jika pernah diubah pengguna
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUrl = prefs.getString('custom_api_base_url');
+      if (savedUrl != null && savedUrl.trim().isNotEmpty) {
+        _baseUrl = savedUrl.trim();
+      } else {
+        _baseUrl = defaultBaseUrl;
+      }
+    } catch (_) {
+      _baseUrl = defaultBaseUrl;
+    }
+  }
+
+  /// Simpan baseUrl baru ke SharedPreferences
+  static Future<void> setBaseUrl(String url) async {
+    _baseUrl = url.trim();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('custom_api_base_url', _baseUrl);
+    } catch (_) {}
+  }
+
+  /// Reset baseUrl ke alamat default
+  static Future<void> resetBaseUrl() async {
+    _baseUrl = defaultBaseUrl;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('custom_api_base_url');
+    } catch (_) {}
+  }
+
+  /// Menguji koneksi ke endpoint /test
+  static Future<bool> testConnection([String? testUrl]) async {
+    try {
+      final target = (testUrl != null && testUrl.trim().isNotEmpty)
+          ? testUrl.trim()
+          : _baseUrl;
+      final uri = Uri.parse(
+        target.endsWith('/') ? '${target}test' : '$target/test',
+      );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 4));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 
   static const Duration _timeout = Duration(seconds: 15);
 
@@ -19,56 +76,16 @@ class ApiService {
   // =========================================================
 
   static const List<Map<String, dynamic>> _defaultHarga = [
-    {
-      'pool_id': 'pool_id_01',
-      'jenis_hari': 'weekday',
-      'harga': '15000',
-    },
-    {
-      'pool_id': 'pool_id_01',
-      'jenis_hari': 'weekend',
-      'harga': '20000',
-    },
-    {
-      'pool_id': 'pool_id_02',
-      'jenis_hari': 'weekday',
-      'harga': '10000',
-    },
-    {
-      'pool_id': 'pool_id_02',
-      'jenis_hari': 'weekend',
-      'harga': '15000',
-    },
-    {
-      'pool_id': 'pool_id_03',
-      'jenis_hari': 'weekday',
-      'harga': '12000',
-    },
-    {
-      'pool_id': 'pool_id_03',
-      'jenis_hari': 'weekend',
-      'harga': '18000',
-    },
-    {
-      'pool_id': 'pool_id_04',
-      'jenis_hari': 'weekday',
-      'harga': '15000',
-    },
-    {
-      'pool_id': 'pool_id_04',
-      'jenis_hari': 'weekend',
-      'harga': '22000',
-    },
-    {
-      'pool_id': 'pool_id_05',
-      'jenis_hari': 'weekday',
-      'harga': '12000',
-    },
-    {
-      'pool_id': 'pool_id_05',
-      'jenis_hari': 'weekend',
-      'harga': '18000',
-    },
+    {'pool_id': 'pool_id_01', 'jenis_hari': 'weekday', 'harga': '15000'},
+    {'pool_id': 'pool_id_01', 'jenis_hari': 'weekend', 'harga': '20000'},
+    {'pool_id': 'pool_id_02', 'jenis_hari': 'weekday', 'harga': '10000'},
+    {'pool_id': 'pool_id_02', 'jenis_hari': 'weekend', 'harga': '15000'},
+    {'pool_id': 'pool_id_03', 'jenis_hari': 'weekday', 'harga': '12000'},
+    {'pool_id': 'pool_id_03', 'jenis_hari': 'weekend', 'harga': '18000'},
+    {'pool_id': 'pool_id_04', 'jenis_hari': 'weekday', 'harga': '15000'},
+    {'pool_id': 'pool_id_04', 'jenis_hari': 'weekend', 'harga': '22000'},
+    {'pool_id': 'pool_id_05', 'jenis_hari': 'weekday', 'harga': '12000'},
+    {'pool_id': 'pool_id_05', 'jenis_hari': 'weekend', 'harga': '18000'},
   ];
 
   // =========================================================
@@ -241,8 +258,9 @@ class ApiService {
 
   static Future<List<dynamic>> getReviewsByPool(String poolId) async {
     try {
-      final uri = Uri.parse('$baseUrl/reviews')
-          .replace(queryParameters: {'pool_id': poolId});
+      final uri = Uri.parse(
+        '$baseUrl/reviews',
+      ).replace(queryParameters: {'pool_id': poolId});
 
       final response = await http
           .get(uri, headers: {'Accept': 'application/json'})

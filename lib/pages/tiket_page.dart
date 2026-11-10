@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -280,8 +281,12 @@ class _TiketPageState extends State<TiketPage>
   bool isCreatingPayment = false;
   bool isCheckingPaymentStatus = false;
   bool _receiptWasShownForPayment = false;
+  final GlobalKey _step5ReceiptKey = GlobalKey();
+  final GlobalKey _qrisCardKey = GlobalKey();
+  bool _isDownloadingQris = false;
+  bool _isDownloadingReceipt = false;
 
-  // ── Timer pembayaran (5 menit) ──────────────────────────────────
+  // ── Timer pembayaran (5 menit tepat sesuai Midtrans) ─────────────
   static const int payDurationSeconds = 300;
   Timer? _payTimer;
   Timer? _paymentStatusTimer;
@@ -680,24 +685,59 @@ class _TiketPageState extends State<TiketPage>
         throw Exception('QRIS belum tersedia dari server pembayaran.');
       }
 
+      final returnedQrUrl = paymentData['qr_url']?.toString();
+      final finalQrUrl = (returnedQrUrl != null && returnedQrUrl.trim().isNotEmpty)
+          ? returnedQrUrl.trim()
+          : '';
+
+      // Hitung sisa detik berdasarkan expired_at & server_time dari backend (BUKAN jam lokal HP)
+      int remainingSecondsFromBackend = payDurationSeconds;
+      if (paymentData['remaining_seconds'] != null) {
+        final sec = int.tryParse(paymentData['remaining_seconds'].toString());
+        if (sec != null && sec > 0) {
+          remainingSecondsFromBackend = sec;
+        }
+      } else if (paymentData['expired_at'] != null &&
+          paymentData['server_time'] != null) {
+        final exp = DateTime.tryParse(paymentData['expired_at'].toString());
+        final srv = DateTime.tryParse(paymentData['server_time'].toString());
+        if (exp != null && srv != null) {
+          final diff = exp.difference(srv).inSeconds;
+          if (diff > 0) remainingSecondsFromBackend = diff;
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         orderId = returnedOrderId;
         ticketId = reservationCode;
-        currentQrUrl =
-            '${ApiService.baseUrl}/midtrans/qr/${Uri.encodeComponent(returnedOrderId)}';
+        currentQrUrl = finalQrUrl;
         currentQrImage = ApiService.getMidtransQrImage(returnedOrderId);
         statusPembayaran = 'pending';
         paymentExpired = false;
         currentStep = 4;
         paySubStep = 'process';
       });
-      _startPayTimer();
+      _startPayTimer(initialSeconds: remainingSecondsFromBackend);
       _startPaymentStatusPolling();
     } catch (e) {
       debugPrint('GAGAL MEMBUAT RESERVASI/QRIS: $e');
       if (mounted) {
-        showMessage('Gagal menyiapkan pembayaran: $e');
+        final errStr = e.toString();
+        String message;
+        if (errStr.contains('SocketException') ||
+            errStr.contains('No route to host') ||
+            errStr.contains('Connection refused') ||
+            errStr.contains('errno = 113') ||
+            errStr.contains('TimeoutException')) {
+          message =
+              'Tidak dapat terhubung ke server backend (${ApiService.baseUrl}). '
+              'Pastikan server Laravel aktif (php artisan serve --host=0.0.0.0 --port=8000) '
+              'dan HP terhubung di Wi-Fi yang sama.';
+        } else {
+          message = 'Gagal menyiapkan pembayaran: ${errStr.replaceFirst('Exception: ', '')}';
+        }
+        showMessage(message);
       }
     } finally {
       if (mounted) setState(() => isCreatingPayment = false);
@@ -730,6 +770,12 @@ class _TiketPageState extends State<TiketPage>
       final status =
           paymentStatus['status_pembayaran']?.toString().toLowerCase() ??
           'pending';
+
+      if ((currentQrUrl == null || currentQrUrl!.isEmpty) &&
+          paymentStatus['qr_url'] != null &&
+          paymentStatus['qr_url'].toString().isNotEmpty) {
+        currentQrUrl = paymentStatus['qr_url'].toString();
+      }
 
       if (status == 'paid') {
         await _completePayment(paymentStatus);
@@ -831,12 +877,7 @@ class _TiketPageState extends State<TiketPage>
     });
     _successAnimController.forward();
 
-    if (!_receiptWasShownForPayment) {
-      _receiptWasShownForPayment = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) showReceiptFromTicket(ticket);
-      });
-    }
+    // Transisi langsung ke step 5 (Struk dan tombol download langsung tampil di halaman)
   }
 
   // void _addTicketToMyTickets() {
@@ -3022,209 +3063,364 @@ class _TiketPageState extends State<TiketPage>
         ),
 
         pad20(
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: context.cardBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
+          RepaintBoundary(
+            key: _qrisCardKey,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
                   ),
-                  decoration: BoxDecoration(
-                    color: context.softBg,
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(color: kAqua.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.qr_code_rounded, size: 14, color: kAqua),
-                      const SizedBox(width: 6),
-                      Text(
-                        currentQrUrl != null && currentQrUrl!.isNotEmpty
-                            ? 'QRIS • MIDTRANS'
-                            : 'QRIS',
-                        style: TextStyle(
-                          color: context.textMain,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                Container(
-                  width: 220,
-                  height: 220,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300, width: 2),
-                  ),
-                  child: currentQrImage != null
-                      ? FutureBuilder<Uint8List>(
-                          future: currentQrImage,
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return Image.memory(
-                                snapshot.data!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildQrImageError(),
-                              );
-                            }
-                            if (snapshot.hasError) {
-                              return _buildQrImageError();
-                            }
-                            return const Center(
-                              child: CircularProgressIndicator(color: kBlue),
-                            );
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.qr_code_2_rounded,
-                                color: Colors.grey,
-                                size: 36,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'QRIS belum tersedia',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.softBg,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(color: kAqua.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.qr_code_rounded, size: 14, color: kAqua),
+                        const SizedBox(width: 6),
+                        Text(
+                          currentQrUrl != null && currentQrUrl!.isNotEmpty
+                              ? 'QRIS • MIDTRANS'
+                              : 'QRIS',
+                          style: TextStyle(
+                            color: context.textMain,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                ),
-
-                const SizedBox(height: 14),
-
-                const Text(
-                  'NEXPOOL QRIS PAYMENT',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                    color: kDarkBlue,
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 6),
+                  const SizedBox(height: 16),
 
-                Text(
-                  rupiah(totalPrice),
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: kBlue,
+                  Container(
+                    width: 220,
+                    height: 220,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300, width: 2),
+                    ),
+                    child: currentQrImage != null
+                        ? FutureBuilder<Uint8List>(
+                            future: currentQrImage,
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData) {
+                                return Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildQrImageError(),
+                                );
+                              }
+                              if (snapshot.hasError) {
+                                return _buildQrImageError();
+                              }
+                              return const Center(
+                                child: CircularProgressIndicator(color: kBlue),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.qr_code_2_rounded,
+                                  color: Colors.grey,
+                                  size: 36,
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'QRIS belum tersedia',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
                   ),
-                ),
 
-                const SizedBox(height: 4),
+                  const SizedBox(height: 14),
 
-                Text(
-                  'Order ID: $orderId',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        pad20(
-          infoBox(
-            color: context.softBg,
-            radius: 12,
-            pad: 12,
-            child: Row(
-              children: [
-                colorfulIcon(
-                  icon: Icons.lightbulb_rounded,
-                  color: kAqua,
-                  boxSize: 32,
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Scan QRIS menggunakan aplikasi pembayaran pilihan Anda. Status pembayaran akan diperbarui otomatis setelah Midtrans mengonfirmasi transaksi.',
+                  const Text(
+                    'NEXPOOL QRIS PAYMENT',
                     style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      color: kDarkBlue,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    rupiah(totalPrice),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: kBlue,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    'Order ID: $orderId',
+                    style: const TextStyle(
                       fontSize: 11,
-                      color: context.textMain,
-                      height: 1.4,
+                      color: Colors.grey,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          top: 10,
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         pad20(
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: isCheckingPaymentStatus
-                  ? null
-                  : () => _checkPaymentStatus(showPendingMessage: true),
-              icon: isCheckingPaymentStatus
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+          Column(
+            children: [
+              // 1. TOMBOL DOWNLOAD QRIS
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isDownloadingQris ? null : _downloadQrisImage,
+                  icon: _isDownloadingQris
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download_rounded, size: 20),
+                  label: Text(
+                    _isDownloadingQris
+                        ? 'Menyimpan QRIS...'
+                        : 'Download QRIS (Simpan ke Galeri)',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: primaryStyle.copyWith(
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    )
-                  : const Icon(Icons.sync_rounded, size: 20),
-              label: Text(
-                isCheckingPaymentStatus
-                    ? 'Memeriksa Pembayaran...'
-                    : 'Cek Status Pembayaran',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-              style: primaryStyle.copyWith(
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
                 ),
               ),
-            ),
+
+              const SizedBox(height: 12),
+
+              // 2. TOMBOL SALIN LINK URL QRIS
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _copyQrisUrl,
+                  icon: const Icon(Icons.copy_rounded, size: 20),
+                  label: const Text(
+                    'Salin Link URL QRIS',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: kDarkBlue,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: kDarkBlue,
+                    side: const BorderSide(color: kBlue, width: 1.6),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Indikator auto-check status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: kBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Menunggu pembayaran... (status dicek otomatis)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.mutedText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _downloadQrisImage() async {
+    if (_isDownloadingQris) return;
+    setState(() => _isDownloadingQris = true);
+
+    try {
+      Uint8List? bytes;
+      if (currentQrImage != null) {
+        try {
+          bytes = await currentQrImage;
+        } catch (_) {}
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        await WidgetsBinding.instance.endOfFrame;
+        final renderObject =
+            _qrisCardKey.currentContext?.findRenderObject();
+        if (renderObject is RenderRepaintBoundary) {
+          final image = await renderObject.toImage(pixelRatio: 3);
+          final byteData =
+              await image.toByteData(format: ImageByteFormat.png);
+          image.dispose();
+          bytes = byteData?.buffer.asUint8List();
+        }
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError('Gambar QRIS belum tersedia untuk diunduh.');
+      }
+
+      final fileName =
+          'NexPool-QRIS-${orderId.isNotEmpty ? orderId : 'Pembayaran'}'
+              .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
+
+      final savedPath = await FileSaver.instance.saveAs(
+        name: fileName,
+        bytes: bytes,
+        fileExtension: 'png',
+        mimeType: MimeType.png,
+        dialogTitle: 'Simpan Gambar QRIS',
+      );
+
+      if (savedPath != null && mounted) {
+        showMessage('Gambar QRIS berhasil diunduh ke galeri / penyimpanan!');
+      }
+    } catch (e) {
+      debugPrint('Gagal unduh QRIS: $e');
+      if (mounted) showMessage('Gagal mengunduh QRIS: $e');
+    } finally {
+      if (mounted) setState(() => _isDownloadingQris = false);
+    }
+  }
+
+  Future<void> _copyQrisUrl() async {
+    final urlToCopy = (currentQrUrl != null && currentQrUrl!.isNotEmpty)
+        ? currentQrUrl!.trim()
+        : '';
+
+    if (urlToCopy.isEmpty || !urlToCopy.startsWith('http')) {
+      showMessage('Link URL QRIS belum tersedia.');
+      return;
+    }
+
+    try {
+      await Clipboard.setData(ClipboardData(text: urlToCopy));
+      if (mounted) {
+        showMessage('Link URL QRIS berhasil disalin!\n$urlToCopy');
+      }
+    } catch (e) {
+      if (mounted) showMessage('Gagal menyalin link: $e');
+    }
+  }
+
+  Future<void> _downloadStep5Receipt() async {
+    if (_isDownloadingReceipt) return;
+    setState(() => _isDownloadingReceipt = true);
+
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = _step5ReceiptKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw StateError('Tampilan struk belum siap untuk disimpan.');
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData =
+          await image.toByteData(format: ImageByteFormat.png);
+      image.dispose();
+
+      final bytes = byteData?.buffer.asUint8List();
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError('Gagal membuat gambar struk pembayaran.');
+      }
+
+      final cleanTicket = (ticketId.isNotEmpty
+              ? ticketId
+              : (orderId.isNotEmpty ? orderId : 'Pembayaran'))
+          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
+      final fileName = 'NexPool-Struk-$cleanTicket';
+
+      final savedPath = await FileSaver.instance.saveAs(
+        name: fileName,
+        bytes: bytes,
+        fileExtension: 'png',
+        mimeType: MimeType.png,
+        dialogTitle: 'Simpan Struk Pembayaran',
+      );
+
+      if (savedPath != null && mounted) {
+        showMessage('Struk pembayaran berhasil disimpan ke galeri!');
+      }
+    } catch (e) {
+      debugPrint('Gagal unduh struk: $e');
+      if (mounted) showMessage('Gagal mengunduh struk: $e');
+    } finally {
+      if (mounted) setState(() => _isDownloadingReceipt = false);
+    }
   }
 
   Widget buildBankTransferPayment() {
@@ -3509,11 +3705,15 @@ class _TiketPageState extends State<TiketPage>
   // ============================================================
   // TIMER PEMBAYARAN
   // ============================================================
-  void _startPayTimer() {
+  void _startPayTimer({int? initialSeconds}) {
     _payTimer?.cancel();
 
+    final startSeconds = (initialSeconds != null && initialSeconds > 0)
+        ? initialSeconds
+        : payDurationSeconds;
+
     setState(() {
-      _remainingSeconds = payDurationSeconds;
+      _remainingSeconds = startSeconds;
       paymentExpired = false;
     });
 
@@ -3525,10 +3725,14 @@ class _TiketPageState extends State<TiketPage>
 
       if (_remainingSeconds <= 1) {
         timer.cancel();
-        setState(() {
-          _remainingSeconds = 0;
-        });
-        _checkPaymentStatus();
+        _paymentStatusTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _remainingSeconds = 0;
+            paymentExpired = true;
+            statusPembayaran = 'expired';
+          });
+        }
         return;
       }
 
@@ -3550,6 +3754,7 @@ class _TiketPageState extends State<TiketPage>
   /// Minta QRIS baru setelah Midtrans menyatakan transaksi lama kedaluwarsa.
   void _restartPayment() {
     _stopPayTimer();
+    _paymentStatusTimer?.cancel();
     setState(() {
       orderId = '';
       currentQrUrl = null;
@@ -3660,7 +3865,7 @@ class _TiketPageState extends State<TiketPage>
     };
     final message = statusPembayaran == 'refunded'
         ? 'Transaksi untuk pesanan $orderId telah dikembalikan. Periksa riwayat tiket atau hubungi petugas jika membutuhkan bantuan.'
-        : 'Status pembayaran untuk pesanan $orderId adalah ${statusPembayaran.toUpperCase()}. Buat QRIS baru untuk melanjutkan pembayaran.';
+        : 'Waktu pembayaran QRIS untuk pesanan $orderId telah habis (5 menit). Silakan buat transaksi / QRIS baru untuk melanjutkan.';
 
     return Column(
       children: [
@@ -3708,7 +3913,7 @@ class _TiketPageState extends State<TiketPage>
                       onPressed: _restartPayment,
                       icon: const Icon(Icons.refresh_rounded, size: 20),
                       label: const Text(
-                        'Bayar Ulang',
+                        'Buat QRIS Baru',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -3888,19 +4093,21 @@ class _TiketPageState extends State<TiketPage>
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: context.cardBg,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.07),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
+          child: RepaintBoundary(
+            key: _step5ReceiptKey,
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(.07),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
               children: [
                 Container(
                   width: double.infinity,
@@ -4171,6 +4378,7 @@ class _TiketPageState extends State<TiketPage>
             ),
           ),
         ),
+      ),
 
         const SizedBox(height: 20),
 
@@ -4178,6 +4386,44 @@ class _TiketPageState extends State<TiketPage>
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      _isDownloadingReceipt ? null : _downloadStep5Receipt,
+                  icon: _isDownloadingReceipt
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download_rounded, size: 20),
+                  label: Text(
+                    _isDownloadingReceipt
+                        ? 'Menyimpan Struk...'
+                        : 'Download Struk Pembayaran (Galeri)',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
