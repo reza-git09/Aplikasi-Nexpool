@@ -81,6 +81,7 @@ class _MainShellState extends State<MainShell> {
   bool _loggedIn = false;
   Map<String, dynamic>? _user;
   int _sessionTick = 0; // naik tiap status login berubah -> Home ikut update
+  int _reviewRefreshTick = 0;
   OverlayEntry? _poolSelectionWarning;
   Timer? _poolSelectionWarningTimer;
 
@@ -268,6 +269,9 @@ class _MainShellState extends State<MainShell> {
     HapticFeedback.selectionClick();
     setState(() {
       _currentIndex = index;
+      if (index == _tabUlasan) {
+        _reviewRefreshTick++;
+      }
     });
   }
 
@@ -311,7 +315,9 @@ class _MainShellState extends State<MainShell> {
                   namaKolam: _poolName,
                   gambarKolam: _poolGambar,
                   sessionTick: _sessionTick,
+                  purchaseRefreshTick: _reviewRefreshTick,
                   onSessionChanged: _loadSession,
+                  onOpenTicketBooking: () => _onTabTapped(1),
                 ),
                 _loggedIn
                     ? ProfilePage(

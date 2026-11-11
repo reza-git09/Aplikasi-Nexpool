@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 
 import 'home_page.dart';
 import 'login_page.dart';
+import 'tiket_page.dart';
 
 class ReviewPage extends StatefulWidget {
   // =========================================================
@@ -21,7 +22,9 @@ class ReviewPage extends StatefulWidget {
   final String? namaKolam;
   final String? gambarKolam;
   final int sessionTick;
+  final int purchaseRefreshTick;
   final Future<void> Function()? onSessionChanged;
+  final VoidCallback? onOpenTicketBooking;
 
   const ReviewPage({
     super.key,
@@ -29,7 +32,9 @@ class ReviewPage extends StatefulWidget {
     this.namaKolam,
     this.gambarKolam,
     this.sessionTick = 0,
+    this.purchaseRefreshTick = 0,
     this.onSessionChanged,
+    this.onOpenTicketBooking,
   });
 
   @override
@@ -73,6 +78,8 @@ class _ReviewPageState extends State<ReviewPage> {
   bool isSendingReview = false;
   bool isCheckingReviewAccount = true;
   bool hasSubmittedReview = false;
+  bool hasPaidTicketForPool = false;
+  Map<String, dynamic>? eligiblePaidTicket;
   String? reviewAccountKey;
   String? reviewerName;
   int? reviewerId;
@@ -119,7 +126,17 @@ class _ReviewPageState extends State<ReviewPage> {
       _loadReviewAccount().then((_) {
         if (mounted) loadReviews();
       });
+    } else if (oldWidget.purchaseRefreshTick != widget.purchaseRefreshTick) {
+      _loadReviewAccount();
     }
+  }
+
+  String _normalizePoolId(String value) {
+    return value
+        .trim()
+        .toUpperCase()
+        .replaceFirst('POOL_ID_', 'POOL-')
+        .replaceAll('_', '-');
   }
 
   String _reviewSubmissionKey(String accountKey) {
@@ -140,6 +157,55 @@ class _ReviewPageState extends State<ReviewPage> {
     final username = prefs.getString('user_username')?.trim() ?? '';
     final email = prefs.getString('user_email')?.trim() ?? '';
     final name = prefs.getString('user_name')?.trim() ?? '';
+    final ticketAccountKey =
+        prefs.getString('user_email') ??
+        prefs.getString('user_username') ??
+        prefs.getString('user_no_hp') ??
+        'guest';
+    final rawTickets = loggedIn
+        ? prefs.getString(
+            'saved_tickets_${ticketAccountKey.trim().toLowerCase()}',
+          )
+        : null;
+    Map<String, dynamic>? paidTicket;
+    if (rawTickets != null && rawTickets.isNotEmpty) {
+      try {
+        final decodedTickets = jsonDecode(rawTickets);
+        if (decodedTickets is! List) {
+          throw const FormatException('Riwayat tiket bukan daftar.');
+        }
+
+        for (final item in decodedTickets.whereType<Map>()) {
+          final ticket = Map<String, dynamic>.from(item);
+          final ticketPoolId =
+              ticket['poolId']?.toString() ??
+              ticket['rawPoolId']?.toString() ??
+              '';
+          final status = ticket['status']?.toString().toLowerCase();
+          final orderId =
+              ticket['orderId']?.toString() ??
+              ticket['midtransOrderId']?.toString() ??
+              '';
+          final paidAt =
+              ticket['paidAtIso']?.toString() ??
+              ticket['paidAt']?.toString() ??
+              '';
+          final customerPhone = ticket['customerPhone']?.toString() ?? '';
+
+          if (status == 'paid' &&
+              _normalizePoolId(ticketPoolId) ==
+                  _normalizePoolId(effectivePoolId) &&
+              orderId.trim().isNotEmpty &&
+              paidAt.trim().isNotEmpty &&
+              customerPhone.trim().isNotEmpty) {
+            paidTicket = ticket;
+            break;
+          }
+        }
+      } on FormatException catch (error) {
+        debugPrint('Gagal membaca riwayat tiket untuk verifikasi ulasan: $error');
+      }
+    }
     final identifier = userId?.isNotEmpty == true
         ? 'id:$userId'
         : username.isNotEmpty
@@ -164,6 +230,8 @@ class _ReviewPageState extends State<ReviewPage> {
           ? username
           : null;
       hasSubmittedReview = hasReviewed;
+      eligiblePaidTicket = paidTicket;
+      hasPaidTicketForPool = paidTicket != null;
       isCheckingReviewAccount = false;
     });
   }
@@ -179,6 +247,27 @@ class _ReviewPageState extends State<ReviewPage> {
     }
     await _loadReviewAccount();
     if (mounted) loadReviews();
+  }
+
+  Future<void> _openTicketBooking() async {
+    final onOpenTicketBooking = widget.onOpenTicketBooking;
+    if (onOpenTicketBooking != null) {
+      onOpenTicketBooking();
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TiketPage(
+          poolId: widget.poolId,
+          poolName: widget.namaKolam,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _loadReviewAccount();
+    }
   }
 
   bool _apiContainsReviewForAccount(
@@ -393,6 +482,11 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
+    if (!hasPaidTicketForPool || eligiblePaidTicket == null) {
+      _showTicketRequiredMessage();
+      return;
+    }
+
     if (hasSubmittedReview) {
       _showAlreadyReviewedMessage();
       return;
@@ -494,6 +588,11 @@ class _ReviewPageState extends State<ReviewPage> {
         namaPengunjung: submittingName,
         rating: overallRating,
         komentar: comment,
+        reservationOrderId:
+            eligiblePaidTicket!['orderId']?.toString() ??
+            eligiblePaidTicket!['midtransOrderId']?.toString() ??
+            '',
+        customerPhone: eligiblePaidTicket!['customerPhone'].toString(),
         foto: fotoUtama,
       );
 
@@ -586,6 +685,17 @@ class _ReviewPageState extends State<ReviewPage> {
     );
   }
 
+  void _showTicketRequiredMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Ulasan hanya bisa diberikan setelah tiket kolam ini lunas dan struk tersedia.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Widget _buildReviewEntry() {
     if (isCheckingReviewAccount || isLoadingReviews) {
       return const Padding(
@@ -602,6 +712,17 @@ class _ReviewPageState extends State<ReviewPage> {
             'Silakan masuk ke akun Anda. Setiap akun hanya dapat mengulas kolam ini satu kali.',
         actionLabel: 'Login',
         onAction: _openLogin,
+      );
+    }
+
+    if (!hasPaidTicketForPool) {
+      return _reviewNotice(
+        icon: Icons.receipt_long_rounded,
+        title: 'Tiket lunas diperlukan',
+        message:
+            'Pesan tiket untuk ${widget.namaKolam}, selesaikan pembayarannya, lalu ulasan dapat diberikan setelah struk tersedia.',
+        actionLabel: 'Pesan Tiket',
+        onAction: _openTicketBooking,
       );
     }
 

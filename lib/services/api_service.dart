@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
-  static const String defaultBaseUrl = 'http://192.168.1.25:8000/api';
+  static const String defaultBaseUrl = 'http://192.168.1.58:8000/api';
   static String _baseUrl = defaultBaseUrl;
 
   static String get baseUrl => _baseUrl;
@@ -292,6 +292,8 @@ class ApiService {
     required String namaPengunjung,
     required int rating,
     required String komentar,
+    required String reservationOrderId,
+    required String customerPhone,
     XFile? foto,
   }) async {
     try {
@@ -303,6 +305,8 @@ class ApiService {
       request.fields['nama_pengunjung'] = namaPengunjung;
       request.fields['rating'] = rating.toString();
       request.fields['komentar'] = komentar;
+      request.fields['reservation_order_id'] = reservationOrderId;
+      request.fields['customer_phone'] = customerPhone;
 
       if (foto != null) {
         final Uint8List bytes = await foto.readAsBytes();

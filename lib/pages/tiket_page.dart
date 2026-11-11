@@ -1446,8 +1446,6 @@ class _TiketPageState extends State<TiketPage>
       body: SafeArea(
         child: Column(
           children: [
-            // Tab switcher hanya tampil di Tiket Saya agar bisa kembali
-            if (selectedTab == 1) buildTabs(),
             Expanded(
               child: selectedTab == 0
                   ? SingleChildScrollView(
@@ -1481,6 +1479,7 @@ class _TiketPageState extends State<TiketPage>
           borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: GestureDetector(
