@@ -4593,40 +4593,31 @@ class _TiketPageState extends State<TiketPage>
   }
 
   Widget buildMyTickets() {
+    final visibleTickets = myTickets
+        .asMap()
+        .entries
+        .where(
+          (entry) =>
+              _ticketFilter == 'all' ||
+              (entry.value['status']?.toString() ?? 'pending') == _ticketFilter,
+        )
+        .toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           buildTabs(),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-            child: Row(
-              children: [
-                colorfulIcon(
-                  icon: Icons.confirmation_number_rounded,
-                  color: kAqua,
-                  boxSize: 34,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Daftar Tiket Saya',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-          ),
-
+          _buildTicketOverview(),
           _buildStatusFilter(),
-
           if (myTickets.isEmpty)
             _buildEmptyTickets()
+          else if (visibleTickets.isEmpty)
+            _buildNoFilteredTickets()
           else
-            ...List.generate(
-              myTickets.length,
-              (i) => buildTicketCard(i, myTickets[i]),
+            ...visibleTickets.map(
+              (entry) => buildTicketCard(entry.key, entry.value),
             ),
         ],
       ),
@@ -4635,24 +4626,197 @@ class _TiketPageState extends State<TiketPage>
 
   String _ticketFilter = 'all';
 
+  int _countTickets(String status) => myTickets
+      .where((ticket) => (ticket['status']?.toString() ?? 'pending') == status)
+      .length;
+
+  Widget _buildTicketOverview() {
+    final paidCount = _countTickets('paid');
+    final pendingCount = _countTickets('pending');
+    final cancelledCount = _countTickets('cancelled');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [kDarkBlue, kBlue],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: kBlue.withOpacity(.22),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.confirmation_number_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Perjalanan Wisatamu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        myTickets.isEmpty
+                            ? 'Tiketmu akan tersimpan di sini'
+                            : '${myTickets.length} tiket tersimpan',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(.82),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${myTickets.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'TIKET',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(.82),
+                          fontSize: 8,
+                          letterSpacing: .8,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                _ticketSummaryItem('Lunas', paidCount, kGreen),
+                _ticketSummaryDivider(),
+                _ticketSummaryItem('Menunggu', pendingCount, kGold),
+                _ticketSummaryDivider(),
+                _ticketSummaryItem('Dibatalkan', cancelledCount, Colors.white),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ticketSummaryItem(String label, int count, Color color) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '$label $count',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withOpacity(.95),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ticketSummaryDivider() => Container(
+    width: 1,
+    height: 16,
+    margin: const EdgeInsets.symmetric(horizontal: 8),
+    color: Colors.white.withOpacity(.25),
+  );
+
   Widget _buildStatusFilter() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
         children: [
-          _filterChip('all', 'Semua', Icons.local_activity_rounded, kBlue),
+          _filterChip(
+            'all',
+            'Semua ${myTickets.length}',
+            Icons.local_activity_rounded,
+            kBlue,
+          ),
           const SizedBox(width: 8),
-          _filterChip('paid', 'Paid', Icons.check_circle_rounded, kGreen),
+          _filterChip(
+            'paid',
+            'Lunas ${_countTickets('paid')}',
+            Icons.check_circle_rounded,
+            kGreen,
+          ),
           const SizedBox(width: 8),
           _filterChip(
             'pending',
-            'Pending',
+            'Menunggu ${_countTickets('pending')}',
             Icons.access_time_filled_rounded,
             kOrange,
           ),
           const SizedBox(width: 8),
-          _filterChip('cancelled', 'Cancelled', Icons.cancel_rounded, kRed),
+          _filterChip(
+            'cancelled',
+            'Dibatalkan ${_countTickets('cancelled')}',
+            Icons.cancel_rounded,
+            kRed,
+          ),
         ],
       ),
     );
@@ -4666,7 +4830,7 @@ class _TiketPageState extends State<TiketPage>
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? color : Colors.white,
+          color: selected ? color : context.cardBg,
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: selected ? color : Colors.grey.shade300),
           boxShadow: selected
@@ -4686,7 +4850,7 @@ class _TiketPageState extends State<TiketPage>
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
+                color: selected ? Colors.white : context.textMain,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
@@ -4700,78 +4864,120 @@ class _TiketPageState extends State<TiketPage>
   Widget _buildEmptyTickets() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Ilustrasi ikon
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: context.softBg,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: kBlue.withOpacity(0.12),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+          decoration: BoxDecoration(
+            color: context.cardBg,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: context.softBg),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [kBlue.withOpacity(.12), kBlue.withOpacity(.04)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.confirmation_number_rounded,
-                color: kAqua,
-                size: 48,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Text(
-              'Belum Ada Tiket',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: context.textMain,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Kamu belum punya tiket.\nPesan tiket sekarang untuk mulai berwisata!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: context.mutedText,
-                fontSize: 13,
-                height: 1.55,
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // Tombol Pesan Tiket
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => setState(() => selectedTab = 0),
-                icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-                label: const Text(
-                  'Pesan Tiket Sekarang',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  shape: BoxShape.circle,
                 ),
-                style: primaryStyle.copyWith(
-                  padding: const WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(vertical: 15),
+                child: const Icon(
+                  Icons.confirmation_number_rounded,
+                  color: kAqua,
+                  size: 44,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Belum Ada Tiket',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: context.textMain,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tiket yang kamu pesan akan muncul di sini.\nYuk, rencanakan serunya berenang!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.mutedText,
+                  fontSize: 13,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => setState(() => selectedTab = 0),
+                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                  label: const Text(
+                    'Pesan Tiket Sekarang',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  style: primaryStyle.copyWith(
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoFilteredTickets() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: context.softBg),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.filter_list_off_rounded,
+              color: context.mutedText,
+              size: 38,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tiket tidak ditemukan',
+              style: TextStyle(
+                color: context.textMain,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Belum ada tiket dengan status ini.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.mutedText, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextButton.icon(
+              onPressed: () => setState(() => _ticketFilter = 'all'),
+              icon: const Icon(Icons.restart_alt_rounded, size: 18),
+              label: const Text('Tampilkan semua tiket'),
             ),
           ],
         ),

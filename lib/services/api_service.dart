@@ -10,7 +10,7 @@ class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
 
-  static const String defaultBaseUrl = 'http://192.168.1.27:8000/api';
+  static const String defaultBaseUrl = 'http://192.168.1.6:8000/api';
   static String _baseUrl = defaultBaseUrl;
 
   static String get baseUrl => _baseUrl;
