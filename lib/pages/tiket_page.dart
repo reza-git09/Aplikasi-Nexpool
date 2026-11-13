@@ -1705,58 +1705,6 @@ class _TiketPageState extends State<TiketPage>
           bottom: 15,
         ),
 
-        pad20(
-          infoBox(
-            color: context.cardBg,
-            radius: 16,
-            pad: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    colorfulIcon(
-                      icon: Icons.pie_chart_rounded,
-                      color: kPurple,
-                      boxSize: 28,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'INFORMASI KUOTA HARI INI',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: context.mutedText,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    quotaBox(
-                      '320',
-                      'Kuota Tersisa',
-                      kGreen,
-                      Icons.check_circle_rounded,
-                    ),
-                    const SizedBox(width: 10),
-                    quotaBox('500', 'Total Kuota', kBlue, Icons.groups_rounded),
-                    const SizedBox(width: 10),
-                    quotaBox(
-                      '180',
-                      'Terjual',
-                      const Color(0xffb07b00),
-                      Icons.local_activity_rounded,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-
         const SizedBox(height: 18),
 
         pad20(
@@ -2027,42 +1975,6 @@ class _TiketPageState extends State<TiketPage>
       ),
       top: 4,
       bottom: 12,
-    );
-  }
-
-  Widget quotaBox(String number, String label, Color color, IconData icon) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(.08),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              number,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 9,
-                color: Colors.grey,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

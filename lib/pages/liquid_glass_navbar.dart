@@ -35,6 +35,7 @@ class LiquidGlassNavBar extends StatefulWidget {
 }
 
 class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
+  static const Color _activeColor = Color(0xFF00B4D8);
   static const double _barHeight = 72;
   static const double _pad = 6;
 
@@ -136,9 +137,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                         baseColor: context.cardBg,
                         borderColor: isDark ? context.softBg : Colors.white,
                         shadow: _dragging,
-                        accent: isDark
-                            ? Theme.of(context).colorScheme.primary
-                            : const Color(0xFF62C6DF),
+                        accent: _activeColor,
                       ),
                     ),
                   ),
@@ -162,7 +161,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                                     item.icon,
                                     size: 25,
                                     color: active
-                                        ? Theme.of(context).colorScheme.primary
+                                        ? _activeColor
                                         : context.mutedText,
                                   ),
                                 ),
@@ -175,7 +174,7 @@ class _LiquidGlassNavBarState extends State<LiquidGlassNavBar> {
                                         ? FontWeight.w800
                                         : FontWeight.w600,
                                     color: active
-                                        ? Theme.of(context).colorScheme.primary
+                                        ? _activeColor
                                         : context.mutedText,
                                   ),
                                   child: Text(item.label),
