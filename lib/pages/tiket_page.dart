@@ -5002,19 +5002,19 @@ class _TiketPageState extends State<TiketPage>
       case 'paid':
         statusFg = const Color(0xff087f65);
         statusBg = const Color(0xffe3fff7);
-        statusLabel = 'PAID';
+        statusLabel = 'LUNAS';
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'cancelled':
         statusFg = kRed;
         statusBg = kRedSoft;
-        statusLabel = 'CANCELLED';
+        statusLabel = 'DIBATALKAN';
         statusIcon = Icons.cancel_rounded;
         break;
       default:
         statusFg = kOrange;
         statusBg = kOrangeSoft;
-        statusLabel = 'PENDING';
+        statusLabel = 'MENUNGGU';
         statusIcon = Icons.access_time_filled_rounded;
     }
 
@@ -5023,186 +5023,338 @@ class _TiketPageState extends State<TiketPage>
         ticket['poolId']?.toString() ?? normalizePoolId(selectedPoolId);
     final cardTicketId =
         ticket['ticketId']?.toString() ?? ticket['orderId']?.toString() ?? '—';
+    final orderId = ticket['orderId']?.toString() ?? cardTicketId;
+    final visitDate = ticket['date']?.toString() ?? '—';
+    final quantity = ticket['qty']?.toString() ?? '—';
+    final paymentMethod = ticket['payment']?.toString() ?? '—';
+    final total = rupiah(ticket['total'] as int? ?? 0);
+    final paidAt = ticket['paidAt']?.toString() ?? '';
+    final accent = status == 'paid'
+        ? const Color(0xff10b981)
+        : status == 'cancelled'
+        ? kRed
+        : kOrange;
 
-    return pad20(
-      infoBox(
-        color: context.cardBg,
-        radius: 18,
-        pad: 16,
-        border: status == 'cancelled'
-            ? Colors.grey.shade300
-            : status == 'pending'
-            ? kOrange.withOpacity(.3)
-            : Colors.grey.shade200,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 7, 20, 13),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: context.softBg),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(context.isDark ? .12 : .045),
+              blurRadius: 18,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            Container(height: 4, color: accent),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '#${ticket['orderId'] ?? cardTicketId}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'KODE RESERVASI',
+                              style: TextStyle(
+                                color: context.mutedText,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .8,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              orderId,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.textMain,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        ticket['name']?.toString() ?? '—',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                      const SizedBox(width: 8),
+                      badge(statusLabel, statusFg, statusBg, icon: statusIcon),
+                    ],
+                  ),
+                  if (resched > 0) ...[
+                    const SizedBox(height: 10),
+                    badge(
+                      'Pernah dijadwalkan ulang $resched×',
+                      kPurple,
+                      kPurpleSoft,
+                      icon: Icons.sync_rounded,
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: kBlue.withOpacity(context.isDark ? .13 : .07),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      children: [
+                        colorfulIcon(
+                          icon: Icons.pool_rounded,
+                          color: kAqua,
+                          boxSize: 38,
+                          size: 19,
+                          radius: 12,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cardPoolName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: context.textMain,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '$cardPoolId  ·  Kode tiket $cardTicketId',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: context.mutedText,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ticketDetailTile(
+                          Icons.calendar_month_rounded,
+                          kBlue,
+                          'Tanggal kunjungan',
+                          visitDate,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _ticketDetailTile(
+                          Icons.group_rounded,
+                          kGreen,
+                          'Jumlah tiket',
+                          quantity,
                         ),
                       ),
                     ],
                   ),
-                ),
-                badge(statusLabel, statusFg, statusBg, icon: statusIcon),
-              ],
-            ),
-
-            if (resched > 0) ...[
-              const SizedBox(height: 8),
-              badge(
-                'Pernah Reschedule $resched×',
-                kPurple,
-                kPurpleSoft,
-                icon: Icons.sync_rounded,
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            ticketInfo(Icons.pool_rounded, kAqua, 'Kolam', cardPoolName),
-            ticketInfo(Icons.pin_rounded, kPurple, 'ID Pool', cardPoolId),
-            ticketInfo(
-              Icons.confirmation_number_rounded,
-              kOrange,
-              'Kode Tiket',
-              cardTicketId,
-            ),
-            ticketInfo(
-              Icons.calendar_month_rounded,
-              kBlue,
-              'Tanggal Kunjungan',
-              ticket['date']?.toString() ?? '—',
-            ),
-            ticketInfo(
-              Icons.group_rounded,
-              kGreen,
-              'Jumlah',
-              ticket['qty']?.toString() ?? '—',
-            ),
-            ticketInfo(
-              Icons.payment_rounded,
-              kDarkBlue,
-              'Bayar via',
-              ticket['payment']?.toString() ?? '—',
-            ),
-            ticketInfo(
-              Icons.monetization_on_rounded,
-              kGold,
-              'Total Pembayaran',
-              rupiah(ticket['total'] as int? ?? 0),
-            ),
-
-            if (status == 'paid' &&
-                ticket['paidAt'] != null &&
-                ticket['paidAt'].toString().isNotEmpty)
-              ticketInfo(
-                Icons.access_time_filled_rounded,
-                kGreen,
-                'Waktu Bayar',
-                ticket['paidAt'].toString(),
-              ),
-
-            const SizedBox(height: 14),
-
-            if (status == 'paid') ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => showReceiptFromTicket(ticket),
-                      icon: const Icon(Icons.receipt_long_rounded, size: 15),
-                      label: const Text(
-                        'Lihat Struk',
-                        style: TextStyle(fontSize: 11),
+                  const SizedBox(height: 9),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ticketDetailTile(
+                          Icons.payment_rounded,
+                          kDarkBlue,
+                          'Metode bayar',
+                          paymentMethod,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: _ticketDetailTile(
+                          Icons.payments_rounded,
+                          kOrange,
+                          'Total pembayaran',
+                          total,
+                          emphasized: true,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => openReschedule(index),
-                      icon: const Icon(Icons.sync_rounded, size: 15),
-                      label: const Text(
-                        'Reschedule',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPurpleSoft,
-                        foregroundColor: kPurple,
-                        elevation: 0,
-                      ),
+                  if (status == 'paid' && paidAt.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 15,
+                          color: statusFg,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Dibayar $paidAt',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.mutedText,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
+                  const SizedBox(height: 14),
+                  _buildTicketActions(index, ticket, status),
                 ],
               ),
-            ] else if (status == 'pending') ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => showReceiptFromTicket(ticket),
-                      icon: const Icon(Icons.receipt_long_rounded, size: 15),
-                      label: const Text(
-                        'Detail',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => cancelTransaction(index),
-                      icon: const Icon(Icons.cancel_rounded, size: 15),
-                      label: const Text(
-                        'Batalkan',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kRedSoft,
-                        foregroundColor: kRed,
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => showReceiptFromTicket(ticket),
-                  icon: const Icon(Icons.receipt_long_rounded, size: 15),
-                  label: const Text(
-                    'Lihat Detail',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ),
-      bottom: 12,
+    );
+  }
+
+  Widget _ticketDetailTile(
+    IconData icon,
+    Color color,
+    String label,
+    String value, {
+    bool emphasized = false,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: context.pageBg,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: context.softBg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.mutedText,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: emphasized ? kBlue : context.textMain,
+              fontSize: emphasized ? 12 : 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTicketActions(
+    int index,
+    Map<String, dynamic> ticket,
+    String status,
+  ) {
+    final isPaid = status == 'paid';
+    final isPending = status == 'pending';
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => showReceiptFromTicket(ticket),
+            icon: Icon(
+              isPending ? Icons.receipt_long_rounded : Icons.receipt_rounded,
+              size: 16,
+            ),
+            label: Text(
+              isPaid
+                  ? 'Lihat Struk'
+                  : isPending
+                  ? 'Detail'
+                  : 'Lihat Detail',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kDarkBlue,
+              side: BorderSide(color: kDarkBlue.withOpacity(.35)),
+              padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+              textStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        if (isPaid || isPending) ...[
+          const SizedBox(width: 9),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: isPaid
+                  ? () => openReschedule(index)
+                  : () => cancelTransaction(index),
+              icon: Icon(
+                isPaid ? Icons.sync_rounded : Icons.cancel_rounded,
+                size: 16,
+              ),
+              label: Text(isPaid ? 'Reschedule' : 'Batalkan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isPaid ? kPurpleSoft : kRedSoft,
+                foregroundColor: isPaid ? kPurple : kRed,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 11,
+                  horizontal: 8,
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -5720,6 +5872,7 @@ class _TiketPageState extends State<TiketPage>
   void openReschedule(int index) {
     final ticket = myTickets[index];
     DateTime? newDate;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -5936,26 +6089,104 @@ class _TiketPageState extends State<TiketPage>
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          onPressed: newDate == null
+                          onPressed: newDate == null || isSubmitting
                               ? null
-                              : () {
-                                  setState(() {
-                                    myTickets[index]['date'] = formatShortDate(
-                                      newDate!,
+                              : () async {
+                                  setModalState(() => isSubmitting = true);
+                                  final selectedNewDate = newDate!;
+                                  final savedReservationCode =
+                                      ticket['reservationCode']
+                                          ?.toString()
+                                          .trim();
+                                  final ticketCode =
+                                      savedReservationCode?.isNotEmpty == true
+                                      ? savedReservationCode!
+                                      : ticket['ticketId']?.toString().trim() ??
+                                            '';
+                                  final savedPhone = ticket['customerPhone']
+                                      ?.toString()
+                                      .trim();
+                                  final phone = savedPhone?.isNotEmpty == true
+                                      ? savedPhone!
+                                      : telepon.trim();
+                                  final dateValue =
+                                      '${selectedNewDate.year}-'
+                                      '${selectedNewDate.month.toString().padLeft(2, '0')}-'
+                                      '${selectedNewDate.day.toString().padLeft(2, '0')}';
+
+                                  try {
+                                    if (ticketCode.trim().isEmpty) {
+                                      throw Exception(
+                                        'Kode reservasi tidak tersedia. Muat ulang tiket atau hubungi admin.',
+                                      );
+                                    }
+
+                                    final updatedReservation =
+                                        await ApiService.rescheduleReservasi(
+                                          kodeReservasi: ticketCode,
+                                          noHp: phone,
+                                          tanggalKunjungan: dateValue,
+                                        );
+                                    final confirmedDate =
+                                        DateTime.tryParse(
+                                          updatedReservation['tanggal_kunjungan']
+                                                  ?.toString() ??
+                                              '',
+                                        ) ??
+                                        selectedNewDate;
+
+                                    if (!mounted) return;
+                                    setState(() {
+                                      myTickets[index]['date'] =
+                                          formatShortDate(confirmedDate);
+                                      myTickets[index]['visitDate'] =
+                                          confirmedDate.toIso8601String();
+                                      myTickets[index]['reschedule'] =
+                                          (myTickets[index]['reschedule']
+                                                  as int? ??
+                                              0) +
+                                          1;
+                                    });
+
+                                    var historySaved = true;
+                                    try {
+                                      await _persistSavedTickets();
+                                    } catch (error) {
+                                      historySaved = false;
+                                      debugPrint(
+                                        'Tanggal reschedule tersimpan di server, tetapi riwayat lokal gagal disimpan: $error',
+                                      );
+                                    }
+
+                                    if (!mounted) return;
+                                    Navigator.pop(context);
+                                    showMessage(
+                                      historySaved
+                                          ? 'Reschedule berhasil ke ${formatShortDate(confirmedDate)}'
+                                          : 'Tanggal berhasil diubah di server, tetapi gagal disimpan di riwayat lokal.',
                                     );
-                                    myTickets[index]['reschedule'] =
-                                        (myTickets[index]['reschedule']
-                                                as int? ??
-                                            0) +
-                                        1;
-                                  });
-                                  Navigator.pop(context);
-                                  showMessage(
-                                    'Reschedule berhasil ke ${formatShortDate(newDate!)}',
-                                  );
+                                  } catch (error) {
+                                    if (!mounted) return;
+                                    setModalState(() => isSubmitting = false);
+                                    showMessage(
+                                      error.toString().replaceFirst(
+                                        'Exception: ',
+                                        '',
+                                      ),
+                                    );
+                                  }
                                 },
                           style: primaryStyle,
-                          child: const Text('Konfirmasi Reschedule'),
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Konfirmasi Reschedule'),
                         ),
                       ),
                     ],

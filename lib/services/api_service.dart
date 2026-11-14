@@ -493,6 +493,46 @@ class ApiService {
   }
 
   // =========================================================
+  // RESCHEDULE RESERVASI LUNAS
+  // =========================================================
+
+  static Future<Map<String, dynamic>> rescheduleReservasi({
+    required String kodeReservasi,
+    required String noHp,
+    required String tanggalKunjungan,
+  }) async {
+    try {
+      final encodedCode = Uri.encodeComponent(kodeReservasi);
+      final uri = Uri.parse('$baseUrl/reservasi/kode/$encodedCode/reschedule');
+      final response = await http
+          .put(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'no_hp': noHp,
+              'tanggal_kunjungan': tanggalKunjungan,
+            }),
+          )
+          .timeout(_timeout);
+
+      final data = _decodeResponse(response);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      throw Exception(
+        data['message']?.toString() ?? 'Gagal memperbarui tanggal kunjungan.',
+      );
+    } catch (e) {
+      debugPrint('ERROR RESCHEDULE RESERVASI: $e');
+      rethrow;
+    }
+  }
+
+  // =========================================================
   // CREATE PAYMENT (MIDTRANS)
   // =========================================================
 
