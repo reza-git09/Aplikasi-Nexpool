@@ -690,7 +690,8 @@ class _TiketPageState extends State<TiketPage>
       }
 
       final returnedQrUrl = paymentData['qr_url']?.toString();
-      final finalQrUrl = (returnedQrUrl != null && returnedQrUrl.trim().isNotEmpty)
+      final finalQrUrl =
+          (returnedQrUrl != null && returnedQrUrl.trim().isNotEmpty)
           ? returnedQrUrl.trim()
           : '';
 
@@ -739,7 +740,8 @@ class _TiketPageState extends State<TiketPage>
               'Pastikan server Laravel aktif (php artisan serve --host=0.0.0.0 --port=8000) '
               'dan HP terhubung di Wi-Fi yang sama.';
         } else {
-          message = 'Gagal menyiapkan pembayaran: ${errStr.replaceFirst('Exception: ', '')}';
+          message =
+              'Gagal menyiapkan pembayaran: ${errStr.replaceFirst('Exception: ', '')}';
         }
         showMessage(message);
       }
@@ -3237,12 +3239,10 @@ class _TiketPageState extends State<TiketPage>
 
       if (bytes == null || bytes.isEmpty) {
         await WidgetsBinding.instance.endOfFrame;
-        final renderObject =
-            _qrisCardKey.currentContext?.findRenderObject();
+        final renderObject = _qrisCardKey.currentContext?.findRenderObject();
         if (renderObject is RenderRepaintBoundary) {
           final image = await renderObject.toImage(pixelRatio: 3);
-          final byteData =
-              await image.toByteData(format: ImageByteFormat.png);
+          final byteData = await image.toByteData(format: ImageByteFormat.png);
           image.dispose();
           bytes = byteData?.buffer.asUint8List();
         }
@@ -3301,15 +3301,15 @@ class _TiketPageState extends State<TiketPage>
 
     try {
       await WidgetsBinding.instance.endOfFrame;
-      final boundary = _step5ReceiptKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _step5ReceiptKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) {
         throw StateError('Tampilan struk belum siap untuk disimpan.');
       }
 
       final image = await boundary.toImage(pixelRatio: 2);
-      final byteData =
-          await image.toByteData(format: ImageByteFormat.png);
+      final byteData = await image.toByteData(format: ImageByteFormat.png);
       image.dispose();
 
       final bytes = byteData?.buffer.asUint8List();
@@ -3317,10 +3317,11 @@ class _TiketPageState extends State<TiketPage>
         throw StateError('Gagal membuat gambar struk pembayaran.');
       }
 
-      final cleanTicket = (ticketId.isNotEmpty
-              ? ticketId
-              : (orderId.isNotEmpty ? orderId : 'Pembayaran'))
-          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
+      final cleanTicket =
+          (ticketId.isNotEmpty
+                  ? ticketId
+                  : (orderId.isNotEmpty ? orderId : 'Pembayaran'))
+              .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
       final fileName = 'NexPool-Struk-$cleanTicket';
 
       final savedPath = await FileSaver.instance.saveAs(
@@ -3696,11 +3697,7 @@ class _TiketPageState extends State<TiketPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.broken_image_rounded,
-            color: Colors.grey,
-            size: 36,
-          ),
+          const Icon(Icons.broken_image_rounded, color: Colors.grey, size: 36),
           const SizedBox(height: 6),
           const Text(
             'Gagal memuat QRIS',
@@ -3930,7 +3927,9 @@ class _TiketPageState extends State<TiketPage>
       'customerName': nama,
       'customerPhone': telepon,
       'visitDate': selectedDate?.toIso8601String(),
-      'date': selectedDate == null ? selectedDateLabel : formatShortDate(selectedDate!),
+      'date': selectedDate == null
+          ? selectedDateLabel
+          : formatShortDate(selectedDate!),
       'paidAt': paidAt == null ? '' : formatDateTime(paidAt!),
       'paidAtIso': paidAt?.toIso8601String(),
       'adultQty': qtyAdult,
@@ -3958,7 +3957,11 @@ class _TiketPageState extends State<TiketPage>
               color: kGreen,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_rounded, color: Colors.white, size: 46),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.white,
+              size: 46,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -3988,8 +3991,9 @@ class _TiketPageState extends State<TiketPage>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed:
-                      _isDownloadingReceipt ? null : _downloadStep5Receipt,
+                  onPressed: _isDownloadingReceipt
+                      ? null
+                      : _downloadStep5Receipt,
                   icon: _isDownloadingReceipt
                       ? const SizedBox(
                           width: 18,
@@ -4001,7 +4005,9 @@ class _TiketPageState extends State<TiketPage>
                         )
                       : const Icon(Icons.download_rounded, size: 20),
                   label: Text(
-                    _isDownloadingReceipt ? 'Menyimpan Struk...' : 'Unduh Struk',
+                    _isDownloadingReceipt
+                        ? 'Menyimpan Struk...'
+                        : 'Unduh Struk',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -4172,277 +4178,282 @@ class _TiketPageState extends State<TiketPage>
                 ],
               ),
               child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(22),
-                  decoration: const BoxDecoration(
-                    gradient: kGradient,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      colorfulIcon(
-                        icon: Icons.pool_rounded,
-                        color: Colors.white,
-                        bgColor: Colors.white.withOpacity(0.2),
-                        boxSize: 48,
-                        size: 26,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(22),
+                    decoration: const BoxDecoration(
+                      gradient: kGradient,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        selectedPoolName,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
+                    ),
+                    child: Column(
+                      children: [
+                        colorfulIcon(
+                          icon: Icons.pool_rounded,
                           color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          bgColor: Colors.white.withOpacity(0.2),
+                          boxSize: 48,
+                          size: 26,
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Pool ID: $normalizedPoolId ($selectedPoolId)',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 11,
+                        const SizedBox(height: 10),
+                        Text(
+                          selectedPoolName,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
+                        const SizedBox(height: 2),
+                        Text(
+                          'Pool ID: $normalizedPoolId ($selectedPoolId)',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: kGreen.withOpacity(.25),
-                          borderRadius: BorderRadius.circular(50),
-                          border: Border.all(color: kGreen.withOpacity(.5)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              color: kGreen,
-                              size: 14,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'PAID — LUNAS',
-                              style: TextStyle(
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: kGreen.withOpacity(.25),
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(color: kGreen.withOpacity(.5)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
                                 color: kGreen,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                                size: 14,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 6),
+                              Text(
+                                'PAID — LUNAS',
+                                style: TextStyle(
+                                  color: kGreen,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: context.softBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: kBlue.withOpacity(0.2)),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'KODE TIKET RESMI',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: context.softBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: kBlue.withOpacity(0.2)),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'KODE TIKET RESMI',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              ticketId,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                                color: kDarkBlue,
+                              const SizedBox(height: 4),
+                              Text(
+                                ticketId,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                  color: kDarkBlue,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 14),
-                      const Divider(),
+                        const SizedBox(height: 14),
+                        const Divider(),
 
-                      receiptRow(Icons.pin_rounded, kBlue, 'Order ID', orderId),
-                      receiptRow(
-                        Icons.confirmation_number_rounded,
-                        kOrange,
-                        'Kode Tiket',
-                        ticketId,
-                      ),
-                      receiptRow(
-                        Icons.pool_rounded,
-                        kAqua,
-                        'ID Pool',
-                        '$normalizedPoolId ($selectedPoolId)',
-                      ),
-                      receiptRow(
-                        Icons.water_rounded,
-                        kBlue,
-                        'Kolam Renang',
-                        selectedPoolName,
-                      ),
-                      receiptRow(
-                        Icons.person_rounded,
-                        kPurple,
-                        'Nama Pemesan',
-                        nama.isEmpty ? '—' : nama,
-                      ),
-                      receiptRow(
-                        Icons.phone_in_talk_rounded,
-                        kGreen,
-                        'No. Telepon',
-                        phoneDisplay,
-                      ),
-                      receiptRow(
-                        Icons.calendar_month_rounded,
-                        kBlue,
-                        'Tanggal Kunjungan',
-                        selectedDateLabel.isEmpty ? '—' : selectedDateLabel,
-                      ),
-                      receiptRow(
-                        Icons.local_activity_rounded,
-                        kOrange,
-                        'Kategori',
-                        category == 'dewasa' ? 'Dewasa' : 'Anak-anak',
-                      ),
-                      receiptRow(
-                        Icons.group_rounded,
-                        kGreen,
-                        'Jumlah',
-                        qtyChild > 0
-                            ? '$qtyAdult Dewasa, $qtyChild Anak'
-                            : '$qtyAdult Dewasa',
-                      ),
-                      if (keterangan.isNotEmpty)
                         receiptRow(
-                          Icons.notes_rounded,
-                          kGold,
-                          'Keterangan',
-                          keterangan,
+                          Icons.pin_rounded,
+                          kBlue,
+                          'Order ID',
+                          orderId,
                         ),
-                      receiptRow(
-                        Icons.payment_rounded,
-                        kDarkBlue,
-                        'Metode Pembayaran',
-                        payLabel,
-                      ),
-                      receiptRow(
-                        Icons.price_change_rounded,
-                        kBlue,
-                        'Harga Tiket',
-                        rupiah(adultPrice),
-                      ),
-                      receiptRow(
-                        Icons.receipt_rounded,
-                        kAqua,
-                        'Biaya Admin',
-                        rupiah(adminFee),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      Container(
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          gradient: kGradient,
-                          borderRadius: BorderRadius.circular(14),
+                        receiptRow(
+                          Icons.confirmation_number_rounded,
+                          kOrange,
+                          'Kode Tiket',
+                          ticketId,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Total Dibayarkan',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w700,
+                        receiptRow(
+                          Icons.pool_rounded,
+                          kAqua,
+                          'ID Pool',
+                          '$normalizedPoolId ($selectedPoolId)',
+                        ),
+                        receiptRow(
+                          Icons.water_rounded,
+                          kBlue,
+                          'Kolam Renang',
+                          selectedPoolName,
+                        ),
+                        receiptRow(
+                          Icons.person_rounded,
+                          kPurple,
+                          'Nama Pemesan',
+                          nama.isEmpty ? '—' : nama,
+                        ),
+                        receiptRow(
+                          Icons.phone_in_talk_rounded,
+                          kGreen,
+                          'No. Telepon',
+                          phoneDisplay,
+                        ),
+                        receiptRow(
+                          Icons.calendar_month_rounded,
+                          kBlue,
+                          'Tanggal Kunjungan',
+                          selectedDateLabel.isEmpty ? '—' : selectedDateLabel,
+                        ),
+                        receiptRow(
+                          Icons.local_activity_rounded,
+                          kOrange,
+                          'Kategori',
+                          category == 'dewasa' ? 'Dewasa' : 'Anak-anak',
+                        ),
+                        receiptRow(
+                          Icons.group_rounded,
+                          kGreen,
+                          'Jumlah',
+                          qtyChild > 0
+                              ? '$qtyAdult Dewasa, $qtyChild Anak'
+                              : '$qtyAdult Dewasa',
+                        ),
+                        if (keterangan.isNotEmpty)
+                          receiptRow(
+                            Icons.notes_rounded,
+                            kGold,
+                            'Keterangan',
+                            keterangan,
+                          ),
+                        receiptRow(
+                          Icons.payment_rounded,
+                          kDarkBlue,
+                          'Metode Pembayaran',
+                          payLabel,
+                        ),
+                        receiptRow(
+                          Icons.price_change_rounded,
+                          kBlue,
+                          'Harga Tiket',
+                          rupiah(adultPrice),
+                        ),
+                        receiptRow(
+                          Icons.receipt_rounded,
+                          kAqua,
+                          'Biaya Admin',
+                          rupiah(adminFee),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            gradient: kGradient,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Total Dibayarkan',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
+                              Text(
+                                rupiah(totalPrice),
+                                style: const TextStyle(
+                                  color: kGold,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.access_time_filled_rounded,
+                              size: 14,
+                              color: Colors.grey,
                             ),
+                            const SizedBox(width: 5),
                             Text(
-                              rupiah(totalPrice),
+                              'Dibayar: $paidTime',
                               style: const TextStyle(
-                                color: kGold,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.access_time_filled_rounded,
-                            size: 14,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Dibayar: $paidTime',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: context.softBg.withOpacity(.5),
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(24),
+                      ],
                     ),
                   ),
-                  child: const Text(
-                    '⚠️ Tunjukkan struk ini kepada petugas di pintu masuk.\n'
-                    'Tiket berlaku pada tanggal kunjungan yang tertera.\n'
-                    'Hubungi Customer Care Nexpool jika ada pertanyaan.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey,
-                      height: 1.5,
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: context.softBg.withOpacity(.5),
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      '⚠️ Tunjukkan struk ini kepada petugas di pintu masuk.\n'
+                      'Tiket berlaku pada tanggal kunjungan yang tertera.\n'
+                      'Hubungi Customer Care Nexpool jika ada pertanyaan.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey,
+                        height: 1.5,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
 
         const SizedBox(height: 20),
 
@@ -4453,8 +4464,9 @@ class _TiketPageState extends State<TiketPage>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed:
-                      _isDownloadingReceipt ? null : _downloadStep5Receipt,
+                  onPressed: _isDownloadingReceipt
+                      ? null
+                      : _downloadStep5Receipt,
                   icon: _isDownloadingReceipt
                       ? const SizedBox(
                           width: 18,
@@ -5494,13 +5506,18 @@ class _TiketPageState extends State<TiketPage>
     String paymentStatus,
   ) {
     final quantity = ticket['qty']?.toString() ?? '';
-    final adultMatch = RegExp(r'(\d+)\s*Dewasa', caseSensitive: false)
-        .firstMatch(quantity);
-    final childMatch = RegExp(r'(\d+)\s*Anak', caseSensitive: false)
-        .firstMatch(quantity);
+    final adultMatch = RegExp(
+      r'(\d+)\s*Dewasa',
+      caseSensitive: false,
+    ).firstMatch(quantity);
+    final childMatch = RegExp(
+      r'(\d+)\s*Anak',
+      caseSensitive: false,
+    ).firstMatch(quantity);
     final adultCount = _receiptInteger(
       ticket['adultQty'],
-      fallback: int.tryParse(adultMatch?.group(1) ?? '') ??
+      fallback:
+          int.tryParse(adultMatch?.group(1) ?? '') ??
           int.tryParse(quantity) ??
           0,
     );
@@ -5520,7 +5537,8 @@ class _TiketPageState extends State<TiketPage>
       ),
     );
     final itemsTotal = adultCount * unitPrice;
-    final ticketCode = ticket['ticketId']?.toString() ??
+    final ticketCode =
+        ticket['ticketId']?.toString() ??
         ticket['reservationCode']?.toString() ??
         '—';
     final orderIdValue = ticket['orderId']?.toString() ?? '—';
@@ -5572,8 +5590,9 @@ class _TiketPageState extends State<TiketPage>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : 360.0;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 360.0;
         final canvasWidth = math.min(360.0, availableWidth);
         final paperWidth = math.min(320.0, math.max(0.0, canvasWidth - 24));
 
@@ -5671,9 +5690,7 @@ class _TiketPageState extends State<TiketPage>
                           Expanded(
                             child: Text(
                               'TOTAL',
-                              style: mono.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: mono.copyWith(fontWeight: FontWeight.w800),
                             ),
                           ),
                           Text(
@@ -5715,10 +5732,7 @@ class _TiketPageState extends State<TiketPage>
                       const SizedBox(height: 12),
                       _receiptDashedLine(),
                       const SizedBox(height: 12),
-                      Text(
-                        'Order ID',
-                        style: secondary.copyWith(fontSize: 11),
-                      ),
+                      Text('Order ID', style: secondary.copyWith(fontSize: 11)),
                       const SizedBox(height: 3),
                       Text(
                         orderIdValue,
@@ -5882,15 +5896,6 @@ class _TiketPageState extends State<TiketPage>
         return StatefulBuilder(
           builder: (context, setModalState) {
             final availableDates = datesFrom(29, offset: 1);
-            final baseWeekday = weekdayPrice > 0 ? weekdayPrice : 15000;
-            final baseWeekend = weekendPrice > 0 ? weekendPrice : 20000;
-
-            final newPrice = newDate != null && isWeekendDate(newDate!)
-                ? baseWeekend
-                : baseWeekday;
-            final currentPrice =
-                (ticket['total'] as num?)?.toInt() ?? baseWeekday;
-            final diff = newPrice - currentPrice;
 
             final cardPoolName =
                 ticket['poolName']?.toString() ?? selectedPoolName;
@@ -6016,8 +6021,8 @@ class _TiketPageState extends State<TiketPage>
                                 ),
                                 const SizedBox(height: 7),
                                 const Text(
-                                  '• Hanya dapat dilakukan sebelum tanggal kunjungan.\n'
-                                  '• Maksimal H-1 dari tanggal kunjungan.\n'
+                                  '• Reschedule dapat dilakukan sampai tanggal kunjungan.\n'
+                                  '• Tanggal baru harus setelah hari ini.\n'
                                   '• Tanggal baru harus memiliki kuota tersisa.\n'
                                   '• Jika harga weekend lebih mahal, bayar selisih.',
                                   style: TextStyle(fontSize: 11, height: 1.5),
@@ -6044,27 +6049,6 @@ class _TiketPageState extends State<TiketPage>
                             height: 85,
                             onPick: (d) => setModalState(() => newDate = d),
                           ),
-
-                          if (newDate != null) ...[
-                            const SizedBox(height: 10),
-                            infoBox(
-                              color: const Color(0xffe8fff8),
-                              child: Text(
-                                'Tanggal Baru: ${formatDate(newDate!)}\n'
-                                '${diff > 0
-                                    ? 'Harga lebih mahal ${rupiah(diff)}'
-                                    : diff < 0
-                                    ? 'Harga lebih murah ${rupiah(diff.abs())}'
-                                    : 'Harga sama (tidak ada selisih)'}',
-                                style: const TextStyle(
-                                  color: Color(0xff087f65),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                          ],
 
                           const SizedBox(height: 12),
                         ],
