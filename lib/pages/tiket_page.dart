@@ -225,12 +225,14 @@ class TiketPage extends StatefulWidget {
     super.key,
     this.poolId,
     this.poolName,
+    this.initialPromo,
     this.initialTab = 0,
     this.onReturnHome,
   });
 
   final String? poolId;
   final String? poolName;
+  final Map<String, dynamic>? initialPromo;
   final int initialTab;
   final VoidCallback? onReturnHome;
 
@@ -300,6 +302,14 @@ class _TiketPageState extends State<TiketPage>
   int weekdayPrice = 0;
   int weekendPrice = 0;
 
+  List<Map<String, dynamic>> _availablePromos = [];
+  Map<String, dynamic>? _selectedPromo;
+  bool _promosLoading = false;
+  String _promoError = '';
+  int _promoRequestVersion = 0;
+  String _confirmedPromoName = '';
+  int _confirmedPromoDiscount = 0;
+
   bool isPriceLoading = true;
   String priceError = '';
 
@@ -325,6 +335,9 @@ class _TiketPageState extends State<TiketPage>
       selectedPoolId,
       widget.poolName ?? TiketPage.globalSelectedPoolName,
     );
+    _selectedPromo = widget.initialPromo == null
+        ? null
+        : Map<String, dynamic>.from(widget.initialPromo!);
 
     TiketPage.globalSelectedPoolId = selectedPoolId;
     TiketPage.globalSelectedPoolName = selectedPoolName;
@@ -353,6 +366,7 @@ class _TiketPageState extends State<TiketPage>
     _loadSavedTickets();
     if (selectedPoolId.isNotEmpty) {
       loadHargaTiket();
+      _loadAvailablePromos();
     }
   }
 
@@ -502,18 +516,43 @@ class _TiketPageState extends State<TiketPage>
   }
 
   void selectPool(String id, String name) {
+    if (reservationCode.isNotEmpty) {
+      showMessage('Kolam tidak dapat diubah setelah reservasi dibuat.');
+      return;
+    }
+
     setState(() {
       selectedPoolId = id;
       selectedPoolName = name;
+      _selectedPromo = null;
+      _confirmedPromoName = '';
+      _confirmedPromoDiscount = 0;
     });
     TiketPage.globalSelectedPoolId = id;
     TiketPage.globalSelectedPoolName = name;
     loadHargaTiket();
+    _loadAvailablePromos();
   }
 
   int get adultPrice => isWeekend ? weekendPrice : weekdayPrice;
   int get adminFee => 2000;
-  int get totalPrice => (qtyAdult * adultPrice) + adminFee;
+  int get ticketSubtotal => qtyAdult * adultPrice;
+  int get discountAmount {
+    final promo = _selectedPromo;
+    if (promo == null) return 0;
+
+    final discountValue =
+        double.tryParse(promo['nilai_diskon']?.toString() ?? '') ?? 0;
+    final discountType = promo['jenis_diskon']?.toString().toLowerCase() ?? '';
+    final requestedDiscount =
+        discountType == 'persentase' || discountType.contains('percent')
+        ? (ticketSubtotal * discountValue / 100).round()
+        : discountValue.round();
+
+    return requestedDiscount.clamp(0, ticketSubtotal).toInt();
+  }
+
+  int get totalPrice => ticketSubtotal - discountAmount + adminFee;
 
   String rupiah(int value) {
     return 'Rp${value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m.group(1)}.')}';
@@ -571,10 +610,284 @@ class _TiketPageState extends State<TiketPage>
   List<DateTime> get dates => datesFrom(30);
 
   void selectDate(DateTime date) {
+    if (reservationCode.isNotEmpty) {
+      showMessage('Tanggal tidak dapat diubah setelah reservasi dibuat.');
+      return;
+    }
+
     setState(() {
       selectedDate = date;
       selectedDateLabel = formatDate(date);
       isWeekend = isWeekendDate(date);
+      _confirmedPromoName = '';
+      _confirmedPromoDiscount = 0;
+    });
+    _loadAvailablePromos();
+  }
+
+  Future<void> _loadAvailablePromos() async {
+    if (selectedPoolId.isEmpty) return;
+
+    final requestVersion = ++_promoRequestVersion;
+    if (mounted) {
+      setState(() {
+        _promosLoading = true;
+        _promoError = '';
+      });
+    }
+
+    try {
+      final promos = await ApiService.getPromos(
+        poolId: selectedPoolId,
+        visitDate: selectedDate,
+      );
+      if (!mounted || requestVersion != _promoRequestVersion) return;
+
+      final selectedPromoId = _selectedPromo?['id']?.toString();
+      setState(() {
+        _availablePromos = promos;
+        _promosLoading = false;
+        if (selectedPromoId != null &&
+            !promos.any(
+              (promo) => promo['id']?.toString() == selectedPromoId,
+            )) {
+          _selectedPromo = null;
+          _confirmedPromoName = '';
+          _confirmedPromoDiscount = 0;
+        }
+      });
+    } catch (error) {
+      debugPrint('Gagal memuat promo tiket: $error');
+      if (!mounted || requestVersion != _promoRequestVersion) return;
+      setState(() {
+        _availablePromos = [];
+        _promoError = 'Promo tidak dapat dimuat. Coba muat ulang.';
+        _promosLoading = false;
+      });
+    }
+  }
+
+  Future<void> _choosePromo() async {
+    if (reservationCode.isNotEmpty) {
+      showMessage('Promo tidak dapat diubah setelah reservasi dibuat.');
+      return;
+    }
+    if (_promosLoading) return;
+    if (_availablePromos.isEmpty) {
+      showMessage(
+        _promoError.isNotEmpty
+            ? _promoError
+            : 'Belum ada promo aktif untuk kolam dan tanggal ini.',
+      );
+      return;
+    }
+
+    final double screenHeight = MediaQuery.sizeOf(context).height;
+    final double sheetHeight = math.min(
+      screenHeight * 0.78,
+      280.0 + math.min(_availablePromos.length, 4) * 92.0,
+    );
+
+    final promo = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        child: Container(
+          height: sheetHeight,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          decoration: BoxDecoration(
+            color: context.cardBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: sheetHandle()),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: kSoft,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.local_offer_rounded,
+                      color: kDarkBlue,
+                      size: 23,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pilih Promo',
+                          style: TextStyle(
+                            color: context.textMain,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Berlaku untuk $selectedPoolName.',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.mutedText,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_selectedPromo != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.pop(context, {'_clear': true}),
+                    icon: const Icon(Icons.remove_circle_outline_rounded),
+                    label: const Text('Batalkan promo'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xffB42318),
+                      minimumSize: const Size(48, 48),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.only(top: 2, bottom: 4),
+                  itemCount: _availablePromos.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final availablePromo = _availablePromos[index];
+                    final String? selectedId = _selectedPromo?['id']
+                        ?.toString();
+                    final String? promoId = availablePromo['id']?.toString();
+                    final bool isSelected =
+                        selectedId != null && selectedId == promoId;
+
+                    return Material(
+                      color: isSelected
+                          ? kBlue.withValues(alpha: 0.08)
+                          : context.softBg,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isSelected
+                              ? kBlue.withValues(alpha: 0.55)
+                              : Colors.transparent,
+                          width: 1.2,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context, availablePromo),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 13,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? kBlue.withValues(alpha: 0.14)
+                                      : context.cardBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.local_offer_rounded,
+                                  color: isSelected ? kDarkBlue : kAqua,
+                                  size: 21,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      availablePromo['nama']?.toString() ??
+                                          'Promo',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: context.textMain,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      availablePromo['label_diskon']
+                                              ?.toString() ??
+                                          'Diskon',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: kAqua,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                isSelected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.chevron_right_rounded,
+                                color: isSelected
+                                    ? kDarkBlue
+                                    : context.mutedText,
+                                size: 23,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (promo == null || !mounted) return;
+    setState(() {
+      _selectedPromo = promo['_clear'] == true ? null : promo;
+      _confirmedPromoName = '';
+      _confirmedPromoDiscount = 0;
     });
   }
 
@@ -649,6 +962,7 @@ class _TiketPageState extends State<TiketPage>
           jumlahDewasa: qtyAdult,
           jumlahAnak: qtyChild,
           totalHarga: totalPrice.toDouble(),
+          promoId: _selectedPromo?['id']?.toString(),
         );
 
         if (response['success'] != true) {
@@ -658,6 +972,14 @@ class _TiketPageState extends State<TiketPage>
         }
 
         final responseData = Map<String, dynamic>.from(response['data'] ?? {});
+        _confirmedPromoName =
+            responseData['nama_promo']?.toString() ??
+            _selectedPromo?['nama']?.toString() ??
+            '';
+        _confirmedPromoDiscount = _receiptInteger(
+          responseData['potongan_promo'],
+          fallback: discountAmount,
+        );
         reservationCode = responseData['kode_reservasi']?.toString() ?? '';
         if (reservationCode.isEmpty) {
           throw Exception('Kode reservasi tidak diterima dari server.');
@@ -843,6 +1165,8 @@ class _TiketPageState extends State<TiketPage>
       'childQty': qtyChild,
       'unitPrice': adultPrice,
       'adminFee': adminFee,
+      'promoName': _confirmedPromoName,
+      'promoDiscount': _confirmedPromoDiscount,
       'payment': _paymentLabel(),
       'total': totalPrice,
       'status': 'paid',
@@ -2075,6 +2399,8 @@ class _TiketPageState extends State<TiketPage>
           ),
         ),
 
+        buildPromoSelector(),
+
         pad20(
           infoBox(
             color: context.isDark ? const Color(0xFF3B3424) : kYellowSoft,
@@ -2122,6 +2448,12 @@ class _TiketPageState extends State<TiketPage>
           Icons.person_rounded,
           kBlue,
           (v) {
+            if (reservationCode.isNotEmpty) {
+              showMessage(
+                'Jumlah tiket tidak dapat diubah setelah reservasi dibuat.',
+              );
+              return;
+            }
             setState(() => qtyAdult = (qtyAdult + v).clamp(0, 20));
           },
         ),
@@ -2133,6 +2465,12 @@ class _TiketPageState extends State<TiketPage>
           Icons.child_care_rounded,
           kGreen,
           (v) {
+            if (reservationCode.isNotEmpty) {
+              showMessage(
+                'Jumlah tiket tidak dapat diubah setelah reservasi dibuat.',
+              );
+              return;
+            }
             setState(() => qtyChild = (qtyChild + v).clamp(0, 20));
           },
         ),
@@ -2238,6 +2576,99 @@ class _TiketPageState extends State<TiketPage>
           ),
         ),
       ),
+    );
+  }
+
+  Widget buildPromoSelector() {
+    final selectedPromo = _selectedPromo;
+    final promoName = selectedPromo?['nama']?.toString() ?? '';
+    final subtitle = _promosLoading
+        ? 'Memuat promo untuk tanggal kunjungan...'
+        : selectedPromo != null
+        ? '$promoName • Hemat ${rupiah(discountAmount)}'
+        : _availablePromos.isNotEmpty
+        ? '${_availablePromos.length} promo tersedia untuk kolam ini'
+        : _promoError.isNotEmpty
+        ? _promoError
+        : 'Belum ada promo aktif untuk tanggal ini';
+
+    return pad20(
+      Material(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: _promosLoading ? null : _choosePromo,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selectedPromo == null
+                    ? Colors.grey.shade300
+                    : kAqua.withOpacity(0.55),
+              ),
+            ),
+            child: Row(
+              children: [
+                colorfulIcon(
+                  icon: Icons.local_offer_rounded,
+                  color: kAqua,
+                  boxSize: 40,
+                  size: 20,
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selectedPromo == null ? 'Pakai Promo' : 'Promo Dipilih',
+                        style: TextStyle(
+                          color: context.textMain,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selectedPromo == null
+                              ? context.mutedText
+                              : kAqua,
+                          fontSize: 11,
+                          fontWeight: selectedPromo == null
+                              ? FontWeight.w500
+                              : FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_promosLoading)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else if (_promoError.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Muat ulang promo',
+                    onPressed: _loadAvailablePromos,
+                    icon: const Icon(Icons.refresh_rounded, color: kAqua),
+                  )
+                else
+                  const Icon(Icons.chevron_right_rounded, color: kAqua),
+              ],
+            ),
+          ),
+        ),
+      ),
+      top: 8,
+      bottom: 4,
     );
   }
 
@@ -2354,11 +2785,10 @@ class _TiketPageState extends State<TiketPage>
               ],
             ),
             const SizedBox(height: 14),
-            summaryRow(
-              'Tiket Dewasa × $qtyAdult',
-              rupiah(qtyAdult * adultPrice),
-            ),
+            summaryRow('Tiket Dewasa × $qtyAdult', rupiah(ticketSubtotal)),
             if (qtyChild > 0) summaryRow('Tiket Anak × $qtyChild', 'Gratis'),
+            if (discountAmount > 0)
+              summaryRow('Potongan Promo', '-${rupiah(discountAmount)}'),
             summaryRow('Kolam Renang', selectedPoolName),
             summaryRow(
               'Tanggal Kunjungan',
@@ -2463,6 +2893,13 @@ class _TiketPageState extends State<TiketPage>
                   'Nama Pemesan',
                   nama.isEmpty ? '—' : nama,
                 ),
+                if (discountAmount > 0)
+                  _orderDetailRow(
+                    Icons.local_offer_rounded,
+                    kGreen,
+                    'Potongan Promo',
+                    '-${rupiah(discountAmount)}',
+                  ),
                 const Divider(height: 20),
                 _orderDetailRow(
                   Icons.monetization_on_rounded,
@@ -3939,6 +4376,8 @@ class _TiketPageState extends State<TiketPage>
           : '$qtyAdult Dewasa',
       'unitPrice': adultPrice,
       'adminFee': adminFee,
+      'promoName': _confirmedPromoName,
+      'promoDiscount': _confirmedPromoDiscount,
       'total': totalPrice,
       'payment': _paymentLabel(),
     };
@@ -4372,6 +4811,13 @@ class _TiketPageState extends State<TiketPage>
                           'Biaya Admin',
                           rupiah(adminFee),
                         ),
+                        if (_confirmedPromoDiscount > 0)
+                          receiptRow(
+                            Icons.local_offer_rounded,
+                            kGreen,
+                            'Potongan Promo${_confirmedPromoName.isEmpty ? '' : ' ($_confirmedPromoName)'}',
+                            '-${rupiah(_confirmedPromoDiscount)}',
+                          ),
 
                         const SizedBox(height: 14),
 
@@ -5537,6 +5983,12 @@ class _TiketPageState extends State<TiketPage>
       ),
     );
     final itemsTotal = adultCount * unitPrice;
+    final promoDiscount = _receiptInteger(ticket['promoDiscount']);
+    final promoName = ticket['promoName']?.toString() ?? '';
+    final payableTotal = _receiptInteger(
+      ticket['total'],
+      fallback: itemsTotal + fee - promoDiscount,
+    );
     final ticketCode =
         ticket['ticketId']?.toString() ??
         ticket['reservationCode']?.toString() ??
@@ -5682,6 +6134,13 @@ class _TiketPageState extends State<TiketPage>
                         itemAmount('$childCount x Gratis', '0'),
                       ],
                       itemAmount('Biaya admin', _receiptAmount(fee)),
+                      if (promoDiscount > 0)
+                        itemAmount(
+                          promoName.isEmpty
+                              ? 'Potongan promo'
+                              : 'Promo: $promoName',
+                          '-${_receiptAmount(promoDiscount)}',
+                        ),
                       const SizedBox(height: 10),
                       _receiptDashedLine(),
                       const SizedBox(height: 12),
@@ -5694,7 +6153,7 @@ class _TiketPageState extends State<TiketPage>
                             ),
                           ),
                           Text(
-                            rupiah(itemsTotal + fee),
+                            rupiah(payableTotal),
                             style: mono.copyWith(
                               fontSize: 19,
                               fontWeight: FontWeight.w800,

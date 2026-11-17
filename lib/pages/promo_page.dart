@@ -1,44 +1,15 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'tiket_page.dart';
 
-// ============================================================
-// DATA PROMO FALLBACK — ditampilkan kalau API gagal / offline
-// ============================================================
-const List<Map<String, dynamic>> _kFallbackPromos = [
-  {
-    'nama': 'Promo Weekend Seru',
-    'deskripsi': 'Nikmati diskon spesial setiap akhir pekan! Ajak keluarga dan teman untuk berenang bersama dengan harga yang lebih hemat.',
-    'label_diskon': 'Diskon 20%',
-    'tanggal_mulai': '',
-    'tanggal_selesai': '2025-12-31',
-    'pool_id': '',
-  },
-  {
-    'nama': 'Promo Pelajar & Mahasiswa',
-    'deskripsi': 'Tunjukkan kartu pelajar atau KTM dan dapatkan harga tiket spesial. Berlaku setiap hari kerja.',
-    'label_diskon': 'Diskon 15%',
-    'tanggal_mulai': '',
-    'tanggal_selesai': '2025-12-31',
-    'pool_id': 'pool_id_01',
-  },
-  {
-    'nama': 'Promo Keluarga Bahagia',
-    'deskripsi': 'Beli 4 tiket dewasa, gratis 2 tiket anak! Jadikan liburan bersama keluarga semakin menyenangkan.',
-    'label_diskon': 'Beli 4 Gratis 2',
-    'tanggal_mulai': '',
-    'tanggal_selesai': '2025-11-30',
-    'pool_id': '',
-  },
-];
-
 class PromoPage extends StatefulWidget {
-  const PromoPage({super.key});
+  const PromoPage({super.key, this.poolId, this.poolName});
+
+  final String? poolId;
+  final String? poolName;
 
   @override
   State<PromoPage> createState() => _PromoPageState();
@@ -54,24 +25,10 @@ class _PromoPageState extends State<PromoPage>
 
   late AnimationController _shimmerController;
 
-  static const Color _blue = Color(0xff0077B6);
-  static const Color _navy = Color(0xff173F7A);
-
-  static const List<List<Color>> _gradients = [
-    [Color(0xff0077B6), Color(0xff00B4D8)],
-    [Color(0xff06D6A0), Color(0xff0077A8)],
-    [Color(0xff7B61FF), Color(0xffEF476F)],
-    [Color(0xff173F7A), Color(0xff2675D8)],
-    [Color(0xffF7B731), Color(0xffEF476F)],
-  ];
-
-  static const List<IconData> _icons = [
-    Icons.local_offer_rounded,
-    Icons.waves_rounded,
-    Icons.celebration_rounded,
-    Icons.star_rounded,
-    Icons.pool_rounded,
-  ];
+  // ── Design tokens ──────────────────────────────────────────────
+  static const Color _primary = Color(0xff0B5F8A);
+  static const Color _accent = Color(0xff0A86AD);
+  static const Color _bg = Color(0xffF4F7FB);
 
   static const List<String> _months = [
     'Jan',
@@ -93,7 +50,7 @@ class _PromoPageState extends State<PromoPage>
     super.initState();
     _shimmerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1500),
     )..repeat();
     _load();
   }
@@ -104,9 +61,7 @@ class _PromoPageState extends State<PromoPage>
     super.dispose();
   }
 
-  // ============================================================
-  // AMBIL PROMO DARI API LARAVEL — dengan fallback ke dummy data
-  // ============================================================
+  // ── API ─────────────────────────────────────────────────────────
   Future<void> _load() async {
     if (mounted) {
       setState(() {
@@ -114,56 +69,25 @@ class _PromoPageState extends State<PromoPage>
         _error = '';
       });
     }
-
     try {
-      final res = await http
-          .get(
-            Uri.parse('${ApiService.baseUrl}/promo'),
-            headers: {'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 10));
-
-      debugPrint('PROMO STATUS: ${res.statusCode} BODY: ${res.body}');
-
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        final raw = body is Map ? (body['data'] ?? []) : body;
-
-        final list = <Map<String, dynamic>>[];
-        if (raw is List) {
-          for (final item in raw) {
-            if (item is Map) list.add(Map<String, dynamic>.from(item));
-          }
-        }
-
-        if (!mounted) return;
-        setState(() {
-          // Kalau API berhasil tapi kosong, tetap pakai fallback
-          _promos = list.isNotEmpty ? list : List.from(_kFallbackPromos);
-          _loading = false;
-        });
-        return;
-      }
-
-      // Status bukan 200 → pakai fallback, tidak tampilkan error
+      final promos = await ApiService.getPromos(poolId: widget.poolId);
       if (!mounted) return;
       setState(() {
-        _promos = List.from(_kFallbackPromos);
+        _promos = promos;
         _loading = false;
       });
-    } catch (_) {
-      // Koneksi gagal → pakai fallback, tidak tampilkan error
+    } catch (e) {
+      debugPrint('Gagal memuat promo: $e');
       if (!mounted) return;
       setState(() {
-        _promos = List.from(_kFallbackPromos);
+        _promos = [];
+        _error = 'Promo gagal dimuat. Periksa koneksi lalu coba lagi.';
         _loading = false;
       });
     }
   }
 
-  // ============================================================
-  // HELPER
-  // ============================================================
+  // ── Helpers ─────────────────────────────────────────────────────
   String _fmt(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     final d = DateTime.tryParse(raw);
@@ -177,202 +101,297 @@ class _PromoPageState extends State<PromoPage>
     return poolDisplayName(poolId, poolId);
   }
 
+  bool _endsToday(String rawDate) {
+    final DateTime? parsedDate = DateTime.tryParse(rawDate);
+    if (parsedDate == null) return false;
+    final DateTime end = parsedDate.isUtc ? parsedDate.toLocal() : parsedDate;
+    final DateTime today = DateTime.now();
+    return end.year == today.year &&
+        end.month == today.month &&
+        end.day == today.day;
+  }
+
   void _use(Map<String, dynamic> promo) {
-    final poolId = promo['pool_id']?.toString() ?? '';
+    HapticFeedback.mediumImpact();
+    final poolId = promo['pool_id']?.toString() ?? widget.poolId ?? '';
+    if (poolId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kolam renang untuk promo ini belum tersedia.'),
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => TiketPage(
-          poolId: poolId.isEmpty ? null : poolId,
-          poolName: poolId.isEmpty
-              ? null
+          poolId: poolId,
+          poolName: widget.poolId == poolId && widget.poolName != null
+              ? widget.poolName
               : poolDisplayName(poolId, 'Kolam Renang'),
+          initialPromo: promo,
         ),
       ),
     );
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
+  // ── BUILD ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.pageBg,
+      backgroundColor: context.isDark ? context.pageBg : _bg,
       body: RefreshIndicator(
         onRefresh: _load,
-        color: _blue,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            _buildHeader(),
-            _buildSectionTitle(),
+        color: _accent,
+        strokeWidth: 2.5,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            _buildSliverAppBar(),
+            _buildSectionHeader(),
             if (_loading)
-              _buildShimmer()
+              _buildSliverShimmer()
             else if (_error.isNotEmpty)
-              _buildError()
+              SliverToBoxAdapter(child: _buildError())
             else if (_promos.isEmpty)
-              _buildEmpty()
+              SliverToBoxAdapter(child: _buildEmpty())
             else
-              ...List.generate(
-                _promos.length,
-                (i) => _promoCard(i, _promos[i]),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _promoCard(i, _promos[i]),
+                    childCount: _promos.length,
+                  ),
+                ),
               ),
-            const SizedBox(height: 60),
           ],
         ),
       ),
     );
   }
 
-  // ============================================================
-  // HEADER
-  // ============================================================
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xff173F7A), Color(0xff2675D8)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            // Dekorasi lingkaran belakang
-            Positioned(
-              right: -20,
-              top: -20,
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 30,
-              bottom: -10,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
-              ),
-            ),
-            // Icon dekorasi kanan atas
-            Positioned(
-              right: 24,
-              top: 44,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.local_offer_rounded,
-                    color: Colors.white,
-                    size: 40,
+  // ── SLIVER APP BAR ───────────────────────────────────────────────
+  Widget _buildSliverAppBar() {
+    return SliverToBoxAdapter(
+      child: ColoredBox(
+        color: context.cardBg,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: IconButton(
+                    tooltip: 'Kembali',
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context);
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: context.isDark
+                          ? context.softBg
+                          : const Color(0xffEDF2F8),
+                      foregroundColor: context.textMain,
+                      shape: const CircleBorder(),
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 25),
                   ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Promo & Diskon',
+                        style: TextStyle(
+                          color: context.textMain,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.poolName ?? 'Penawaran spesial untuk kamu',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.mutedText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── SECTION HEADER ───────────────────────────────────────────────
+  Widget _buildSectionHeader() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+        child: Row(
+          children: [
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tombol kembali
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.local_fire_department_rounded,
-                          color: Colors.orangeAccent,
-                          size: 14,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'PENAWARAN SPESIAL',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Promo & Diskon',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    'Hemat lebih banyak dengan penawaran\nexklusif dari NexPool! 🎉',
+                    'Penawaran aktif',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withValues(alpha: 0.85),
-                      height: 1.5,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: context.textMain,
+                      letterSpacing: -0.3,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Pilih promo yang ingin kamu gunakan',
+                    style: TextStyle(fontSize: 13, color: context.mutedText),
                   ),
                 ],
+              ),
+            ),
+            if (!_loading && _error.isEmpty && _promos.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xffDFF0F9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xffB5D9ED)),
+                ),
+                child: Text(
+                  '${_promos.length} aktif',
+                  style: const TextStyle(
+                    color: _primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── SHIMMER ──────────────────────────────────────────────────────
+  Widget _buildSliverShimmer() {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (_, i) => AnimatedBuilder(
+            animation: _shimmerController,
+            builder: (_, __) {
+              final shine = (_shimmerController.value * 2 - 1).clamp(-1.0, 1.0);
+              return Container(
+                height: 220,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment(shine - 1, 0),
+                    end: Alignment(shine + 1, 0),
+                    colors: context.isDark
+                        ? [
+                            const Color(0xff1A2A40),
+                            const Color(0xff253A55),
+                            const Color(0xff1A2A40),
+                          ]
+                        : [
+                            const Color(0xffE8EFF5),
+                            const Color(0xffD4E3EE),
+                            const Color(0xffE8EFF5),
+                          ],
+                  ),
+                ),
+              );
+            },
+          ),
+          childCount: 2,
+        ),
+      ),
+    );
+  }
+
+  // ── EMPTY ────────────────────────────────────────────────────────
+  Widget _buildEmpty() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 52),
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: context.isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : const Color(0xffE2EAF2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xffDFF0F9), Color(0xffB8DDEF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.local_offer_rounded,
+                size: 36,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Belum Ada Promo Aktif',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: context.textMain,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Promo terbaru akan muncul di sini.\nTarik layar ke bawah untuk memperbarui.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: context.mutedText,
+                height: 1.6,
               ),
             ),
           ],
@@ -381,291 +400,122 @@ class _PromoPageState extends State<PromoPage>
     );
   }
 
-  // ============================================================
-  // SECTION TITLE
-  // ============================================================
-  Widget _buildSectionTitle() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: context.softBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.local_fire_department_rounded,
-                color: Color(0xffEF6C35),
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Promo Aktif',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: context.textMain,
-              ),
-            ),
-          ),
-          if (!_loading && _error.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xff0077B6), Color(0xff00B4D8)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${_promos.length} Promo',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // SHIMMER LOADING
-  // ============================================================
-  Widget _buildShimmer() {
-    return AnimatedBuilder(
-      animation: _shimmerController,
-      builder: (context, _) {
-        final shimmerColor = ColorTween(
-          begin: context.softBg,
-          end: context.softBg.withValues(alpha: 0.6),
-        ).evaluate(_shimmerController)!;
-
-        return Column(
-          children: List.generate(
-            2,
-            (i) => Container(
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              decoration: BoxDecoration(
-                color: context.cardBg,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: shimmerColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(height: 14, width: 180, color: shimmerColor),
-                        const SizedBox(height: 10),
-                        Container(height: 12, color: shimmerColor),
-                        const SizedBox(height: 6),
-                        Container(height: 12, width: 220, color: shimmerColor),
-                        const SizedBox(height: 20),
-                        Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: shimmerColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ============================================================
-  // EMPTY STATE
-  // ============================================================
-  Widget _buildEmpty() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: context.softBg,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.local_offer_rounded,
-              size: 40,
-              color: _blue,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Belum Ada Promo Aktif',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: context.textMain,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Promo terbaru akan muncul di sini.\nTarik layar ke bawah untuk memuat ulang.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: context.mutedText,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // ERROR STATE
-  // ============================================================
+  // ── ERROR ────────────────────────────────────────────────────────
   Widget _buildError() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: context.softBg,
-              shape: BoxShape.circle,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-            child: const Icon(
-              Icons.wifi_off_rounded,
-              size: 36,
-              color: Color(0xffEF476F),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _error,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              color: context.textMain,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text(
-              'Coba Lagi',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Color(0xffFEEEEE),
+                shape: BoxShape.circle,
               ),
-              elevation: 0,
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                size: 34,
+                color: Color(0xffEF476F),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 18),
+            Text(
+              _error,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: context.textMain,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text(
+                  'Coba Lagi',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ============================================================
-  // KARTU PROMO — desain modern
-  // ============================================================
+  // ── KARTU PROMO ──────────────────────────────────────────────────
   Widget _promoCard(int index, Map<String, dynamic> p) {
-    final colors = _gradients[index % _gradients.length];
-    final cardIcon = _icons[index % _icons.length];
-
     final String nama = p['nama']?.toString() ?? 'Promo';
     final String deskripsi = p['deskripsi']?.toString() ?? '';
+    final String syaratDariServer = p['syarat']?.toString() ?? '';
+    final String syarat = syaratDariServer.trim().isNotEmpty
+        ? syaratDariServer
+        : deskripsi;
     final String label = p['label_diskon']?.toString() ?? '';
-    final String mulai = _fmt(p['tanggal_mulai']?.toString());
-    final String selesai = _fmt(p['tanggal_selesai']?.toString());
+    final String tanggalMulai = p['tanggal_mulai']?.toString() ?? '';
+    final String tanggalSelesai = p['tanggal_selesai']?.toString() ?? '';
+    final String mulai = _fmt(tanggalMulai);
+    final String selesai = _fmt(tanggalSelesai);
     final bool isExpanded = _expanded.contains(index);
+    final bool berakhirHariIni = _endsToday(tanggalSelesai);
+    final String poolId = p['pool_id']?.toString() ?? '';
+    final String namaKolamTerpilih = widget.poolId == poolId
+        ? widget.poolName ?? ''
+        : '';
+    final String namaKolam = namaKolamTerpilih.isNotEmpty
+        ? namaKolamTerpilih
+        : _poolLabel(p);
 
     String periode = '';
     if (mulai.isNotEmpty && selesai.isNotEmpty) {
       periode = '$mulai – $selesai';
     } else if (selesai.isNotEmpty) {
-      periode = 'Sampai $selesai';
+      periode = 'Hingga $selesai';
     } else if (mulai.isNotEmpty) {
       periode = 'Mulai $mulai';
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: context.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xffDFE7EF),
+        ),
         boxShadow: [
           BoxShadow(
-            color: colors[0].withValues(alpha: 0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: const Color(0xff163A5F).withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -673,321 +523,348 @@ class _PromoPageState extends State<PromoPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Banner atas berwarna ──────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Lingkaran dekorasi
-                Positioned(
-                  right: -16,
-                  top: -16,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (label.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                ),
-                              ),
-                              child: Text(
-                                label.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 12),
-                          Text(
-                            nama,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              height: 1.2,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          if (periode.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time_rounded,
-                                  color: Colors.white70,
-                                  size: 13,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  periode,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(cardIcon, color: Colors.white, size: 30),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ── Isi kartu ──────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Kolam berlaku
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xffEEF7FF),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.pool_rounded,
-                        size: 16,
-                        color: _blue,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Berlaku di: ${_poolLabel(p)}',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: context.mutedText,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                if (deskripsi.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    deskripsi,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.6,
-                      color: context.textMain,
-                    ),
-                    maxLines: isExpanded ? null : 2,
-                    overflow: isExpanded
-                        ? TextOverflow.visible
-                        : TextOverflow.ellipsis,
-                  ),
-                ],
-
-                if (selesai.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.softBg,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.timer_rounded,
-                          size: 14,
-                          color: Color(0xffEF476F),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Berakhir $selesai',
-                          style: const TextStyle(
-                            color: Color(0xffEF476F),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 18),
-
-                // Tombol aksi
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _use(p),
-                        icon: const Icon(
-                          Icons.confirmation_number_rounded,
-                          size: 18,
-                        ),
-                        label: const Text(
-                          'Gunakan Promo',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _navy,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isExpanded
-                              ? _expanded.remove(index)
-                              : _expanded.add(index);
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: context.softBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(0xffC8DEFF),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Icon(
-                          isExpanded
-                              ? Icons.keyboard_arrow_up_rounded
-                              : Icons.keyboard_arrow_down_rounded,
-                          color: _blue,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // ── Detail expand ──────────────────────────────
-                if (isExpanded) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: context.softBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xffC8DEFF)),
-                    ),
-                    child: Column(
-                      children: [
-                        _detailRow(
-                          Icons.pool_rounded,
-                          'Berlaku di',
-                          _poolLabel(p),
-                        ),
-                        if (label.isNotEmpty)
-                          _detailRow(
-                            Icons.local_offer_rounded,
-                            'Diskon',
-                            label,
-                          ),
-                        if (periode.isNotEmpty)
-                          _detailRow(
-                            Icons.event_available_rounded,
-                            'Periode',
-                            periode,
-                          ),
-                        _detailRow(
-                          Icons.info_outline_rounded,
-                          'Syarat',
-                          'Berlaku sesuai periode promo. Promo dapat berakhir lebih cepat.',
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          _buildBanner(nama, label, periode),
+          _buildTearLine(),
+          _buildCardBody(
+            deskripsi: deskripsi,
+            selesai: selesai,
+            namaKolam: namaKolam,
+            syarat: syarat,
+            berakhirHariIni: berakhirHariIni,
+            isExpanded: isExpanded,
+            periode: periode,
+            label: label,
+            nama: nama,
+            index: index,
+            p: p,
           ),
         ],
       ),
     );
   }
 
+  // ── Bagian atas kartu ─────────────────────────────────────────────
+  Widget _buildBanner(String nama, String label, String periode) {
+    return Container(
+      color: context.cardBg,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label.isNotEmpty)
+            _chip(label, bg: const Color(0xffE8F4F9), fg: _primary, bold: true),
+          if (label.isNotEmpty) const SizedBox(height: 10),
+          Text(
+            nama,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.textMain,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+              letterSpacing: -0.4,
+            ),
+          ),
+          if (periode.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 15, color: _primary),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    periode,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.textMain,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(
+    String text, {
+    required Color bg,
+    required Color fg,
+    bool bold = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: fg,
+          fontSize: 12,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  // ── Garis sobek horizontal ────────────────────────────────────────
+  Widget _buildTearLine() {
+    final Color cutoutColor = context.isDark ? context.pageBg : _bg;
+
+    return SizedBox(
+      height: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _PromoPerforationPainter(
+                color: context.isDark
+                    ? Colors.white.withValues(alpha: 0.28)
+                    : const Color(0xffCAD5DF),
+              ),
+            ),
+          ),
+          Positioned(left: -14, child: _PromoNotch(color: cutoutColor)),
+          Positioned(right: -14, child: _PromoNotch(color: cutoutColor)),
+        ],
+      ),
+    );
+  }
+
+  // ── Isi kartu tiket ───────────────────────────────────────────────
+  Widget _buildCardBody({
+    required String deskripsi,
+    required String selesai,
+    required String namaKolam,
+    required String syarat,
+    required bool berakhirHariIni,
+    required bool isExpanded,
+    required String periode,
+    required String label,
+    required String nama,
+    required int index,
+    required Map<String, dynamic> p,
+  }) {
+    final String validity = [
+      if (selesai.isNotEmpty) 'Berlaku s/d $selesai',
+      if (namaKolam.isNotEmpty) 'di $namaKolam',
+    ].join(' ');
+
+    return Container(
+      color: context.cardBg,
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (deskripsi.trim().isNotEmpty) ...[
+            Text(
+              deskripsi,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: context.mutedText,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (validity.isNotEmpty)
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xffE8F4F9),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: _primary,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    validity,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.textMain,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (syarat.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.confirmation_number_outlined,
+                  size: 17,
+                  color: context.mutedText,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    syarat,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.mutedText,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (berakhirHariIni) ...[
+            const SizedBox(height: 10),
+            _chip(
+              'Berakhir hari ini',
+              bg: const Color(0xffFDECEC),
+              fg: const Color(0xffB42318),
+              bold: true,
+            ),
+          ],
+          if (isExpanded) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : const Color(0xffF0F7FA),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _detailRow(Icons.pool_outlined, 'Kolam', namaKolam),
+                  if (label.isNotEmpty)
+                    _detailRow(Icons.local_offer_outlined, 'Diskon', label),
+                  if (periode.isNotEmpty)
+                    _detailRow(Icons.event_outlined, 'Periode', periode),
+                  if (syarat.isNotEmpty)
+                    _detailRow(
+                      Icons.confirmation_number_outlined,
+                      'Syarat',
+                      syarat,
+                    ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          _buildActions(index, isExpanded, nama, p),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActions(
+    int index,
+    bool isExpanded,
+    String nama,
+    Map<String, dynamic> promo,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Semantics(
+            button: true,
+            label: isExpanded
+                ? 'Tutup syarat dan ketentuan'
+                : 'Lihat syarat dan ketentuan',
+            child: TextButton(
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  isExpanded ? _expanded.remove(index) : _expanded.add(index);
+                });
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: _primary,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                minimumSize: const Size(48, 48),
+                alignment: Alignment.centerLeft,
+                textStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+              child: Text(isExpanded ? 'Tutup S&K' : 'Detail S&K'),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 3,
+          child: Semantics(
+            button: true,
+            label: 'Gunakan promo $nama',
+            child: ElevatedButton(
+              onPressed: () => _use(promo),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: const Size(48, 50),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: const StadiumBorder(),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: const Text(
+                'Gunakan Promo',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _detailRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: _blue),
-          const SizedBox(width: 10),
+          Icon(icon, size: 15, color: _primary),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 72,
+            width: 68,
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 color: context.mutedText,
                 fontWeight: FontWeight.w600,
               ),
@@ -997,7 +874,7 @@ class _PromoPageState extends State<PromoPage>
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 12,
                 color: context.textMain,
                 fontWeight: FontWeight.w700,
                 height: 1.4,
@@ -1008,4 +885,42 @@ class _PromoPageState extends State<PromoPage>
       ),
     );
   }
+}
+
+class _PromoNotch extends StatelessWidget {
+  const _PromoNotch({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
+
+class _PromoPerforationPainter extends CustomPainter {
+  const _PromoPerforationPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    final double centerY = size.height / 2;
+    for (double x = 14; x < size.width - 14; x += 8) {
+      canvas.drawLine(Offset(x, centerY), Offset(x + 3.5, centerY), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PromoPerforationPainter old) => old.color != color;
 }

@@ -10,20 +10,26 @@ class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
 
-  static const String defaultBaseUrl = 'http://192.168.1.25:8000/api';
-  static String _baseUrl = defaultBaseUrl;
+  static const String _webBaseUrl = 'http://localhost:8000/api';
+  static const String _deviceBaseUrl = 'http://192.168.1.6:8000/api';
+  static String get defaultBaseUrl => kIsWeb ? _webBaseUrl : _deviceBaseUrl;
+  static String _baseUrl = kIsWeb ? _webBaseUrl : _deviceBaseUrl;
 
   static String get baseUrl => _baseUrl;
   static set baseUrl(String value) => _baseUrl = value.trim();
-  
 
   /// Inisialisasi baseUrl dari SharedPreferences jika pernah diubah pengguna
   static Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedUrl = prefs.getString('custom_api_base_url');
-      if (savedUrl != null && savedUrl.trim().isNotEmpty) {
-        _baseUrl = savedUrl.trim();
+      final normalizedSavedUrl = savedUrl?.trim();
+      final isLegacyDeviceDefault =
+          kIsWeb && normalizedSavedUrl == _deviceBaseUrl;
+      if (normalizedSavedUrl != null &&
+          normalizedSavedUrl.isNotEmpty &&
+          !isLegacyDeviceDefault) {
+        _baseUrl = normalizedSavedUrl;
       } else {
         _baseUrl = defaultBaseUrl;
       }
@@ -164,6 +170,49 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getPromos({
+    String? poolId,
+    DateTime? visitDate,
+  }) async {
+    try {
+      final queryParameters = <String, String>{};
+      if (poolId != null && poolId.trim().isNotEmpty) {
+        queryParameters['pool_id'] = poolId.trim();
+      }
+      if (visitDate != null) {
+        queryParameters['tanggal_kunjungan'] =
+            '${visitDate.year.toString().padLeft(4, '0')}-'
+            '${visitDate.month.toString().padLeft(2, '0')}-'
+            '${visitDate.day.toString().padLeft(2, '0')}';
+      }
+
+      final uri = Uri.parse('$baseUrl/promo').replace(
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(_timeout);
+      final data = _decodeResponse(response);
+
+      if (response.statusCode != 200 || data['success'] != true) {
+        throw Exception(data['message'] ?? 'Gagal mengambil data promo.');
+      }
+
+      final rawPromos = data['data'];
+      if (rawPromos is! List) {
+        throw Exception('Format data promo dari server tidak valid.');
+      }
+
+      return rawPromos
+          .whereType<Map>()
+          .map((promo) => Map<String, dynamic>.from(promo))
+          .toList();
+    } catch (e) {
+      debugPrint('ERROR GET PROMO: $e');
+      rethrow;
+    }
+  }
+
   // =========================================================
   // GET SEMUA FASILITAS
   // =========================================================
@@ -257,9 +306,8 @@ class ApiService {
 
   static Future<List<dynamic>> getReviewsByPool(String poolId) async {
     try {
-      final uri = Uri.parse(
-        '$baseUrl/reviews',
-      ).replace(queryParameters: {'pool_id': poolId});
+      final uri = Uri.parse('$baseUrl/reviews')
+          .replace(queryParameters: {'pool_id': poolId});
 
       final response = await http
           .get(uri, headers: {'Accept': 'application/json'})
@@ -358,6 +406,7 @@ class ApiService {
     required int jumlahDewasa,
     required int jumlahAnak,
     required double totalHarga,
+    String? promoId,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/reservasi');
@@ -379,6 +428,8 @@ class ApiService {
               'jumlah_dewasa': jumlahDewasa,
               'jumlah_anak': jumlahAnak,
               'total_harga': totalHarga,
+              if (promoId != null && promoId.trim().isNotEmpty)
+                'promo_id': promoId,
             }),
           )
           .timeout(_timeout);

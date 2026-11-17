@@ -451,6 +451,8 @@ class _HomePageState extends State<HomePage>
         final String end = item['tanggal_selesai']?.toString() ?? '';
 
         list.add({
+          'id': item['id'],
+          'pool_id': poolId,
           'title': item['nama']?.toString() ?? 'Promo',
           'place': end.isEmpty
               ? poolName
@@ -465,6 +467,37 @@ class _HomePageState extends State<HomePage>
     } catch (e) {
       debugPrint('Gagal ambil promo: $e');
     }
+  }
+
+  void _openPromoPage({String? requestedPoolId}) {
+    final selectedPoolData = selectedPool > 0 && selectedPool <= pools.length
+        ? pools[selectedPool - 1]
+        : null;
+    final selectedPoolId = selectedPoolData?['pool_id']?.toString();
+    final poolId = requestedPoolId?.trim().isNotEmpty == true
+        ? requestedPoolId!.trim()
+        : selectedPoolId;
+    String? poolName;
+    if (selectedPoolId == poolId) {
+      poolName = selectedPoolData?['name']?.toString();
+    } else {
+      for (final pool in pools) {
+        if (pool['pool_id']?.toString() == poolId) {
+          poolName = pool['name']?.toString();
+          break;
+        }
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PromoPage(
+          poolId: poolId?.isEmpty == true ? null : poolId,
+          poolName: poolName,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadFasilitas([String poolId = '']) async {
@@ -1668,10 +1701,7 @@ class _HomePageState extends State<HomePage>
               Icons.local_offer_rounded,
               'Promo',
               const Color(0xFFEF476F),
-              () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PromoPage()),
-              ),
+              _openPromoPage,
             ),
           ),
           const SizedBox(width: 8),
@@ -1775,10 +1805,7 @@ class _HomePageState extends State<HomePage>
           Icons.local_offer_rounded,
           const Color(0xffD4960A),
           action: 'Lihat Semua',
-          onAction: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PromoPage()),
-          ),
+          onAction: _openPromoPage,
         ),
         const SizedBox(height: 12),
         if (promos.isEmpty)
@@ -1827,9 +1854,8 @@ class _HomePageState extends State<HomePage>
                     : const Color(0xff00B4D8);
 
                 return GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PromoPage()),
+                  onTap: () => _openPromoPage(
+                    requestedPoolId: promo['pool_id']?.toString(),
                   ),
                   child: Container(
                     width: 250,
