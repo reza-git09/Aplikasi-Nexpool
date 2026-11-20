@@ -544,10 +544,43 @@ class ApiService {
   }
 
   // =========================================================
-  // RESCHEDULE RESERVASI LUNAS
+  // RESCHEDULE RESERVASI
   // =========================================================
 
-  static Future<Map<String, dynamic>> rescheduleReservasi({
+  static Future<Map<String, dynamic>> getRescheduleQuote({
+    required String kodeReservasi,
+    required String noHp,
+    required String tanggalKunjungan,
+  }) async {
+    try {
+      final encodedCode = Uri.encodeComponent(kodeReservasi);
+      final uri =
+          Uri.parse('$baseUrl/reservasi/kode/$encodedCode/reschedule/quote')
+              .replace(
+                queryParameters: {
+                  'no_hp': noHp,
+                  'tanggal_kunjungan': tanggalKunjungan,
+                },
+              );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(_timeout);
+
+      final data = _decodeResponse(response);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      throw Exception(
+        data['message']?.toString() ?? 'Gagal menghitung selisih reschedule.',
+      );
+    } catch (e) {
+      debugPrint('ERROR QUOTE RESCHEDULE: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> requestReschedule({
     required String kodeReservasi,
     required String noHp,
     required String tanggalKunjungan,
@@ -556,7 +589,7 @@ class ApiService {
       final encodedCode = Uri.encodeComponent(kodeReservasi);
       final uri = Uri.parse('$baseUrl/reservasi/kode/$encodedCode/reschedule');
       final response = await http
-          .put(
+          .post(
             uri,
             headers: {
               'Accept': 'application/json',
@@ -570,15 +603,84 @@ class ApiService {
           .timeout(_timeout);
 
       final data = _decodeResponse(response);
+      if (response.statusCode == 201 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      throw Exception(
+        data['message']?.toString() ?? 'Gagal mengajukan reschedule.',
+      );
+    } catch (e) {
+      debugPrint('ERROR REQUEST RESCHEDULE: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRescheduleStatus({
+    required String kodeReservasi,
+    required String noHp,
+  }) async {
+    try {
+      final encodedCode = Uri.encodeComponent(kodeReservasi);
+      final uri = Uri.parse('$baseUrl/reservasi/kode/$encodedCode/reschedule')
+          .replace(queryParameters: {'no_hp': noHp});
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(_timeout);
+
+      final data = _decodeResponse(response);
       if (response.statusCode == 200 && data['success'] == true) {
         return Map<String, dynamic>.from(data['data'] ?? {});
       }
 
       throw Exception(
-        data['message']?.toString() ?? 'Gagal memperbarui tanggal kunjungan.',
+        data['message']?.toString() ?? 'Gagal memuat status reschedule.',
       );
     } catch (e) {
-      debugPrint('ERROR RESCHEDULE RESERVASI: $e');
+      debugPrint('ERROR GET RESCHEDULE STATUS: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> createRescheduleQrisPayment({
+    required String kodeReservasi,
+    required String noHp,
+    required int requestId,
+    required String customerName,
+    required String customerEmail,
+  }) async {
+    try {
+      final encodedCode = Uri.encodeComponent(kodeReservasi);
+      final uri = Uri.parse(
+        '$baseUrl/reservasi/kode/$encodedCode/reschedule/$requestId/payment',
+      );
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'reservation_code': kodeReservasi,
+              'no_hp': noHp,
+              'customer_name': customerName,
+              'customer_email': customerEmail,
+            }),
+          )
+          .timeout(_timeout);
+
+      final data = _decodeResponse(response);
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          data['status'] == 'success') {
+        return data;
+      }
+
+      throw Exception(
+        data['message']?.toString() ?? 'Gagal membuat pembayaran selisih.',
+      );
+    } catch (e) {
+      debugPrint('ERROR CREATE RESCHEDULE PAYMENT: $e');
       rethrow;
     }
   }

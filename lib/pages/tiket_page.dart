@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' show ImageByteFormat;
 
 import 'package:file_saver/file_saver.dart';
@@ -906,6 +907,50 @@ class _TiketPageState extends State<TiketPage>
     });
   }
 
+  void _openBookingTab() {
+    final startNewBooking = statusPembayaran == 'paid';
+
+    if (startNewBooking) {
+      _stopPayTimer();
+      _paymentStatusTimer?.cancel();
+      _successAnimController.reset();
+    }
+
+    setState(() {
+      selectedTab = 0;
+
+      if (!startNewBooking) return;
+
+      currentStep = 1;
+      selectedDate = null;
+      selectedDateLabel = '';
+      isWeekend = false;
+      category = 'dewasa';
+      qtyAdult = 1;
+      qtyChild = 0;
+      keteranganController.clear();
+      _selectedPromo = null;
+      _confirmedPromoName = '';
+      _confirmedPromoDiscount = 0;
+      payMethod = 'qris';
+      selectedWallet = 'gopay';
+      selectedBank = 'bri';
+      paySubStep = 'select';
+      orderId = '';
+      reservationCode = '';
+      ticketId = '';
+      statusPembayaran = 'pending';
+      paidAt = null;
+      reservedAt = null;
+      currentQrUrl = null;
+      currentQrImage = null;
+      paymentExpired = false;
+      _remainingSeconds = payDurationSeconds;
+      isCreatingPayment = false;
+      isCheckingPaymentStatus = false;
+    });
+  }
+
   /// Kode tiket menyertakan ID Pool kolam yang dipilih user (contoh: pool_id_01_83232942)
   // String _generateTicketId() {
   //   final now = DateTime.now();
@@ -1765,7 +1810,7 @@ class _TiketPageState extends State<TiketPage>
         leading: selectedTab == 1
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => selectedTab = 0),
+                onPressed: _openBookingTab,
               )
             : null,
       ),
@@ -1809,7 +1854,7 @@ class _TiketPageState extends State<TiketPage>
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => selectedTab = 0),
+                onTap: _openBookingTab,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
@@ -5373,7 +5418,7 @@ class _TiketPageState extends State<TiketPage>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => setState(() => selectedTab = 0),
+                  onPressed: _openBookingTab,
                   icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
                   label: const Text(
                     'Pesan Tiket Sekarang',
@@ -5999,6 +6044,13 @@ class _TiketPageState extends State<TiketPage>
       includeTime: true,
     );
     final visitDate = _receiptVisitDate(ticket);
+    final rescheduleInfo = ticket['rescheduleInfo'] is Map
+        ? Map<String, dynamic>.from(ticket['rescheduleInfo'] as Map)
+        : null;
+    final rescheduleDate = DateTime.tryParse(
+      rescheduleInfo?['tanggal_baru']?.toString() ?? '',
+    );
+    final rescheduleAmount = _receiptInteger(rescheduleInfo?['selisih_harga']);
     final phone = _receiptPhone(ticket['customerPhone']?.toString() ?? '');
     final rawPoolName = ticket['poolName']?.toString().trim() ?? '';
     final poolName = rawPoolName.isNotEmpty ? rawPoolName : selectedPoolName;
@@ -6190,6 +6242,43 @@ class _TiketPageState extends State<TiketPage>
                       ),
                       const SizedBox(height: 12),
                       _receiptDashedLine(),
+                      if (rescheduleInfo != null && rescheduleDate != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'INFORMASI RESCHEDULE',
+                          style: mono.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _receiptDashedLine(),
+                        const SizedBox(height: 8),
+                        detail('Tanggal baru', formatDate(rescheduleDate)),
+                        detail(
+                          'Pembayaran reschedule',
+                          rupiah(rescheduleAmount),
+                        ),
+                        detail(
+                          'Status',
+                          rescheduleAmount > 0 ? 'LUNAS' : 'BERHASIL',
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Dijadwalkan ulang ke ${formatDate(rescheduleDate)}',
+                          textAlign: TextAlign.center,
+                          style: secondary.copyWith(fontSize: 11),
+                        ),
+                        Text(
+                          rescheduleAmount > 0
+                              ? 'Selisih ${rupiah(rescheduleAmount)} sudah dibayar'
+                              : 'Tidak ada selisih yang perlu dibayar',
+                          textAlign: TextAlign.center,
+                          style: secondary.copyWith(fontSize: 11),
+                        ),
+                        const SizedBox(height: 8),
+                        _receiptDashedLine(),
+                      ],
                       const SizedBox(height: 12),
                       Text('Order ID', style: secondary.copyWith(fontSize: 11)),
                       const SizedBox(height: 3),
@@ -6251,8 +6340,15 @@ class _TiketPageState extends State<TiketPage>
   }
 
   String _receiptVisitDate(Map<String, dynamic> ticket) {
-    final date = DateTime.tryParse(ticket['visitDate']?.toString() ?? '');
-    final displayDate = ticket['date']?.toString();
+    final initialDate = ticket['initialVisitDate']?.toString();
+    final date = DateTime.tryParse(
+      initialDate?.isNotEmpty == true
+          ? initialDate!
+          : ticket['visitDate']?.toString() ?? '',
+    );
+    final displayDate = initialDate?.isNotEmpty == true
+        ? null
+        : ticket['date']?.toString();
     if (date != null) {
       final localDate = date.toLocal();
       if (displayDate != null &&
@@ -6342,156 +6438,417 @@ class _TiketPageState extends State<TiketPage>
     );
   }
 
-  void openReschedule(int index) {
+  Future<void> openReschedule(int index) async {
     final ticket = myTickets[index];
+    final reservationCode =
+        ticket['reservationCode']?.toString().trim().isNotEmpty == true
+        ? ticket['reservationCode'].toString().trim()
+        : ticket['ticketId']?.toString().trim() ?? '';
+    final phone = ticket['customerPhone']?.toString().trim().isNotEmpty == true
+        ? ticket['customerPhone'].toString().trim()
+        : telepon.trim();
     DateTime? newDate;
     bool isSubmitting = false;
+    bool isPaying = false;
+    bool isStatusLoading = true;
+    bool isQuoteLoading = false;
+    bool sheetOpen = true;
+    bool pollingStarted = false;
+    bool refreshingStatus = false;
+    int quoteVersion = 0;
+    Map<String, dynamic>? statusData;
+    Map<String, dynamic>? quote;
+    String quoteError = '';
+    StateSetter? setModalState;
+    Timer? statusTimer;
 
-    showModalBottomSheet(
+    Map<String, dynamic>? asMap(Object? value) {
+      return value is Map ? Map<String, dynamic>.from(value) : null;
+    }
+
+    Future<void> refreshStatus() async {
+      if (refreshingStatus ||
+          !sheetOpen ||
+          reservationCode.isEmpty ||
+          phone.isEmpty) {
+        return;
+      }
+
+      refreshingStatus = true;
+      try {
+        final response = await ApiService.getRescheduleStatus(
+          kodeReservasi: reservationCode,
+          noHp: phone,
+        );
+        if (!sheetOpen) return;
+
+        final previousStatus = asMap(
+          statusData?['request'],
+        )?['status']?.toString();
+        final latestRequest = asMap(response['request']);
+        setModalState?.call(() {
+          statusData = response;
+          isStatusLoading = false;
+        });
+
+        final successfulRequest = asMap(response['latest_successful_request']);
+        final actualDate = DateTime.tryParse(
+          response['tanggal_kunjungan']?.toString() ?? '',
+        );
+        final successfulId = successfulRequest?['id']?.toString() ?? '';
+        if (successfulId.isNotEmpty &&
+            actualDate != null &&
+            ticket['appliedRescheduleRequestId']?.toString() != successfulId) {
+          final initialDate = DateTime.tryParse(
+            response['tanggal_kunjungan_awal']?.toString() ??
+                successfulRequest?['tanggal_lama']?.toString() ??
+                '',
+          );
+          if (mounted) {
+            setState(() {
+              ticket['initialVisitDate'] ??= initialDate?.toIso8601String();
+              ticket['rescheduleInfo'] = successfulRequest;
+              ticket['appliedRescheduleRequestId'] = successfulId;
+              ticket['date'] = formatShortDate(actualDate);
+              ticket['visitDate'] = actualDate.toIso8601String();
+              ticket['reschedule'] = (ticket['reschedule'] as int? ?? 0) + 1;
+            });
+            try {
+              await _persistSavedTickets();
+            } catch (error) {
+              debugPrint(
+                'Gagal menyimpan jadwal baru ke riwayat lokal: $error',
+              );
+            }
+          }
+        }
+
+        final currentStatus = latestRequest?['status']?.toString();
+        if (previousStatus != null && currentStatus != previousStatus) {
+          final reason = latestRequest?['alasan_penolakan']?.toString() ?? '';
+          final message = switch (currentStatus) {
+            'menunggu_pembayaran' =>
+              'Pengajuan disetujui. Selisih harga sudah bisa dibayar.',
+            'ditolak' =>
+              reason.isEmpty
+                  ? 'Pengajuan reschedule ditolak admin.'
+                  : 'Pengajuan ditolak: $reason',
+            'berhasil' =>
+              'Pembayaran berhasil. Tanggal tiket sudah diperbarui.',
+            'kedaluwarsa' =>
+              'Pengajuan reschedule kedaluwarsa. Tiket lama tetap berlaku.',
+            _ => '',
+          };
+          if (message.isNotEmpty && mounted) showMessage(message);
+        }
+      } catch (error) {
+        debugPrint('Gagal memuat status reschedule: $error');
+        if (sheetOpen) {
+          setModalState?.call(() => isStatusLoading = false);
+        }
+      } finally {
+        refreshingStatus = false;
+      }
+    }
+
+    Future<void> loadQuote(
+      DateTime selectedDate,
+      StateSetter updateModal,
+    ) async {
+      final requestVersion = ++quoteVersion;
+      updateModal(() {
+        isQuoteLoading = true;
+        quote = null;
+        quoteError = '';
+      });
+
+      try {
+        final dateValue =
+            '${selectedDate.year.toString().padLeft(4, '0')}-'
+            '${selectedDate.month.toString().padLeft(2, '0')}-'
+            '${selectedDate.day.toString().padLeft(2, '0')}';
+        final result = await ApiService.getRescheduleQuote(
+          kodeReservasi: reservationCode,
+          noHp: phone,
+          tanggalKunjungan: dateValue,
+        );
+        if (!sheetOpen || requestVersion != quoteVersion) return;
+        updateModal(() {
+          quote = result;
+          isQuoteLoading = false;
+        });
+      } catch (error) {
+        if (!sheetOpen || requestVersion != quoteVersion) return;
+        updateModal(() {
+          quoteError = error.toString().replaceFirst('Exception: ', '');
+          isQuoteLoading = false;
+        });
+      }
+    }
+
+    Future<void> payReschedule(
+      Map<String, dynamic> requestInfo,
+      StateSetter updateModal,
+    ) async {
+      if (isPaying) return;
+      updateModal(() => isPaying = true);
+
+      try {
+        final requestId = int.tryParse(requestInfo['id']?.toString() ?? '');
+        if (requestId == null) {
+          throw Exception('Data pengajuan reschedule tidak valid.');
+        }
+
+        final payment = await ApiService.createRescheduleQrisPayment(
+          kodeReservasi: reservationCode,
+          noHp: phone,
+          requestId: requestId,
+          customerName: ticket['customerName']?.toString() ?? nama,
+          customerEmail: email,
+        );
+
+        if (payment['status_pembayaran']?.toString() == 'paid') {
+          await refreshStatus();
+          if (mounted) {
+            showMessage('Pembayaran selisih berhasil. Tiket sudah diperbarui.');
+          }
+          return;
+        }
+
+        final orderId = payment['order_id']?.toString() ?? '';
+        if (orderId.isEmpty) {
+          throw Exception('Kode transaksi QRIS tidak diterima dari server.');
+        }
+
+        final isPaid = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => ReschedulePaymentDialog(
+            orderId: orderId,
+            remainingSeconds:
+                int.tryParse(payment['remaining_seconds']?.toString() ?? '') ??
+                600,
+          ),
+        );
+        if (isPaid == true && mounted) {
+          await refreshStatus();
+          showMessage('Pembayaran selisih berhasil. Tiket sudah diperbarui.');
+        }
+      } catch (error) {
+        if (mounted) {
+          showMessage(error.toString().replaceFirst('Exception: ', ''));
+        }
+      } finally {
+        if (sheetOpen) updateModal(() => isPaying = false);
+      }
+    }
+
+    final sheet = showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final availableDates = datesFrom(29, offset: 1);
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateModal) {
+          setModalState = updateModal;
+          if (!pollingStarted) {
+            pollingStarted = true;
+            unawaited(refreshStatus());
+            statusTimer = Timer.periodic(
+              const Duration(seconds: 8),
+              (_) => unawaited(refreshStatus()),
+            );
+          }
 
-            final cardPoolName =
-                ticket['poolName']?.toString() ?? selectedPoolName;
+          final requestInfo = asMap(statusData?['request']);
+          final requestStatus = requestInfo?['status']?.toString() ?? '';
+          final awaitingApproval = requestStatus == 'menunggu_persetujuan';
+          final awaitingPayment = requestStatus == 'menunggu_pembayaran';
+          final hasActiveRequest = awaitingApproval || awaitingPayment;
+          final reservationStatus =
+              statusData?['status_reservasi']?.toString() ?? '';
+          final currentVisit = DateTime.tryParse(
+            ticket['visitDate']?.toString() ?? '',
+          );
+          final minimumVisit = DateUtils.dateOnly(DateTime.now())
+              .add(const Duration(days: 2));
+          final dateDeadlinePassed =
+              currentVisit != null &&
+              DateUtils.dateOnly(currentVisit).isBefore(minimumVisit);
+          final canReschedule =
+              reservationStatus != 'Selesai' &&
+              reservationStatus != 'Dibatalkan' &&
+              !dateDeadlinePassed;
+          final cardPoolName =
+              ticket['poolName']?.toString() ?? selectedPoolName;
 
-            return sheetShell(
-              height: .88,
-              safeArea: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  sheetHandle(),
-                  const SizedBox(height: 14),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Reschedule Tiket',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+          return sheetShell(
+            height: .88,
+            safeArea: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                sheetHandle(),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Reschedule Tiket',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const Text(
+                  'Pilih tanggal kunjungan baru Anda',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        infoBox(
+                          radius: 15,
+                          pad: 15,
+                          border: kBlue.withOpacity(.25),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'INFORMASI TIKET SAAT INI',
+                                style: TextStyle(
+                                  color: kAqua,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              infoRow('Kolam Renang', cardPoolName),
+                              infoRow(
+                                'No. Tiket',
+                                reservationCode.isEmpty ? '—' : reservationCode,
+                              ),
+                              infoRow(
+                                'Tanggal Saat Ini',
+                                ticket['date']?.toString() ?? '—',
+                              ),
+                              infoRow(
+                                'Kategori',
+                                ticket['qty']?.toString() ?? '—',
+                              ),
+                              infoRow(
+                                'Total Terbayar',
+                                rupiah(ticket['total'] as int? ?? 0),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-
-                  const Text(
-                    'Pilih tanggal kunjungan baru Anda',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                        const SizedBox(height: 14),
+                        infoBox(
+                          color: context.isDark
+                              ? const Color(0xFF3B3424)
+                              : kYellowSoft,
+                          radius: 14,
+                          pad: 14,
+                          border: kGold.withOpacity(.5),
+                          child: const Text(
+                            '• Pengajuan hanya dapat dilakukan paling lambat H-2 sebelum kunjungan.\n'
+                            '• Admin merespons maksimal 24 jam.\n'
+                            '• Tiket lama tetap berlaku sampai reschedule berhasil.\n'
+                            '• Pembayaran QRIS selisih berlaku 10 menit.\n'
+                            '• Tiket yang sudah digunakan tidak dapat dijadwalkan ulang.',
+                            style: TextStyle(fontSize: 11, height: 1.5),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        if (isStatusLoading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(14),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (requestInfo != null) ...[
                           infoBox(
-                            radius: 15,
-                            pad: 15,
+                            radius: 14,
+                            pad: 14,
                             border: kBlue.withOpacity(.25),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    colorfulIcon(
-                                      icon: Icons.confirmation_number_rounded,
-                                      color: kAqua,
-                                      boxSize: 28,
-                                      size: 16,
+                                Text(
+                                  switch (requestStatus) {
+                                    'menunggu_persetujuan' =>
+                                      'Menunggu Persetujuan Admin',
+                                    'menunggu_pembayaran' =>
+                                      'Menunggu Pembayaran Selisih',
+                                    'ditolak' => 'Pengajuan Ditolak',
+                                    'berhasil' => 'Reschedule Berhasil',
+                                    'kedaluwarsa' =>
+                                      'Pengajuan Reschedule Kedaluwarsa',
+                                    _ => 'Status Reschedule',
+                                  },
+                                  style: const TextStyle(
+                                    color: kAqua,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Tanggal baru: ${requestInfo['tanggal_baru'] ?? '—'}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                if ((requestInfo['selisih_harga'] as num? ??
+                                        0) >
+                                    0)
+                                  Text(
+                                    'Selisih: ${rupiah((requestInfo['selisih_harga'] as num).round())}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                if (awaitingApproval)
+                                  const Text(
+                                    'Tiket lama tetap berlaku. Tombol pembayaran aktif setelah admin menyetujui.',
+                                    style: TextStyle(fontSize: 11, height: 1.4),
+                                  ),
+                                if (awaitingPayment)
+                                  const Text(
+                                    'Admin sudah menyetujui. Bayar selisih agar tanggal baru berlaku.',
+                                    style: TextStyle(fontSize: 11, height: 1.4),
+                                  ),
+                                if (requestStatus == 'ditolak' &&
+                                    (requestInfo['alasan_penolakan']
+                                            ?.toString()
+                                            .isNotEmpty ??
+                                        false))
+                                  Text(
+                                    'Alasan: ${requestInfo['alasan_penolakan']}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      height: 1.4,
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'INFORMASI TIKET SAAT INI',
-                                      style: TextStyle(
-                                        color: kAqua,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                infoRow('Kolam Renang', cardPoolName),
-                                infoRow(
-                                  'No. Tiket',
-                                  ticket['ticketId']?.toString() ??
-                                      ticket['orderId']?.toString() ??
-                                      '—',
-                                ),
-                                infoRow(
-                                  'Tanggal Saat Ini',
-                                  ticket['date']?.toString() ?? '—',
-                                ),
-                                infoRow(
-                                  'Kategori',
-                                  ticket['qty']?.toString() ?? '—',
-                                ),
-                                infoRow(
-                                  'Total Terbayar',
-                                  rupiah(ticket['total'] as int? ?? 0),
-                                ),
+                                  ),
+                                if (requestStatus == 'kedaluwarsa')
+                                  const Text(
+                                    'Tiket lama tetap berlaku. Anda dapat mengajukan ulang selama masih memenuhi syarat H-2.',
+                                    style: TextStyle(fontSize: 11, height: 1.4),
+                                  ),
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 14),
-
-                          infoBox(
-                            color: context.isDark
-                                ? const Color(0xFF3B3424)
-                                : kYellowSoft,
-                            radius: 14,
-                            pad: 14,
-                            border: kGold.withOpacity(.5),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    colorfulIcon(
-                                      icon: Icons.policy_rounded,
-                                      color: const Color(0xff9a6c00),
-                                      boxSize: 28,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Ketentuan Reschedule',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xff9a6c00),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 7),
-                                const Text(
-                                  '• Reschedule dapat dilakukan sampai tanggal kunjungan.\n'
-                                  '• Tanggal baru harus setelah hari ini.\n'
-                                  '• Tanggal baru harus memiliki kuota tersisa.\n'
-                                  '• Jika harga weekend lebih mahal, bayar selisih.',
-                                  style: TextStyle(fontSize: 11, height: 1.5),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
+                        ],
+                        if (!isStatusLoading &&
+                            !hasActiveRequest &&
+                            canReschedule) ...[
                           const Text(
                             'Pilih Tanggal Baru',
                             style: TextStyle(
@@ -6499,148 +6856,170 @@ class _TiketPageState extends State<TiketPage>
                               fontSize: 14,
                             ),
                           ),
-
                           const SizedBox(height: 10),
-
                           dateStrip(
-                            list: availableDates,
+                            list: datesFrom(29, offset: 2),
                             active: newDate,
                             height: 85,
-                            onPick: (d) => setModalState(() => newDate = d),
+                            onPick: (date) {
+                              updateModal(() => newDate = date);
+                              unawaited(loadQuote(date, updateModal));
+                            },
                           ),
-
-                          const SizedBox(height: 12),
+                          if (isQuoteLoading)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 10),
+                              child: LinearProgressIndicator(),
+                            ),
+                          if (quote != null) ...[
+                            const SizedBox(height: 10),
+                            infoBox(
+                              color: context.isDark
+                                  ? const Color(0xFF3B3424)
+                                  : kYellowSoft,
+                              radius: 12,
+                              pad: 12,
+                              border: kGold.withOpacity(.4),
+                              child: Text(
+                                (quote!['selisih_harga'] as num? ?? 0) > 0
+                                    ? 'Selisih yang dibayar setelah disetujui admin: ${rupiah((quote!['selisih_harga'] as num).round())}'
+                                    : 'Tidak ada selisih harga untuk tanggal ini.',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (quoteError.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                quoteError,
+                                style: const TextStyle(
+                                  color: kRed,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
                         ],
-                      ),
+                        if (!isStatusLoading && !canReschedule)
+                          infoBox(
+                            radius: 12,
+                            pad: 12,
+                            border: kRed.withOpacity(.3),
+                            child: Text(
+                              reservationStatus == 'Selesai'
+                                  ? 'Tiket sudah digunakan dan tidak dapat dijadwalkan ulang.'
+                                  : reservationStatus == 'Dibatalkan'
+                                  ? 'Tiket yang dibatalkan tidak dapat dijadwalkan ulang.'
+                                  : 'Pengajuan reschedule hanya dapat dilakukan paling lambat H-2 sebelum kunjungan.',
+                              style: const TextStyle(color: kRed, fontSize: 12),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                          ),
-                          child: const Text('Batal'),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
+                        child: const Text('Batal'),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: newDate == null || isSubmitting
-                              ? null
-                              : () async {
-                                  setModalState(() => isSubmitting = true);
-                                  final selectedNewDate = newDate!;
-                                  final savedReservationCode =
-                                      ticket['reservationCode']
-                                          ?.toString()
-                                          .trim();
-                                  final ticketCode =
-                                      savedReservationCode?.isNotEmpty == true
-                                      ? savedReservationCode!
-                                      : ticket['ticketId']?.toString().trim() ??
-                                            '';
-                                  final savedPhone = ticket['customerPhone']
-                                      ?.toString()
-                                      .trim();
-                                  final phone = savedPhone?.isNotEmpty == true
-                                      ? savedPhone!
-                                      : telepon.trim();
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting || isPaying || isStatusLoading
+                            ? null
+                            : awaitingPayment
+                            ? () => payReschedule(requestInfo!, updateModal)
+                            : awaitingApproval || !canReschedule
+                            ? null
+                            : newDate == null || quote == null || isQuoteLoading
+                            ? null
+                            : () async {
+                                updateModal(() => isSubmitting = true);
+                                try {
+                                  final selectedDate = newDate!;
                                   final dateValue =
-                                      '${selectedNewDate.year}-'
-                                      '${selectedNewDate.month.toString().padLeft(2, '0')}-'
-                                      '${selectedNewDate.day.toString().padLeft(2, '0')}';
-
-                                  try {
-                                    if (ticketCode.trim().isEmpty) {
-                                      throw Exception(
-                                        'Kode reservasi tidak tersedia. Muat ulang tiket atau hubungi admin.',
+                                      '${selectedDate.year.toString().padLeft(4, '0')}-'
+                                      '${selectedDate.month.toString().padLeft(2, '0')}-'
+                                      '${selectedDate.day.toString().padLeft(2, '0')}';
+                                  final submittedRequest =
+                                      await ApiService.requestReschedule(
+                                        kodeReservasi: reservationCode,
+                                        noHp: phone,
+                                        tanggalKunjungan: dateValue,
                                       );
-                                    }
-
-                                    final updatedReservation =
-                                        await ApiService.rescheduleReservasi(
-                                          kodeReservasi: ticketCode,
-                                          noHp: phone,
-                                          tanggalKunjungan: dateValue,
-                                        );
-                                    final confirmedDate =
-                                        DateTime.tryParse(
-                                          updatedReservation['tanggal_kunjungan']
-                                                  ?.toString() ??
-                                              '',
-                                        ) ??
-                                        selectedNewDate;
-
-                                    if (!mounted) return;
-                                    setState(() {
-                                      myTickets[index]['date'] =
-                                          formatShortDate(confirmedDate);
-                                      myTickets[index]['visitDate'] =
-                                          confirmedDate.toIso8601String();
-                                      myTickets[index]['reschedule'] =
-                                          (myTickets[index]['reschedule']
-                                                  as int? ??
-                                              0) +
-                                          1;
-                                    });
-
-                                    var historySaved = true;
-                                    try {
-                                      await _persistSavedTickets();
-                                    } catch (error) {
-                                      historySaved = false;
-                                      debugPrint(
-                                        'Tanggal reschedule tersimpan di server, tetapi riwayat lokal gagal disimpan: $error',
-                                      );
-                                    }
-
-                                    if (!mounted) return;
-                                    Navigator.pop(context);
-                                    showMessage(
-                                      historySaved
-                                          ? 'Reschedule berhasil ke ${formatShortDate(confirmedDate)}'
-                                          : 'Tanggal berhasil diubah di server, tetapi gagal disimpan di riwayat lokal.',
-                                    );
-                                  } catch (error) {
-                                    if (!mounted) return;
-                                    setModalState(() => isSubmitting = false);
-                                    showMessage(
-                                      error.toString().replaceFirst(
-                                        'Exception: ',
-                                        '',
-                                      ),
-                                    );
-                                  }
-                                },
-                          style: primaryStyle,
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Konfirmasi Reschedule'),
-                        ),
+                                  if (!sheetOpen) return;
+                                  updateModal(() {
+                                    statusData = {
+                                      ...?statusData,
+                                      'request': submittedRequest,
+                                    };
+                                    newDate = null;
+                                    quote = null;
+                                    isSubmitting = false;
+                                  });
+                                  showMessage(
+                                    'Pengajuan menunggu persetujuan admin. Tiket lama tetap berlaku.',
+                                  );
+                                  await refreshStatus();
+                                } catch (error) {
+                                  if (!sheetOpen) return;
+                                  updateModal(() => isSubmitting = false);
+                                  showMessage(
+                                    error.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    ),
+                                  );
+                                }
+                              },
+                        style: primaryStyle,
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : isPaying
+                            ? const Text('Menyiapkan Pembayaran...')
+                            : Text(
+                                isStatusLoading
+                                    ? 'Memuat Status...'
+                                    : awaitingApproval
+                                    ? 'Menunggu Persetujuan'
+                                    : awaitingPayment
+                                    ? 'Bayar Selisih'
+                                    : 'Ajukan Reschedule',
+                              ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
+
+    await sheet.whenComplete(() {
+      sheetOpen = false;
+      statusTimer?.cancel();
+    });
   }
 
   Widget infoRow(String label, String value) {
@@ -6702,6 +7081,212 @@ class _ConfettiParticlesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiParticlesPainter oldDelegate) {
     return oldDelegate.progress != progress;
+  }
+}
+
+class ReschedulePaymentDialog extends StatefulWidget {
+  const ReschedulePaymentDialog({
+    required this.orderId,
+    required this.remainingSeconds,
+    super.key,
+  });
+
+  final String orderId;
+  final int remainingSeconds;
+
+  @override
+  State<ReschedulePaymentDialog> createState() =>
+      _ReschedulePaymentDialogState();
+}
+
+class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
+  late int _remainingSeconds;
+  late Future<Uint8List> _qrImage;
+  Timer? _countdownTimer;
+  Timer? _statusTimer;
+  bool _isChecking = false;
+  bool _isExpired = false;
+  String _statusError = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingSeconds = widget.remainingSeconds;
+    _qrImage = ApiService.getMidtransQrImage(widget.orderId);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _remainingSeconds <= 0) return;
+      setState(() {
+        _remainingSeconds--;
+        if (_remainingSeconds == 0) _isExpired = true;
+      });
+    });
+    _statusTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkPaymentStatus(),
+    );
+    unawaited(_checkPaymentStatus());
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _statusTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkPaymentStatus() async {
+    if (_isChecking || !mounted) return;
+    setState(() {
+      _isChecking = true;
+      _statusError = '';
+    });
+
+    try {
+      final result = await ApiService.getMidtransPaymentStatus(widget.orderId);
+      final paymentStatus =
+          result['status_pembayaran']?.toString().toLowerCase() ?? 'pending';
+      final rescheduleStatus = result['reschedule_status']?.toString();
+
+      if (paymentStatus == 'paid' && rescheduleStatus == 'berhasil') {
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+
+      if (paymentStatus == 'expired' ||
+          paymentStatus == 'cancelled' ||
+          paymentStatus == 'failed' ||
+          paymentStatus == 'refunded') {
+        setState(() => _isExpired = true);
+      }
+    } catch (error) {
+      debugPrint('Gagal memeriksa pembayaran selisih: $error');
+      if (mounted) {
+        setState(
+          () => _statusError = 'Status belum dapat diperiksa. Coba lagi.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Bayar Selisih Reschedule',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_isExpired)
+                  const Text(
+                    'Transaksi QRIS kedaluwarsa. Pengajuan tetap aktif; tekan Bayar Selisih lagi untuk membuat QR baru.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: kRed, fontSize: 12, height: 1.4),
+                  )
+                else
+                  Text(
+                    'Selesaikan pembayaran dalam $minutes:$seconds',
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                FutureBuilder<Uint8List>(
+                  future: _qrImage,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 220,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return SizedBox(
+                        height: 220,
+                        child: Center(
+                          child: Text(
+                            snapshot.error?.toString() ??
+                                'QRIS tidak dapat dimuat.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Image.memory(
+                      snapshot.data!,
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.contain,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Order ID: ${widget.orderId}',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (_statusError.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _statusError,
+                    style: const TextStyle(color: kRed, fontSize: 12),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isChecking ? null : _checkPaymentStatus,
+                    icon: _isChecking
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.refresh_rounded),
+                    label: const Text('Cek Status Pembayaran'),
+                    style: primaryStyle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
