@@ -417,23 +417,11 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _loadPromos() async {
     try {
-      final res = await http
-          .get(
-            Uri.parse('${ApiService.baseUrl}/promo'),
-            headers: {'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (res.statusCode != 200) return;
-
-      final body = jsonDecode(res.body);
-      final raw = body is Map ? (body['data'] ?? []) : body;
-      if (raw is! List) return;
+      final raw = await ApiService.getPromos(includeUpcoming: true);
 
       final list = <Map<String, dynamic>>[];
       for (int i = 0; i < raw.length; i++) {
         final item = raw[i];
-        if (item is! Map) continue;
 
         final colors = _promoColors[i % _promoColors.length];
         final String poolId = item['pool_id']?.toString() ?? '';

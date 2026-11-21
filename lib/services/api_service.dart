@@ -11,7 +11,7 @@ class ApiService {
   // ALAMAT API LARAVEL
 
   static const String _webBaseUrl = 'http://localhost:8000/api';
-  static const String _deviceBaseUrl = 'http://192.168.1.6:8000/api';
+  static const String _deviceBaseUrl = 'http://192.168.1.13:8000/api';
   static String get defaultBaseUrl => kIsWeb ? _webBaseUrl : _deviceBaseUrl;
   static String _baseUrl = kIsWeb ? _webBaseUrl : _deviceBaseUrl;
 
@@ -173,6 +173,7 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getPromos({
     String? poolId,
     DateTime? visitDate,
+    bool includeUpcoming = false,
   }) async {
     try {
       final queryParameters = <String, String>{};
@@ -184,6 +185,9 @@ class ApiService {
             '${visitDate.year.toString().padLeft(4, '0')}-'
             '${visitDate.month.toString().padLeft(2, '0')}-'
             '${visitDate.day.toString().padLeft(2, '0')}';
+      }
+      if (includeUpcoming) {
+        queryParameters['include_upcoming'] = '1';
       }
 
       final uri = Uri.parse('$baseUrl/promo').replace(

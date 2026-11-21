@@ -182,30 +182,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget sectionTitle(String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: navy,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF8490A3)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget field({
     required String label,
     required IconData icon,
@@ -394,10 +370,13 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 25),
 
-                        sectionTitle(
-                          'Informasi Pribadi',
-                          'Masukkan identitas yang benar.',
+                        field(
+                          label: 'Nama Lengkap',
+                          icon: Icons.person_outline_rounded,
+                          controller: nameController,
+                          errorMessage: 'Nama wajib diisi',
                         ),
+                        const SizedBox(height: 15),
 
                         field(
                           label: 'Email',
@@ -434,21 +413,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             }
                             return null;
                           },
-                        ),
-                        const SizedBox(height: 15),
-
-                        const SizedBox(height: 27),
-
-                        sectionTitle(
-                          'Informasi Akun',
-                          'Gunakan nama lengkap dan password yang aman.',
-                        ),
-
-                        field(
-                          label: 'Nama Lengkap',
-                          icon: Icons.person_outline_rounded,
-                          controller: nameController,
-                          errorMessage: 'Nama wajib diisi',
                         ),
                         const SizedBox(height: 15),
 

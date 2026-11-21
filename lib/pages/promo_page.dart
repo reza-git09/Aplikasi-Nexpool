@@ -70,7 +70,10 @@ class _PromoPageState extends State<PromoPage>
       });
     }
     try {
-      final promos = await ApiService.getPromos(poolId: widget.poolId);
+      final promos = await ApiService.getPromos(
+        poolId: widget.poolId,
+        includeUpcoming: true,
+      );
       if (!mounted) return;
       setState(() {
         _promos = promos;
@@ -252,7 +255,7 @@ class _PromoPageState extends State<PromoPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Penawaran aktif',
+                    'Promo tersedia',
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
@@ -262,7 +265,7 @@ class _PromoPageState extends State<PromoPage>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Pilih promo yang ingin kamu gunakan',
+                    'Promo yang berlaku atau segera berlaku',
                     style: TextStyle(fontSize: 13, color: context.mutedText),
                   ),
                 ],
@@ -280,7 +283,7 @@ class _PromoPageState extends State<PromoPage>
                   border: Border.all(color: const Color(0xffB5D9ED)),
                 ),
                 child: Text(
-                  '${_promos.length} aktif',
+                  '${_promos.length} promo',
                   style: const TextStyle(
                     color: _primary,
                     fontSize: 12,
@@ -377,7 +380,7 @@ class _PromoPageState extends State<PromoPage>
             ),
             const SizedBox(height: 20),
             Text(
-              'Belum Ada Promo Aktif',
+              'Belum Ada Promo Tersedia',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
