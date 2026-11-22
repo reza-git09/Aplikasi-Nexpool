@@ -260,7 +260,6 @@ class _TiketPageState extends State<TiketPage>
   String? currentQrUrl;
   Future<Uint8List>? currentQrImage;
   late int selectedTab;
-  String _ticketFilter = 'all';
 
   late String selectedPoolId;
   late String selectedPoolName;
@@ -304,6 +303,7 @@ class _TiketPageState extends State<TiketPage>
   static const int payDurationSeconds = 300;
   Timer? _payTimer;
   Timer? _paymentStatusTimer;
+  Timer? _ticketActivityRefreshTimer;
   int _remainingSeconds = payDurationSeconds;
   bool paymentExpired = false;
 
@@ -335,6 +335,7 @@ class _TiketPageState extends State<TiketPage>
     super.initState();
 
     selectedTab = widget.initialTab;
+    _scheduleTicketActivityRefresh();
 
     // Otomatis sinkronkan dengan pilihan kolam dari dashboard jika ada
     selectedPoolId = widget.poolId ?? TiketPage.globalSelectedPoolId;
@@ -377,9 +378,20 @@ class _TiketPageState extends State<TiketPage>
   void dispose() {
     _payTimer?.cancel();
     _paymentStatusTimer?.cancel();
+    _ticketActivityRefreshTimer?.cancel();
     _successAnimController.dispose();
     keteranganController.dispose();
     super.dispose();
+  }
+
+  void _scheduleTicketActivityRefresh() {
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _ticketActivityRefreshTimer = Timer(nextMidnight.difference(now), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleTicketActivityRefresh();
+    });
   }
 
   // ============================================================

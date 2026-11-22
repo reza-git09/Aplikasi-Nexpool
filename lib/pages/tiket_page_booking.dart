@@ -262,6 +262,7 @@ extension _TicketBookingUi on _TiketPageState {
     required ValueChanged<DateTime> onPick,
     EdgeInsets padding = EdgeInsets.zero,
     double height = 75,
+    DateTime? minimumSelectableDate,
   }) {
     return SizedBox(
       height: height,
@@ -273,22 +274,31 @@ extension _TicketBookingUi on _TiketPageState {
           final date = list[i];
           final isSel = sameDay(active, date);
           final weekend = isWeekendDate(date);
+          final isDisabled =
+              minimumSelectableDate != null &&
+              DateUtils.dateOnly(date).isBefore(
+                DateUtils.dateOnly(minimumSelectableDate),
+              );
 
           return GestureDetector(
-            onTap: () => onPick(date),
+            onTap: isDisabled ? null : () => onPick(date),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: 58,
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: isSel
+                color: isDisabled
+                    ? kRed.withOpacity(.12)
+                    : isSel
                     ? kBlue
                     : weekend
                     ? kYellowSoft
                     : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSel
+                  color: isDisabled
+                      ? kRed.withOpacity(.45)
+                      : isSel
                       ? kBlue
                       : weekend
                       ? kGold.withOpacity(0.6)
@@ -313,7 +323,9 @@ extension _TicketBookingUi on _TiketPageState {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: isSel
+                      color: isDisabled
+                          ? kRed
+                          : isSel
                           ? Colors.white70
                           : weekend
                           ? const Color(0xff9a6c00)
@@ -326,7 +338,9 @@ extension _TicketBookingUi on _TiketPageState {
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
-                      color: isSel
+                      color: isDisabled
+                          ? kRed
+                          : isSel
                           ? Colors.white
                           : weekend
                           ? const Color(0xff7a5800)
@@ -339,7 +353,9 @@ extension _TicketBookingUi on _TiketPageState {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: isSel
+                      color: isDisabled
+                          ? kRed
+                          : isSel
                           ? Colors.white70
                           : weekend
                           ? const Color(0xff9a6c00)

@@ -3,6 +3,11 @@ part of 'tiket_page.dart';
 extension _TicketRescheduleUi on _TiketPageState {
   Future<void> openReschedule(int index) async {
     final ticket = myTickets[index];
+    if (ticket['status']?.toString() != 'paid' || !_isTicketActive(ticket)) {
+      showMessage('Tiket tidak aktif dan tidak dapat dijadwalkan ulang.');
+      return;
+    }
+
     final reservationCode =
         ticket['reservationCode']?.toString().trim().isNotEmpty == true
         ? ticket['reservationCode'].toString().trim()
@@ -231,18 +236,11 @@ extension _TicketRescheduleUi on _TiketPageState {
           final hasActiveRequest = awaitingApproval || awaitingPayment;
           final reservationStatus =
               statusData?['status_reservasi']?.toString() ?? '';
-          final currentVisit = DateTime.tryParse(
-            ticket['visitDate']?.toString() ?? '',
-          );
           final minimumVisit = DateUtils.dateOnly(DateTime.now())
               .add(const Duration(days: 2));
-          final dateDeadlinePassed =
-              currentVisit != null &&
-              DateUtils.dateOnly(currentVisit).isBefore(minimumVisit);
           final canReschedule =
               reservationStatus != 'Selesai' &&
-              reservationStatus != 'Dibatalkan' &&
-              !dateDeadlinePassed;
+              reservationStatus != 'Dibatalkan';
           final cardPoolName =
               ticket['poolName']?.toString() ?? selectedPoolName;
 
@@ -326,7 +324,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                           pad: 14,
                           border: kGold.withOpacity(.5),
                           child: const Text(
-                            '• Pengajuan hanya dapat dilakukan paling lambat H-2 sebelum kunjungan.\n'
+                            '• Tanggal tujuan reschedule minimal H+2 dari hari ini.\n'
                             '• Admin merespons maksimal 24 jam.\n'
                             '• Tiket lama tetap berlaku sampai reschedule berhasil.\n'
                             '• Pembayaran QRIS selisih berlaku 10 menit.\n'
@@ -403,7 +401,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                                   ),
                                 if (requestStatus == 'kedaluwarsa')
                                   const Text(
-                                    'Tiket lama tetap berlaku. Anda dapat mengajukan ulang selama masih memenuhi syarat H-2.',
+                                    'Tiket lama tetap berlaku. Anda dapat mengajukan ulang dengan tanggal tujuan minimal H+2 dari hari ini.',
                                     style: TextStyle(fontSize: 11, height: 1.4),
                                   ),
                               ],
@@ -422,10 +420,16 @@ extension _TicketRescheduleUi on _TiketPageState {
                             ),
                           ),
                           const SizedBox(height: 10),
+                          const Text(
+                            'Tanggal merah belum bisa dipilih. Pilih tanggal minimal H+2.',
+                            style: TextStyle(color: kRed, fontSize: 11),
+                          ),
+                          const SizedBox(height: 8),
                           dateStrip(
-                            list: datesFrom(29, offset: 2),
+                            list: datesFrom(29),
                             active: newDate,
                             height: 85,
+                            minimumSelectableDate: minimumVisit,
                             onPick: (date) {
                               updateModal(() => newDate = date);
                               unawaited(loadQuote(date, updateModal));
@@ -478,7 +482,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                                   ? 'Tiket sudah digunakan dan tidak dapat dijadwalkan ulang.'
                                   : reservationStatus == 'Dibatalkan'
                                   ? 'Tiket yang dibatalkan tidak dapat dijadwalkan ulang.'
-                                  : 'Pengajuan reschedule hanya dapat dilakukan paling lambat H-2 sebelum kunjungan.',
+                                  : 'Tanggal tujuan reschedule minimal H+2 dari hari ini.',
                               style: const TextStyle(color: kRed, fontSize: 12),
                             ),
                           ),

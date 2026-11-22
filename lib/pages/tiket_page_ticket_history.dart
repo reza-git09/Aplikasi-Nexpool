@@ -2,16 +2,6 @@ part of 'tiket_page.dart';
 
 extension _TicketHistoryUi on _TiketPageState {
   Widget buildMyTickets() {
-    final visibleTickets = myTickets
-        .asMap()
-        .entries
-        .where(
-          (entry) =>
-              _ticketFilter == 'all' ||
-              (entry.value['status']?.toString() ?? 'pending') == _ticketFilter,
-        )
-        .toList();
-
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 88),
       child: Column(
@@ -19,13 +9,10 @@ extension _TicketHistoryUi on _TiketPageState {
         children: [
           buildTabs(),
           _buildTicketOverview(),
-          _buildStatusFilter(),
           if (myTickets.isEmpty)
             _buildEmptyTickets()
-          else if (visibleTickets.isEmpty)
-            _buildNoFilteredTickets()
           else
-            ...visibleTickets.map(
+            ...myTickets.asMap().entries.map(
               (entry) => buildTicketCard(entry.key, entry.value),
             ),
         ],
@@ -33,15 +20,16 @@ extension _TicketHistoryUi on _TiketPageState {
     );
   }
 
-  int _countTickets(String status) => myTickets
-      .where((ticket) => (ticket['status']?.toString() ?? 'pending') == status)
-      .length;
+  bool _isTicketActive(Map<String, dynamic> ticket) {
+    final visitDate = DateTime.tryParse(ticket['visitDate']?.toString() ?? '');
+    if (visitDate == null) return false;
+
+    return !DateUtils.dateOnly(visitDate).isBefore(
+      DateUtils.dateOnly(DateTime.now()),
+    );
+  }
 
   Widget _buildTicketOverview() {
-    final paidCount = _countTickets('paid');
-    final pendingCount = _countTickets('pending');
-    final cancelledCount = _countTickets('cancelled');
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
       child: Container(
@@ -141,127 +129,6 @@ extension _TicketHistoryUi on _TiketPageState {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                _ticketSummaryItem('Lunas', paidCount, kGreen),
-                _ticketSummaryDivider(),
-                _ticketSummaryItem('Menunggu', pendingCount, kGold),
-                _ticketSummaryDivider(),
-                _ticketSummaryItem('Dibatalkan', cancelledCount, Colors.white),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _ticketSummaryItem(String label, int count, Color color) {
-    return Expanded(
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              '$label $count',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withOpacity(.95),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _ticketSummaryDivider() => Container(
-    width: 1,
-    height: 16,
-    margin: const EdgeInsets.symmetric(horizontal: 8),
-    color: Colors.white.withOpacity(.25),
-  );
-
-  Widget _buildStatusFilter() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Row(
-        children: [
-          _filterChip(
-            'all',
-            'Semua ${myTickets.length}',
-            Icons.local_activity_rounded,
-            kBlue,
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            'paid',
-            'Lunas ${_countTickets('paid')}',
-            Icons.check_circle_rounded,
-            kGreen,
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            'pending',
-            'Menunggu ${_countTickets('pending')}',
-            Icons.access_time_filled_rounded,
-            kOrange,
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            'cancelled',
-            'Dibatalkan ${_countTickets('cancelled')}',
-            Icons.cancel_rounded,
-            kRed,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterChip(String value, String label, IconData icon, Color color) {
-    final selected = _ticketFilter == value;
-    return GestureDetector(
-      onTap: () => _updatePageState(() => _ticketFilter = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? color : context.cardBg,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: selected ? color : Colors.grey.shade300),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: selected ? Colors.white : color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : context.textMain,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
           ],
         ),
       ),
@@ -347,58 +214,10 @@ extension _TicketHistoryUi on _TiketPageState {
     );
   }
 
-  Widget _buildNoFilteredTickets() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: context.softBg),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              Icons.filter_list_off_rounded,
-              color: context.mutedText,
-              size: 38,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Tiket tidak ditemukan',
-              style: TextStyle(
-                color: context.textMain,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Belum ada tiket dengan status ini.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.mutedText, fontSize: 13),
-            ),
-            const SizedBox(height: 14),
-            TextButton.icon(
-              onPressed: () => _updatePageState(() => _ticketFilter = 'all'),
-              icon: const Icon(Icons.restart_alt_rounded, size: 18),
-              label: const Text('Tampilkan semua tiket'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget buildTicketCard(int index, Map<String, dynamic> ticket) {
     final status = ticket['status']?.toString() ?? 'pending';
     final resched = ticket['reschedule'] as int? ?? 0;
-
-    if (_ticketFilter != 'all' && status != _ticketFilter) {
-      return const SizedBox.shrink();
-    }
+    final isActive = status == 'paid' && _isTicketActive(ticket);
 
     Color statusFg;
     Color statusBg;
@@ -437,7 +256,9 @@ extension _TicketHistoryUi on _TiketPageState {
     final total = rupiah(ticket['total'] as int? ?? 0);
     final paidAt = ticket['paidAt']?.toString() ?? '';
     final accent = status == 'paid'
-        ? const Color(0xff10b981)
+        ? isActive
+              ? const Color(0xff10b981)
+              : kRed
         : status == 'cancelled'
         ? kRed
         : kOrange;
@@ -498,7 +319,28 @@ extension _TicketHistoryUi on _TiketPageState {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      badge(statusLabel, statusFg, statusBg, icon: statusIcon),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          badge(
+                            statusLabel,
+                            statusFg,
+                            statusBg,
+                            icon: statusIcon,
+                          ),
+                          if (status == 'paid') ...[
+                            const SizedBox(height: 5),
+                            badge(
+                              isActive ? 'AKTIF' : 'TIDAK AKTIF',
+                              isActive ? const Color(0xff087f65) : kRed,
+                              isActive ? const Color(0xffe3fff7) : kRedSoft,
+                              icon: isActive
+                                  ? Icons.event_available_rounded
+                                  : Icons.event_busy_rounded,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                   if (resched > 0) ...[
@@ -699,6 +541,7 @@ extension _TicketHistoryUi on _TiketPageState {
   ) {
     final isPaid = status == 'paid';
     final isPending = status == 'pending';
+    final isActive = isPaid && _isTicketActive(ticket);
 
     return Row(
       children: [
@@ -734,17 +577,27 @@ extension _TicketHistoryUi on _TiketPageState {
           const SizedBox(width: 9),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: isPaid
+              onPressed: isPending
+                  ? () => cancelTransaction(index)
+                  : isActive
                   ? () => openReschedule(index)
-                  : () => cancelTransaction(index),
+                  : null,
               icon: Icon(
                 isPaid ? Icons.sync_rounded : Icons.cancel_rounded,
                 size: 16,
               ),
               label: Text(isPaid ? 'Reschedule' : 'Batalkan'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isPaid ? kPurpleSoft : kRedSoft,
-                foregroundColor: isPaid ? kPurple : kRed,
+                backgroundColor: isActive
+                    ? kPurpleSoft
+                    : isPending
+                    ? kRedSoft
+                    : context.softBg,
+                foregroundColor: isActive
+                    ? kPurple
+                    : isPending
+                    ? kRed
+                    : context.mutedText,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
                   vertical: 11,
