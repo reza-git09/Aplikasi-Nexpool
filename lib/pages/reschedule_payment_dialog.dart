@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
 
 class ReschedulePaymentDialog extends StatefulWidget {
   const ReschedulePaymentDialog({
     required this.orderId,
+    this.qrUrl = '',
     required this.remainingSeconds,
     required this.errorColor,
     required this.primaryButtonStyle,
@@ -15,6 +16,7 @@ class ReschedulePaymentDialog extends StatefulWidget {
   });
 
   final String orderId;
+  final String qrUrl;
   final int remainingSeconds;
   final Color errorColor;
   final ButtonStyle primaryButtonStyle;
@@ -27,6 +29,7 @@ class ReschedulePaymentDialog extends StatefulWidget {
 class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
   late int _remainingSeconds;
   late Future<Uint8List> _qrImage;
+  late String _qrUrl;
   Timer? _countdownTimer;
   Timer? _statusTimer;
   bool _isChecking = false;
@@ -37,6 +40,7 @@ class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
   void initState() {
     super.initState();
     _remainingSeconds = widget.remainingSeconds;
+    _qrUrl = widget.qrUrl;
     _qrImage = ApiService.getMidtransQrImage(widget.orderId);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _remainingSeconds <= 0) return;
@@ -68,6 +72,10 @@ class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
 
     try {
       final result = await ApiService.getMidtransPaymentStatus(widget.orderId);
+      final qrUrl = result['qr_url']?.toString().trim() ?? '';
+      if (mounted && _qrUrl.isEmpty && qrUrl.startsWith('http')) {
+        setState(() => _qrUrl = qrUrl);
+      }
       final paymentStatus =
           result['status_pembayaran']?.toString().toLowerCase() ?? 'pending';
       final rescheduleStatus = result['reschedule_status']?.toString();
@@ -92,6 +100,32 @@ class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
+    }
+  }
+
+  Future<void> _copyQrUrl() async {
+    final url = _qrUrl.trim();
+    if (!url.startsWith('http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Link URL QRIS belum tersedia.')),
+      );
+      return;
+    }
+
+    try {
+      await Clipboard.setData(ClipboardData(text: url));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Link URL QRIS berhasil disalin.')),
+        );
+      }
+    } catch (error) {
+      debugPrint('Gagal menyalin URL QRIS pembayaran selisih: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menyalin link URL QRIS.')),
+        );
+      }
     }
   }
 
@@ -183,6 +217,15 @@ class _ReschedulePaymentDialogState extends State<ReschedulePaymentDialog> {
                   'Order ID: ${widget.orderId}',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _copyQrUrl,
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('Salin URL QRIS'),
+                  ),
                 ),
                 if (_statusError.isNotEmpty) ...[
                   const SizedBox(height: 8),

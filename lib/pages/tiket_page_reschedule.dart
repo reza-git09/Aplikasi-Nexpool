@@ -193,6 +193,7 @@ extension _TicketRescheduleUi on _TiketPageState {
           barrierDismissible: false,
           builder: (_) => ReschedulePaymentDialog(
             orderId: orderId,
+            qrUrl: payment['qr_url']?.toString() ?? '',
             remainingSeconds:
                 int.tryParse(payment['remaining_seconds']?.toString() ?? '') ??
                 600,

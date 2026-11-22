@@ -220,26 +220,22 @@ extension _TicketHistoryUi on _TiketPageState {
     final isActive = status == 'paid' && _isTicketActive(ticket);
 
     Color statusFg;
-    Color statusBg;
     String statusLabel;
     IconData statusIcon;
 
     switch (status) {
       case 'paid':
         statusFg = const Color(0xff087f65);
-        statusBg = const Color(0xffe3fff7);
         statusLabel = 'LUNAS';
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'cancelled':
         statusFg = kRed;
-        statusBg = kRedSoft;
         statusLabel = 'DIBATALKAN';
         statusIcon = Icons.cancel_rounded;
         break;
       default:
         statusFg = kOrange;
-        statusBg = kOrangeSoft;
         statusLabel = 'MENUNGGU';
         statusIcon = Icons.access_time_filled_rounded;
     }
@@ -319,28 +315,15 @@ extension _TicketHistoryUi on _TiketPageState {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          badge(
-                            statusLabel,
-                            statusFg,
-                            statusBg,
-                            icon: statusIcon,
-                          ),
-                          if (status == 'paid') ...[
-                            const SizedBox(height: 5),
-                            badge(
-                              isActive ? 'AKTIF' : 'TIDAK AKTIF',
-                              isActive ? const Color(0xff087f65) : kRed,
-                              isActive ? const Color(0xffe3fff7) : kRedSoft,
-                              icon: isActive
-                                  ? Icons.event_available_rounded
-                                  : Icons.event_busy_rounded,
-                            ),
-                          ],
-                        ],
-                      ),
+                      if (status == 'paid')
+                        badge(
+                          isActive ? 'AKTIF' : 'TIDAK AKTIF',
+                          isActive ? const Color(0xff087f65) : kRed,
+                          isActive ? const Color(0xffe3fff7) : kRedSoft,
+                          icon: isActive
+                              ? Icons.event_available_rounded
+                              : Icons.event_busy_rounded,
+                        ),
                     ],
                   ),
                   if (resched > 0) ...[
@@ -445,6 +428,13 @@ extension _TicketHistoryUi on _TiketPageState {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 9),
+                  _ticketDetailTile(
+                    statusIcon,
+                    statusFg,
+                    'Status',
+                    statusLabel,
                   ),
                   if (status == 'paid' && paidAt.isNotEmpty) ...[
                     const SizedBox(height: 10),

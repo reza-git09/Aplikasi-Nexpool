@@ -386,6 +386,7 @@ class _HomePageState extends State<HomePage>
   // PROMO DARI API LARAVEL (diisi lewat admin)
   // ============================================================
   List<Map<String, dynamic>> _promos = [];
+  int _promoRequestVersion = 0;
 
   static const List<List<Color>> _promoColors = [
     [Color(0xff0077A8), Color(0xff00B4D8)],
@@ -415,9 +416,17 @@ class _HomePageState extends State<HomePage>
     return '${d.day} ${m[d.month - 1]} ${d.year}';
   }
 
-  Future<void> _loadPromos() async {
+  Future<void> _loadPromos({String? poolId}) async {
+    final requestVersion = ++_promoRequestVersion;
+    if (mounted && _promos.isNotEmpty) {
+      setState(() => _promos = []);
+    }
+
     try {
-      final raw = await ApiService.getPromos(includeUpcoming: true);
+      final raw = await ApiService.getPromos(
+        poolId: poolId,
+        includeUpcoming: true,
+      );
 
       final list = <Map<String, dynamic>>[];
       for (int i = 0; i < raw.length; i++) {
@@ -451,9 +460,12 @@ class _HomePageState extends State<HomePage>
         });
       }
 
-      if (mounted) setState(() => _promos = list);
+      if (!mounted || requestVersion != _promoRequestVersion) return;
+      setState(() => _promos = list);
     } catch (e) {
       debugPrint('Gagal ambil promo: $e');
+      if (!mounted || requestVersion != _promoRequestVersion) return;
+      setState(() => _promos = []);
     }
   }
 
@@ -663,6 +675,7 @@ class _HomePageState extends State<HomePage>
         TiketPage.globalSelectedPoolId = '';
         TiketPage.globalSelectedPoolName = '';
         widget.onPoolChanged?.call(0, '', '', '');
+        _loadPromos();
       }
 
       debugPrint('====================================');
@@ -1376,6 +1389,7 @@ class _HomePageState extends State<HomePage>
         setState(() {
           selectedPool = 0;
         });
+        _loadPromos();
         TiketPage.globalSelectedPoolId = '';
         TiketPage.globalSelectedPoolName = '';
         widget.onPoolChanged?.call(0, '', '', '');
@@ -1459,6 +1473,7 @@ class _HomePageState extends State<HomePage>
             pool['fullName']?.toString() ??
             pool['name']?.toString() ??
             'Kolam Renang';
+        _loadPromos(poolId: pId);
         final pGambar = pool['image']?.toString() ?? '';
         TiketPage.globalSelectedPoolId = pId;
         TiketPage.globalSelectedPoolName = pName;
@@ -1594,6 +1609,7 @@ class _HomePageState extends State<HomePage>
               setState(() {
                 selectedPool = 0;
               });
+              _loadPromos();
               TiketPage.globalSelectedPoolId = '';
               TiketPage.globalSelectedPoolName = '';
               widget.onPoolChanged?.call(0, '', '', '');
@@ -1967,6 +1983,7 @@ class _HomePageState extends State<HomePage>
                       pool['pool_id']?.toString() ?? 'pool_id_0$poolIndex';
                   final fullName = pool['fullName']?.toString() ?? name;
                   final poolImage = pool['image']?.toString() ?? '';
+                  _loadPromos(poolId: poolId);
                   TiketPage.globalSelectedPoolId = poolId;
                   TiketPage.globalSelectedPoolName = fullName;
                   widget.onPoolChanged?.call(
