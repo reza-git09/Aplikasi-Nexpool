@@ -145,159 +145,154 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (bottomSheetContext) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+      builder: (bottomSheetContext) => SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           decoration: BoxDecoration(
             color: bottomSheetContext.cardBg,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 45,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: bottomSheetContext.isDark
-                          ? bottomSheetContext.softBg
-                          : data['iconBg'],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      data['icon'],
-                      color: data['iconColor'],
-                      size: 28,
+                      color: bottomSheetContext.mutedText.withOpacity(.35),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-
-                  const SizedBox(width: 14),
-
-                  Expanded(
-                    child: Text(
-                      data['title'],
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              Text(
-                data['text'],
-                style: TextStyle(
-                  color: bottomSheetContext.textMain,
-                  fontSize: 14,
-                  height: 1.6,
                 ),
-              ),
-
-              const SizedBox(height: 14),
-
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 17,
-                    color: bottomSheetContext.mutedText,
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    data['time'],
-                    style: TextStyle(
-                      color: bottomSheetContext.mutedText,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-
-              if (data['action'] != null) ...[
                 const SizedBox(height: 22),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(bottomSheetContext);
-                      handleAction(data['actionType']);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff00B4D8),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: bottomSheetContext.isDark
+                            ? bottomSheetContext.softBg
+                            : data['iconBg'],
                         borderRadius: BorderRadius.circular(14),
                       ),
+                      child: Icon(
+                        data['icon'],
+                        color: data['iconColor'],
+                        size: 24,
+                      ),
                     ),
-                    child: Text(
-                      data['action'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        data['title'],
+                        style: TextStyle(
+                          color: bottomSheetContext.textMain,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  data['text'],
+                  style: TextStyle(
+                    color: bottomSheetContext.mutedText,
+                    fontSize: 14,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 16,
+                      color: bottomSheetContext.mutedText,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      data['time'],
+                      style: TextStyle(
+                        color: bottomSheetContext.mutedText,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                if (data['action'] != null) ...[
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(bottomSheetContext);
+                        handleAction(data['actionType']);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(bottomSheetContext)
+                            .colorScheme
+                            .primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        data['action'],
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(bottomSheetContext),
+                    style: TextButton.styleFrom(
+                      foregroundColor: bottomSheetContext.mutedText,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                    child: const Text('Tutup'),
                   ),
                 ),
               ],
-
-              const SizedBox(height: 10),
-
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(bottomSheetContext);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text('Tutup'),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   Widget buildDateGroup(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 7),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       child: Row(
         children: [
-          Icon(Icons.today, size: 15, color: context.mutedText),
-          const SizedBox(width: 6),
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 15,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
           Text(
-            title.toUpperCase(),
+            title,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: context.mutedText,
-              letterSpacing: 0.5,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: context.textMain,
             ),
           ),
+          const SizedBox(width: 12),
+          Expanded(child: Divider(height: 1, color: context.softBg)),
         ],
       ),
     );
@@ -305,137 +300,157 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
 
   Widget buildNotificationItem(Map<String, dynamic> data, int index) {
     final bool unread = data['unread'] == true;
+    final primary = Theme.of(context).colorScheme.primary;
 
-    return Material(
-      color: unread
-          ? (context.isDark ? context.softBg : const Color(0xffF0FCFE))
-          : context.cardBg,
-      child: InkWell(
-        onTap: () {
-          showNotificationDetail(data, index);
-        },
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: context.softBg)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (unread)
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 9),
+      decoration: BoxDecoration(
+        color: unread && !context.isDark
+            ? const Color(0xffF8FCFD)
+            : context.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: unread ? primary.withOpacity(.25) : context.softBg,
+        ),
+        boxShadow: [
+          if (!context.isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(.025),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => showNotificationDetail(data, index),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
-                  width: 3,
-                  height: 65,
-                  margin: const EdgeInsets.only(right: 12),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xff00B4D8),
-                    borderRadius: BorderRadius.circular(5),
+                    color: context.isDark ? context.softBg : data['iconBg'],
+                    borderRadius: BorderRadius.circular(13),
                   ),
+                  child: Icon(data['icon'], color: data['iconColor'], size: 21),
                 ),
-
-              if (!unread) const SizedBox(width: 15),
-
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: context.isDark ? context.softBg : data['iconBg'],
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(data['icon'], color: data['iconColor'], size: 22),
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (data['alarm'] == true) ...[
-                          const Icon(
-                            Icons.alarm,
-                            color: Color(0xffE65100),
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-
-                        Expanded(
-                          child: Text(
-                            data['title'],
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: unread
-                                  ? const Color(0xff31C4DF)
-                                  : context.textMain,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (data['alarm'] == true) ...[
+                            const Icon(
+                              Icons.alarm_rounded,
+                              color: Color(0xffD97706),
+                              size: 15,
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      data['text'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.mutedText,
-                        height: 1.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 7,
-                      children: [
-                        Text(
-                          data['time'],
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: context.mutedText,
-                          ),
-                        ),
-
-                        if (data['action'] != null) ...[
-                          Text('·', style: TextStyle(color: context.mutedText)),
-                          GestureDetector(
-                            onTap: () {
-                              readNotification(index);
-                              handleAction(data['actionType']);
-                            },
+                            const SizedBox(width: 5),
+                          ],
+                          Expanded(
                             child: Text(
-                              '${data['action']} →',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Color(0xff00A1BF),
-                                fontWeight: FontWeight.bold,
+                              data['title'],
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: context.textMain,
                               ),
                             ),
                           ),
+                          if (unread) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              if (unread)
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(top: 4, left: 8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xff00B4D8),
-                    shape: BoxShape.circle,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        data['text'],
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: context.mutedText,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 6,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 13,
+                                color: context.mutedText,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                data['time'],
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.mutedText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (data['action'] != null)
+                            InkWell(
+                              onTap: () {
+                                readNotification(index);
+                                handleAction(data['actionType']);
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      data['action'],
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 13,
+                                      color: primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -467,138 +482,111 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
         bottom: false,
         child: Column(
           children: [
-            // =========================
-            // HEADER
-            // =========================
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xff0077A8), Color(0xff00B4D8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                border: Border(bottom: BorderSide(color: context.softBg)),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(13),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      color: context.softBg,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      tooltip: 'Kembali',
+                      icon: Icon(
+                        Icons.arrow_back_rounded,
+                        color: context.textMain,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Notifikasi',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.notifications,
-                              size: 22,
-                              color: Colors.white,
-                            ),
-                          ],
+                        Text(
+                          'Notifikasi',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: context.textMain,
+                          ),
                         ),
-
-                        const SizedBox(height: 3),
-
+                        const SizedBox(height: 2),
                         Text(
                           unreadCount == 0
                               ? 'Semua sudah dibaca'
                               : '$unreadCount notifikasi belum dibaca',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.mutedText,
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  GestureDetector(
-                    onTap: unreadCount == 0 ? null : markAllRead,
-                    child: Text(
-                      'Tandai dibaca',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: unreadCount == 0
-                            ? Colors.white38
-                            : Colors.white70,
-                        fontWeight: FontWeight.w600,
+                  if (unreadCount > 0) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Tandai semua dibaca',
+                      onPressed: markAllRead,
+                      icon: Icon(
+                        Icons.done_all_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 21,
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-
-            // =========================
-            // ALL READ BANNER
-            // =========================
             if (unreadCount == 0)
               Container(
-                margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 11,
+                  horizontal: 15,
+                  vertical: 13,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xffE8FFF8),
-                  border: Border.all(color: const Color(0xffB9F1E1)),
-                  borderRadius: BorderRadius.circular(12),
+                  color: context.cardBg,
+                  border: Border.all(color: context.softBg),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Row(
                   children: [
-                    Icon(
-                      Icons.check_circle,
-                      size: 15,
-                      color: Color(0xff048A69),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: Color(0xff16865B),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 9),
                     Text(
                       'Semua notifikasi sudah dibaca',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xff048A69),
+                        color: context.textMain,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-
-            // =========================
-            // NOTIFICATION LIST
-            // =========================
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(top: 6, bottom: 20),
                 children: notificationWidgets,
               ),
             ),

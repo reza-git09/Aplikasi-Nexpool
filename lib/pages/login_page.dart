@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -73,15 +75,10 @@ class _LoginPageState extends State<LoginPage>
       if (!mounted) return;
 
       if (nama != null) {
-        _showMessage(
+        _showSuccessMessage(
           'Login berhasil. Selamat datang, $nama!',
           Colors.green.shade700,
         );
-
-        await Future.delayed(const Duration(milliseconds: 400));
-
-        if (!mounted) return;
-
         Navigator.pop(context, true);
       } else {
         _showMessage(
@@ -103,6 +100,69 @@ class _LoginPageState extends State<LoginPage>
         setState(() => isLoading = false);
       }
     }
+  }
+
+  void _showSuccessMessage(String message, Color color) {
+    final overlay = Overlay.of(context, rootOverlay: true);
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (overlayContext) => Positioned(
+        top: 0,
+        left: 16,
+        right: 16,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.18),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(entry);
+    Timer(const Duration(seconds: 3), () {
+      if (entry.mounted) entry.remove();
+    });
   }
 
   void _showMessage(String message, Color color) {

@@ -237,8 +237,20 @@ extension _TicketRescheduleUi on _TiketPageState {
           final hasActiveRequest = awaitingApproval || awaitingPayment;
           final reservationStatus =
               statusData?['status_reservasi']?.toString() ?? '';
-          final minimumVisit = DateUtils.dateOnly(DateTime.now())
+          final currentVisitDate =
+              DateTime.tryParse(
+                statusData?['tanggal_kunjungan']?.toString() ?? '',
+              ) ??
+              DateTime.tryParse(ticket['visitDate']?.toString() ?? '');
+          final todayMinimumVisit = DateUtils.dateOnly(DateTime.now())
               .add(const Duration(days: 2));
+          final ticketMinimumVisit = currentVisitDate == null
+              ? todayMinimumVisit
+              : DateUtils.dateOnly(currentVisitDate)
+                    .add(const Duration(days: 2));
+          final minimumVisit = ticketMinimumVisit.isAfter(todayMinimumVisit)
+              ? ticketMinimumVisit
+              : todayMinimumVisit;
           final canReschedule =
               reservationStatus != 'Selesai' &&
               reservationStatus != 'Dibatalkan';
@@ -328,7 +340,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                           pad: 14,
                           border: kGold.withOpacity(.5),
                           child: const Text(
-                            '• Tanggal tujuan reschedule minimal H+2 dari hari ini.\n'
+                            '• Tanggal tujuan reschedule minimal H+2 dari hari ini atau tanggal tiket saat ini, mana yang lebih akhir.\n'
                             '• Admin merespons maksimal 24 jam.\n'
                             '• Tiket lama tetap berlaku sampai reschedule berhasil.\n'
                             '• Pembayaran QRIS selisih berlaku 10 menit.\n'
@@ -408,7 +420,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                                   ),
                                 if (requestStatus == 'kedaluwarsa')
                                   const Text(
-                                    'Tiket lama tetap berlaku. Anda dapat mengajukan ulang dengan tanggal tujuan minimal H+2 dari hari ini.',
+                                    'Tiket lama tetap berlaku. Anda dapat mengajukan ulang dengan tanggal tujuan minimal H+2 dari hari ini atau tanggal tiket saat ini.',
                                     style: TextStyle(fontSize: 11, height: 1.4),
                                   ),
                               ],
@@ -428,7 +440,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                           ),
                           const SizedBox(height: 10),
                           const Text(
-                            'Tanggal merah belum bisa dipilih. Pilih tanggal minimal H+2.',
+                            'Tanggal merah belum bisa dipilih. Pilih tanggal minimal H+2 dari tiket saat ini atau hari ini.',
                             style: TextStyle(color: kRed, fontSize: 11),
                           ),
                           const SizedBox(height: 8),
@@ -489,7 +501,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                                   ? 'Tiket sudah digunakan dan tidak dapat dijadwalkan ulang.'
                                   : reservationStatus == 'Dibatalkan'
                                   ? 'Tiket yang dibatalkan tidak dapat dijadwalkan ulang.'
-                                  : 'Tanggal tujuan reschedule minimal H+2 dari hari ini.',
+                                  : 'Tanggal tujuan reschedule minimal H+2 dari hari ini atau tanggal tiket saat ini.',
                               style: const TextStyle(color: kRed, fontSize: 12),
                             ),
                           ),

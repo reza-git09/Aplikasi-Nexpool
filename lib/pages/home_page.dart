@@ -191,7 +191,7 @@ class _HomePageState extends State<HomePage>
       'rating': '4.7',
       'dummyTicketsSold': 820,
       'reviews': '980',
-      'icon': '🌿',
+      'icon': '🏊',
       'sub': 'Pemandian alam asri & menyegarkan',
       'weekday': 'Rp.10.000',
       'weekend': 'Rp10.000',
@@ -210,7 +210,7 @@ class _HomePageState extends State<HomePage>
       'rating': '4.8',
       'dummyTicketsSold': 960,
       'reviews': '756',
-      'icon': '💦',
+      'icon': '🏊',
       'sub': 'Waterpark keluarga & anak yang nyaman',
       'weekday': 'Rp10.000',
       'weekend': 'Rp10.000',
@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage>
       'rating': '4.6',
       'dummyTicketsSold': 540,
       'reviews': '612',
-      'icon': '🌿',
+      'icon': '🏊',
       'sub': 'Taman wisata air & alam yang indah',
       'weekday': 'Rp10.000',
       'weekend': 'Rp10.000',
@@ -248,7 +248,7 @@ class _HomePageState extends State<HomePage>
       'rating': '4.8',
       'dummyTicketsSold': 740,
       'reviews': '890',
-      'icon': '🌳',
+      'icon': '🏊',
       'sub': 'Wisata air di tengah suasana hutan jati',
       'weekday': 'Rp10.000',
       'weekend': 'Rp10.000',
@@ -2148,84 +2148,106 @@ class _HomePageState extends State<HomePage>
         const SizedBox(height: 12),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xff0077A8), Color(0xff023E58)],
+              colors: [Color(0xff086B91), Color(0xff073951)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xff073951).withOpacity(.18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               Row(
                 children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.confirmation_number_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Weekday',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 10,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          weekday,
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xffFFD166),
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
-                          'Senin – Jumat',
-                          style: TextStyle(color: Colors.white70, fontSize: 8),
+                        Text(
+                          'Tarif berdasarkan hari kunjungan',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(.7),
+                            fontSize: 9,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Container(width: 1, height: 55, color: Colors.white24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Text(
+                      'TIKET MASUK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
                   Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Weekend',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 10,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          weekend,
-                          style: const TextStyle(
-                            color: Color(0xffFFD166),
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Sabtu – Minggu',
-                          style: TextStyle(color: Colors.white70, fontSize: 8),
-                        ),
-                      ],
+                    child: _buildPriceTile(
+                      title: 'Weekday',
+                      price: weekday,
+                      days: 'Senin – Jumat',
+                      icon: Icons.wb_sunny_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildPriceTile(
+                      title: 'Weekend',
+                      price: weekend,
+                      days: 'Sabtu – Minggu',
+                      icon: Icons.weekend_outlined,
+                      highlighted: true,
                     ),
                   ),
                 ],
@@ -2234,6 +2256,68 @@ class _HomePageState extends State<HomePage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPriceTile({
+    required String title,
+    required String price,
+    required String days,
+    required IconData icon,
+    bool highlighted = false,
+  }) {
+    final Color accent = highlighted ? const Color(0xffFFD166) : Colors.white;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 10, 11),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(highlighted ? .16 : .08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlighted
+              ? const Color(0xffFFD166).withOpacity(.45)
+              : Colors.white.withOpacity(.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: accent),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(.9),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              price,
+              style: TextStyle(
+                color: accent,
+                fontSize: 23,
+                height: 1.05,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            days,
+            style: TextStyle(color: Colors.white.withOpacity(.72), fontSize: 9),
+          ),
+        ],
+      ),
     );
   }
 
