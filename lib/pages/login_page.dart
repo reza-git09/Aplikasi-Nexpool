@@ -414,21 +414,21 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                                 const SizedBox(height: 25),
 
-                                const Text(
+                                Text(
                                   'Selamat Datang 👋',
                                   style: TextStyle(
                                     fontSize: 25,
                                     fontWeight: FontWeight.w900,
-                                    color: navy,
+                                    color: context.textMain,
                                     letterSpacing: -0.5,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
+                                Text(
                                   'Masuk ke akunmu untuk melanjutkan '
                                   'pemesanan tiket kolam renang.',
                                   style: TextStyle(
-                                    color: Color(0xFF8490A3),
+                                    color: context.mutedText,
                                     fontSize: 13,
                                     height: 1.6,
                                   ),
@@ -468,7 +468,7 @@ class _LoginPageState extends State<LoginPage>
                                       obscurePassword
                                           ? Icons.visibility_off_rounded
                                           : Icons.visibility_rounded,
-                                      color: const Color(0xFF73829A),
+                                      color: context.mutedText,
                                       size: 21,
                                     ),
                                   ),
@@ -483,7 +483,9 @@ class _LoginPageState extends State<LoginPage>
                                         ? null
                                         : _goToForgotPassword,
                                     style: TextButton.styleFrom(
-                                      foregroundColor: blue,
+                                      foregroundColor: context.isDark
+                                          ? const Color(0xFF80D9E8)
+                                          : blue,
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
                                         vertical: 8,
@@ -618,7 +620,7 @@ class _LoginPageState extends State<LoginPage>
                                           fontSize: 10,
                                           letterSpacing: 1,
                                           fontWeight: FontWeight.w700,
-                                          color: Colors.blueGrey.shade400,
+                                          color: context.mutedText,
                                         ),
                                       ),
                                     ),
@@ -630,12 +632,12 @@ class _LoginPageState extends State<LoginPage>
 
                                 const SizedBox(height: 12),
 
-                                const Center(
+                                Center(
                                   child: Text(
                                     'Belum punya akun NEXPOOL?',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Color(0xFF8490A3),
+                                      color: context.mutedText,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -648,7 +650,9 @@ class _LoginPageState extends State<LoginPage>
                                   child: TextButton(
                                     onPressed: isLoading ? null : _goToRegister,
                                     style: TextButton.styleFrom(
-                                      foregroundColor: navy,
+                                      foregroundColor: context.isDark
+                                          ? const Color(0xFF80D9E8)
+                                          : navy,
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 18,
                                         vertical: 10,

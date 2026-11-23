@@ -281,16 +281,19 @@ extension _TicketRescheduleUi on _TiketPageState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         infoBox(
+                          color: context.isDark ? AppTheme.darkSoft : kSoft,
                           radius: 15,
                           pad: 15,
                           border: kBlue.withOpacity(.25),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'INFORMASI TIKET SAAT INI',
                                 style: TextStyle(
-                                  color: kAqua,
+                                  color: context.isDark
+                                      ? Color(0xFF80D9E8)
+                                      : kAqua,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
                                 ),
@@ -343,6 +346,7 @@ extension _TicketRescheduleUi on _TiketPageState {
                           )
                         else if (requestInfo != null) ...[
                           infoBox(
+                            color: context.isDark ? AppTheme.darkSoft : kSoft,
                             radius: 14,
                             pad: 14,
                             border: kBlue.withOpacity(.25),
@@ -361,8 +365,10 @@ extension _TicketRescheduleUi on _TiketPageState {
                                       'Pengajuan Reschedule Kedaluwarsa',
                                     _ => 'Status Reschedule',
                                   },
-                                  style: const TextStyle(
-                                    color: kAqua,
+                                  style: TextStyle(
+                                    color: context.isDark
+                                        ? Color(0xFF80D9E8)
+                                        : kAqua,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -598,10 +604,14 @@ extension _TicketRescheduleUi on _TiketPageState {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+          Text(label, style: TextStyle(color: context.mutedText, fontSize: 11)),
           Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(
+              color: context.textMain,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
           ),
         ],
       ),

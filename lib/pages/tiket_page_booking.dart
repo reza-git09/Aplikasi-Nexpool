@@ -276,9 +276,8 @@ extension _TicketBookingUi on _TiketPageState {
           final weekend = isWeekendDate(date);
           final isDisabled =
               minimumSelectableDate != null &&
-              DateUtils.dateOnly(date).isBefore(
-                DateUtils.dateOnly(minimumSelectableDate),
-              );
+              DateUtils.dateOnly(date)
+                  .isBefore(DateUtils.dateOnly(minimumSelectableDate));
 
           return GestureDetector(
             onTap: isDisabled ? null : () => onPick(date),
@@ -293,7 +292,7 @@ extension _TicketBookingUi on _TiketPageState {
                     ? kBlue
                     : weekend
                     ? kYellowSoft
-                    : Colors.white,
+                    : context.cardBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isDisabled
@@ -302,6 +301,8 @@ extension _TicketBookingUi on _TiketPageState {
                       ? kBlue
                       : weekend
                       ? kGold.withOpacity(0.6)
+                      : context.isDark
+                      ? AppTheme.darkSoft
                       : Colors.grey.shade300,
                   width: isSel ? 2 : 1,
                 ),
@@ -329,7 +330,7 @@ extension _TicketBookingUi on _TiketPageState {
                           ? Colors.white70
                           : weekend
                           ? const Color(0xff9a6c00)
-                          : Colors.grey,
+                          : context.mutedText,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -344,7 +345,7 @@ extension _TicketBookingUi on _TiketPageState {
                           ? Colors.white
                           : weekend
                           ? const Color(0xff7a5800)
-                          : Colors.black87,
+                          : context.textMain,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -359,7 +360,7 @@ extension _TicketBookingUi on _TiketPageState {
                           ? Colors.white70
                           : weekend
                           ? const Color(0xff9a6c00)
-                          : Colors.grey,
+                          : context.mutedText,
                     ),
                   ),
                 ],
@@ -1110,10 +1111,16 @@ extension _TicketBookingUi on _TiketPageState {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? kSoft : Colors.white,
+            color: selected
+                ? (context.isDark ? AppTheme.darkSoft : kSoft)
+                : context.cardBg,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? kBlue : Colors.grey.shade300,
+              color: selected
+                  ? kBlue
+                  : context.isDark
+                  ? AppTheme.darkSoft
+                  : Colors.grey.shade300,
               width: selected ? 2 : 1,
             ),
           ),
@@ -1123,27 +1130,28 @@ extension _TicketBookingUi on _TiketPageState {
               const SizedBox(height: 8),
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
+                  color: context.textMain,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
                 price,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: kAqua,
+                  color: context.isDark ? Color(0xFF80D9E8) : kAqua,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 desc,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
-                  color: Colors.grey,
+                  color: context.mutedText,
                   fontWeight: FontWeight.w600,
                 ),
               ),

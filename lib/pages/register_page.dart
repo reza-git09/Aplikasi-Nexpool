@@ -169,7 +169,10 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: blue, width: 1.7),
+        borderSide: BorderSide(
+          color: context.isDark ? const Color(0xFF80D9E8) : blue,
+          width: 1.7,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
@@ -199,6 +202,7 @@ class _RegisterPageState extends State<RegisterPage> {
       maxLines: obscureText ? 1 : maxLines,
       obscureText: obscureText,
       autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: TextStyle(color: context.textMain, fontSize: 14),
       decoration: inputDecoration(label, icon, suffixIcon: suffixIcon),
       validator:
           validator ??
@@ -352,20 +356,20 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Buat Akun Baru',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: navy,
+                            color: context.textMain,
                           ),
                         ),
                         const SizedBox(height: 7),
-                        const Text(
+                        Text(
                           'Lengkapi data dirimu di bawah ini.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF8490A3),
+                            color: context.mutedText,
                           ),
                         ),
                         const SizedBox(height: 25),
@@ -435,7 +439,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               passwordVisible
                                   ? Icons.visibility_rounded
                                   : Icons.visibility_off_rounded,
-                              color: const Color(0xFF73829A),
+                              color: context.mutedText,
                               size: 21,
                             ),
                           ),
@@ -452,20 +456,22 @@ class _RegisterPageState extends State<RegisterPage> {
 
                         const SizedBox(height: 10),
 
-                        const Row(
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(
                               Icons.shield_outlined,
                               size: 17,
-                              color: Color(0xFF16865B),
+                              color: context.isDark
+                                  ? const Color(0xFF5FD6A2)
+                                  : const Color(0xFF16865B),
                             ),
                             SizedBox(width: 7),
                             Expanded(
                               child: Text(
                                 'Gunakan password minimal 6 karakter untuk akunmu.',
                                 style: TextStyle(
-                                  color: Color(0xFF758399),
+                                  color: context.mutedText,
                                   fontSize: 12,
                                   height: 1.5,
                                 ),
@@ -538,7 +544,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontSize: 10,
                                   letterSpacing: 1,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.blueGrey.shade400,
+                                  color: context.mutedText,
                                 ),
                               ),
                             ),
@@ -554,7 +560,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: TextButton(
                             onPressed: _goToLogin,
                             style: TextButton.styleFrom(
-                              foregroundColor: blue,
+                              foregroundColor: context.isDark
+                                  ? const Color(0xFF80D9E8)
+                                  : blue,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
                                 vertical: 10,
@@ -582,13 +590,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
 
-              const Padding(
-                padding: EdgeInsets.only(bottom: 22),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 22),
                 child: Text(
                   'NEXPOOL • Nikmati pengalaman berenangmu',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF8995A8),
+                    color: context.mutedText,
                     fontSize: 11,
                     letterSpacing: 0.3,
                   ),
