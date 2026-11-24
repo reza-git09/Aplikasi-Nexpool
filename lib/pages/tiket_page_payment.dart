@@ -378,7 +378,7 @@ extension _TicketPaymentUi on _TiketPageState {
               ),
               const SizedBox(height: 6),
               Text(
-                '$qtyAdult Dewasa${qtyChild > 0 ? ', $qtyChild Anak' : ''}',
+                ticketQuantityLabel,
                 style: const TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ],
@@ -670,9 +670,9 @@ extension _TicketPaymentUi on _TiketPageState {
       'paidAtIso': paidAt?.toIso8601String(),
       'adultQty': qtyAdult,
       'childQty': qtyChild,
-      'qty': qtyChild > 0
-          ? '$qtyAdult Dewasa, $qtyChild Anak'
-          : '$qtyAdult Dewasa',
+      'adultPrice': adultPrice,
+      'childPrice': childPrice,
+      'qty': ticketQuantityLabel,
       'unitPrice': adultPrice,
       'adminFee': adminFee,
       'promoName': _confirmedPromoName,

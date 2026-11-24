@@ -880,6 +880,10 @@ extension _TicketBookingUi on _TiketPageState {
     );
   }
 
+  void _selectTicketCategory(String selectedCategory) {
+    _updatePageState(() => category = selectedCategory);
+  }
+
   Widget buildStep3() {
     return Column(
       children: [
@@ -957,19 +961,25 @@ extension _TicketBookingUi on _TiketPageState {
                     : adultPrice > 0
                     ? rupiah(adultPrice)
                     : 'Belum tersedia',
-                'Tinggi > 100cm',
+                hasChildPricing ? 'Tarif Dewasa' : adultHeightLabel,
                 category == 'dewasa',
-                () => _updatePageState(() => category = 'dewasa'),
+                () => _selectTicketCategory('dewasa'),
               ),
               const SizedBox(width: 10),
               categoryCard(
                 Icons.child_care_rounded,
                 kGreen,
                 'Anak-anak',
-                'Gratis',
-                'Tinggi ≤ 100cm',
+                isPriceLoading
+                    ? 'Memuat...'
+                    : hasChildPricing
+                    ? childPrice > 0
+                          ? rupiah(childPrice)
+                          : 'Belum tersedia'
+                    : 'Gratis',
+                hasChildPricing ? 'Tarif Anak' : childFreeHeightLabel,
                 category == 'anak',
-                () => _updatePageState(() => category = 'anak'),
+                () => _selectTicketCategory('anak'),
               ),
             ],
           ),
@@ -995,7 +1005,12 @@ extension _TicketBookingUi on _TiketPageState {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Harga ${isWeekend ? 'weekend' : 'weekday'} untuk $selectedPoolName mengikuti tarif resmi server. Anak ≤100cm gratis.',
+                    'Harga ${isWeekend ? 'weekend' : 'weekday'} untuk $selectedPoolName mengikuti tarif resmi server. '
+                    '${hasChildPricing
+                        ? childPrice > 0
+                              ? 'Tiket Anak memakai tarif server.'
+                              : 'Tarif Anak untuk hari ini belum tersedia.'
+                        : 'Anak dengan ${childFreeHeightLabel.toLowerCase()} gratis; di atasnya pilih tiket Dewasa.'}',
                     style: TextStyle(
                       fontSize: 10,
                       color: context.isDark
@@ -1019,7 +1034,7 @@ extension _TicketBookingUi on _TiketPageState {
 
         buildQuantity(
           'Dewasa',
-          'Tinggi > 100cm',
+          hasChildPricing ? 'Tarif Dewasa' : adultHeightLabel,
           qtyAdult,
           Icons.person_rounded,
           kBlue,
@@ -1036,7 +1051,11 @@ extension _TicketBookingUi on _TiketPageState {
 
         buildQuantity(
           'Anak-anak',
-          'Tinggi ≤ 100cm (Gratis)',
+          hasChildPricing
+              ? childPrice > 0
+                    ? 'Tarif Anak'
+                    : 'Tarif Anak belum tersedia'
+              : '$childFreeHeightLabel (Gratis)',
           qtyChild,
           Icons.child_care_rounded,
           kGreen,
@@ -1086,7 +1105,8 @@ extension _TicketBookingUi on _TiketPageState {
           isPriceLoading ||
                   priceError.isNotEmpty ||
                   adultPrice <= 0 ||
-                  qtyAdult <= 0 ||
+                  (qtyAdult <= 0 && qtyChild <= 0) ||
+                  (qtyChild > 0 && hasChildPricing && childPrice <= 0) ||
                   isCreatingPayment
               ? null
               : _createReservationAndQris,
@@ -1370,8 +1390,17 @@ extension _TicketBookingUi on _TiketPageState {
               ],
             ),
             const SizedBox(height: 14),
-            summaryRow('Tiket Dewasa × $qtyAdult', rupiah(ticketSubtotal)),
-            if (qtyChild > 0) summaryRow('Tiket Anak × $qtyChild', 'Gratis'),
+            if (qtyAdult > 0)
+              summaryRow('Tiket Dewasa × $qtyAdult', rupiah(adultSubtotal)),
+            if (qtyChild > 0)
+              summaryRow(
+                'Tiket Anak × $qtyChild',
+                childPrice > 0
+                    ? rupiah(childSubtotal)
+                    : hasChildPricing
+                    ? 'Tarif belum tersedia'
+                    : 'Gratis',
+              ),
             if (discountAmount > 0)
               summaryRow('Potongan Promo', '-${rupiah(discountAmount)}'),
             summaryRow('Kolam Renang', selectedPoolName),

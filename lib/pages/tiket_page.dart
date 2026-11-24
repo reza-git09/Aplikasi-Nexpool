@@ -309,6 +309,8 @@ class _TiketPageState extends State<TiketPage>
 
   int weekdayPrice = 0;
   int weekendPrice = 0;
+  int weekdayChildPrice = 0;
+  int weekendChildPrice = 0;
 
   List<Map<String, dynamic>> _availablePromos = [];
   Map<String, dynamic>? _selectedPromo;
@@ -468,6 +470,8 @@ class _TiketPageState extends State<TiketPage>
       setState(() {
         weekdayPrice = 0;
         weekendPrice = 0;
+        weekdayChildPrice = 0;
+        weekendChildPrice = 0;
         isPriceLoading = false;
         priceError = 'Pilih kolam renang terlebih dahulu.';
       });
@@ -479,6 +483,8 @@ class _TiketPageState extends State<TiketPage>
         setState(() {
           isPriceLoading = true;
           priceError = '';
+          weekdayChildPrice = 0;
+          weekendChildPrice = 0;
         });
       }
 
@@ -486,15 +492,28 @@ class _TiketPageState extends State<TiketPage>
 
       int weekday = 0;
       int weekend = 0;
+      int weekdayChild = 0;
+      int weekendChild = 0;
 
       for (final item in data) {
         final poolId = item['pool_id']?.toString() ?? '';
         final jenisHari = item['jenis_hari']?.toString().toLowerCase() ?? '';
+        final kategori = item['kategori']?.toString().toLowerCase();
         final hargaString = item['harga']?.toString() ?? '0';
         final harga = double.tryParse(hargaString)?.round() ?? 0;
 
         if (poolId != selectedPoolId &&
             normalizePoolId(poolId) != normalizePoolId(selectedPoolId)) {
+          continue;
+        }
+
+        if (kategori == 'anak') {
+          if (jenisHari == 'weekday') weekdayChild = harga;
+          if (jenisHari == 'weekend') weekendChild = harga;
+          continue;
+        }
+
+        if (kategori != null && kategori.isNotEmpty && kategori != 'dewasa') {
           continue;
         }
 
@@ -507,6 +526,8 @@ class _TiketPageState extends State<TiketPage>
       setState(() {
         weekdayPrice = weekday;
         weekendPrice = weekend;
+        weekdayChildPrice = weekdayChild;
+        weekendChildPrice = weekendChild;
         isPriceLoading = false;
 
         if (weekday == 0 && weekend == 0) {
@@ -520,6 +541,8 @@ class _TiketPageState extends State<TiketPage>
       if (!mounted) return;
 
       setState(() {
+        weekdayChildPrice = 0;
+        weekendChildPrice = 0;
         isPriceLoading = false;
         if (weekdayPrice == 0 && weekendPrice == 0) {
           weekdayPrice = selectedPoolId == 'pool_id_02' ? 10000 : 15000;
@@ -550,8 +573,25 @@ class _TiketPageState extends State<TiketPage>
   }
 
   int get adultPrice => isWeekend ? weekendPrice : weekdayPrice;
+  bool get isTiaraPark => normalizePoolId(selectedPoolId) == 'POOL-01';
+  int get childPrice => isWeekend ? weekendChildPrice : weekdayChildPrice;
+  bool get hasChildPricing =>
+      weekdayChildPrice > 0 ||
+      weekendChildPrice > 0 ||
+      normalizePoolId(selectedPoolId) == 'POOL-02';
+
+  String get ticketQuantityLabel => [
+    if (qtyAdult > 0) '$qtyAdult Dewasa',
+    if (qtyChild > 0) '$qtyChild Anak',
+  ].join(', ');
+
+  String get adultHeightLabel => isTiaraPark ? 'Tinggi >90cm' : 'Tinggi >100cm';
+  String get childFreeHeightLabel =>
+      isTiaraPark ? 'Tinggi ≤90cm' : 'Tinggi ≤100cm';
   int get adminFee => 2000;
-  int get ticketSubtotal => qtyAdult * adultPrice;
+  int get adultSubtotal => qtyAdult * adultPrice;
+  int get childSubtotal => qtyChild * childPrice;
+  int get ticketSubtotal => adultSubtotal + childSubtotal;
   int get discountAmount {
     final promo = _selectedPromo;
     if (promo == null) return 0;
@@ -1217,11 +1257,13 @@ class _TiketPageState extends State<TiketPage>
           : formatShortDate(selectedDate!),
       'visitDate': selectedDate?.toIso8601String(),
       'reservedAt': reservedAt?.toIso8601String(),
-      'qty': qtyChild > 0
-          ? '$qtyAdult Dewasa, $qtyChild Anak'
-          : '$qtyAdult Dewasa',
+      'qty': ticketQuantityLabel,
       'adultQty': qtyAdult,
       'childQty': qtyChild,
+      'adultPrice': adultPrice,
+      'childPrice': childPrice,
+      'adultSubtotal': adultSubtotal,
+      'childSubtotal': childSubtotal,
       'unitPrice': adultPrice,
       'adminFee': adminFee,
       'promoName': _confirmedPromoName,

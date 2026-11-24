@@ -24,9 +24,8 @@ extension _TicketHistoryUi on _TiketPageState {
     final visitDate = DateTime.tryParse(ticket['visitDate']?.toString() ?? '');
     if (visitDate == null) return false;
 
-    return !DateUtils.dateOnly(visitDate).isBefore(
-      DateUtils.dateOnly(DateTime.now()),
-    );
+    return !DateUtils.dateOnly(visitDate)
+        .isBefore(DateUtils.dateOnly(DateTime.now()));
   }
 
   Widget _buildTicketOverview() {
@@ -748,7 +747,9 @@ extension _TicketHistoryUi on _TiketPageState {
             : 0,
       ),
     );
-    final itemsTotal = adultCount * unitPrice;
+    final childUnitPrice = _receiptInteger(ticket['childPrice']);
+    final childItemsTotal = childCount * childUnitPrice;
+    final itemsTotal = (adultCount * unitPrice) + childItemsTotal;
     final promoDiscount = _receiptInteger(ticket['promoDiscount']);
     final promoName = ticket['promoName']?.toString() ?? '';
     final payableTotal = _receiptInteger(
@@ -904,7 +905,10 @@ extension _TicketHistoryUi on _TiketPageState {
                           alignment: Alignment.centerLeft,
                           child: Text('Tiket Anak', style: mono),
                         ),
-                        itemAmount('$childCount x Gratis', '0'),
+                        itemAmount(
+                          '$childCount x ${childUnitPrice > 0 ? _receiptAmount(childUnitPrice) : 'Gratis'}',
+                          _receiptAmount(childItemsTotal),
+                        ),
                       ],
                       itemAmount('Biaya admin', _receiptAmount(fee)),
                       if (promoDiscount > 0)

@@ -310,27 +310,32 @@ class _HomePageState extends State<HomePage>
   // Diperbarui otomatis: saat Home dibuka, tiap 30 detik, dan setiap
   // aplikasi dibuka kembali dari background.
   // ============================================================
-  final Map<String, Map<String, int>> _hargaTiket =
-      {}; // 'POOL-01' -> {weekday, weekend}
+  final Map<String, Map<String, Map<String, int>>> _hargaTiket = {};
   bool _hargaLoaded = false;
   Timer? _hargaTimer;
 
   Future<void> _loadHargaTiket() async {
     try {
       final data = await ApiService.getHargaTiket();
-      final Map<String, Map<String, int>> hasil = {};
+      final Map<String, Map<String, Map<String, int>>> hasil = {};
 
       for (final item in data) {
         final String poolId = item['pool_id']?.toString() ?? '';
         final String jenisHari =
             item['jenis_hari']?.toString().toLowerCase() ?? '';
+        final String kategori =
+            item['kategori']?.toString().toLowerCase() ?? 'dewasa';
         final int harga =
             double.tryParse(item['harga']?.toString() ?? '')?.round() ?? 0;
 
         if (poolId.isEmpty) continue;
         if (jenisHari != 'weekday' && jenisHari != 'weekend') continue;
+        if (kategori != 'dewasa' && kategori != 'anak') continue;
 
-        hasil.putIfAbsent(normalizePoolId(poolId), () => {})[jenisHari] = harga;
+        hasil
+                .putIfAbsent(normalizePoolId(poolId), () => {})
+                .putIfAbsent(jenisHari, () => {})[kategori] =
+            harga;
       }
 
       if (!mounted) return;
@@ -350,19 +355,60 @@ class _HomePageState extends State<HomePage>
     return 'Rp${value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m.group(1)}.')}';
   }
 
-  int? _hargaAngka(Map<String, dynamic> pool, String jenis) {
+  int? _hargaAngka(
+    Map<String, dynamic> pool,
+    String jenis, {
+    String kategori = 'dewasa',
+  }) {
     final String id = pool['pool_id']?.toString() ?? '';
     if (id.isEmpty) return null;
-    final int? v = _hargaTiket[normalizePoolId(id)]?[jenis];
+    final int? v = _hargaTiket[normalizePoolId(id)]?[jenis]?[kategori];
     return (v == null || v <= 0) ? null : v;
   }
 
-  // jenis: 'weekday' atau 'weekend'
-  String _hargaPool(Map<String, dynamic> pool, String jenis) {
+  bool _hasChildPricing(Map<String, dynamic> pool) {
+    final String id = normalizePoolId(pool['pool_id']?.toString() ?? '');
+
+    final bool hasLoadedChildPrice =
+        _hargaTiket[id]?.values.any(
+          (dayPrices) => dayPrices.containsKey('anak'),
+        ) ??
+        false;
+
+    return hasLoadedChildPrice || id == 'POOL-02';
+  }
+
+  String _hargaPool(
+    Map<String, dynamic> pool,
+    String jenis, {
+    String kategori = 'dewasa',
+  }) {
     final String cadangan = pool[jenis]?.toString() ?? 'Rp0';
-    if (!_hargaLoaded) return cadangan; // belum ada data dari server
-    final int? v = _hargaAngka(pool, jenis);
-    return v == null ? 'Belum tersedia' : _rupiahText(v);
+
+    if (!_hargaLoaded) {
+      if (kategori == 'anak') {
+        return _hasChildPricing(pool) ? 'Memuat...' : 'Gratis';
+      }
+
+      return cadangan;
+    }
+
+    final int? harga = _hargaAngka(pool, jenis, kategori: kategori);
+    if (harga != null) return _rupiahText(harga);
+    if (kategori == 'anak' && !_hasChildPricing(pool)) return 'Gratis';
+
+    return 'Belum tersedia';
+  }
+
+  String _labelKategoriAnak(Map<String, dynamic> pool) {
+    final String id = normalizePoolId(pool['pool_id']?.toString() ?? '');
+
+    if (id == 'POOL-01' && !_hasChildPricing(pool)) {
+      return 'Anak (≤90cm)';
+    }
+    if (_hasChildPricing(pool)) return 'Anak-anak';
+
+    return 'Anak (≤100cm)';
   }
 
   // Harga terendah untuk teks "Mulai dari ...". null = belum ada harga di server.
@@ -2112,8 +2158,11 @@ class _HomePageState extends State<HomePage>
   // HARGA TIKET
   // ============================================================
   Widget _buildPriceSection(Map<String, dynamic> pool) {
-    final String weekday = _hargaPool(pool, 'weekday');
-    final String weekend = _hargaPool(pool, 'weekend');
+    final String weekdayAdult = _hargaPool(pool, 'weekday');
+    final String weekdayChild = _hargaPool(pool, 'weekday', kategori: 'anak');
+    final String weekendAdult = _hargaPool(pool, 'weekend');
+    final String weekendChild = _hargaPool(pool, 'weekend', kategori: 'anak');
+    final String childLabel = _labelKategoriAnak(pool);
     final String name = pool['fullName']?.toString() ?? 'Kolam Renang';
     final String poolId = pool['pool_id']?.toString() ?? '';
 
@@ -2235,7 +2284,7 @@ class _HomePageState extends State<HomePage>
                   Expanded(
                     child: _buildPriceTile(
                       title: 'Weekday',
-                      price: weekday,
+                      adultPrice: weekdayAdult,
                       days: 'Senin – Jumat',
                       icon: Icons.wb_sunny_outlined,
                     ),
@@ -2244,13 +2293,19 @@ class _HomePageState extends State<HomePage>
                   Expanded(
                     child: _buildPriceTile(
                       title: 'Weekend',
-                      price: weekend,
+                      adultPrice: weekendAdult,
                       days: 'Sabtu – Minggu',
                       icon: Icons.weekend_outlined,
                       highlighted: true,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              _buildChildPriceCard(
+                label: childLabel,
+                weekdayPrice: weekdayChild,
+                weekendPrice: weekendChild,
               ),
             ],
           ),
@@ -2261,7 +2316,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildPriceTile({
     required String title,
-    required String price,
+    required String adultPrice,
     required String days,
     required IconData icon,
     bool highlighted = false,
@@ -2297,11 +2352,20 @@ class _HomePageState extends State<HomePage>
             ],
           ),
           const SizedBox(height: 10),
+          const Text(
+            'Dewasa',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              price,
+              adultPrice,
               style: TextStyle(
                 color: accent,
                 fontSize: 23,
@@ -2315,6 +2379,140 @@ class _HomePageState extends State<HomePage>
           Text(
             days,
             style: TextStyle(color: Colors.white.withOpacity(.72), fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChildPriceCard({
+    required String label,
+    required String weekdayPrice,
+    required String weekendPrice,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xffFFD166).withOpacity(.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: const Color(0xffFFD166).withOpacity(.16),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.child_care_rounded,
+                  size: 17,
+                  color: Color(0xffFFD166),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11),
+          Row(
+            children: [
+              Expanded(
+                child: _buildChildPriceDay(
+                  title: 'Weekday',
+                  price: weekdayPrice,
+                  days: 'Senin – Jumat',
+                  icon: Icons.wb_sunny_outlined,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: _buildChildPriceDay(
+                  title: 'Weekend',
+                  price: weekendPrice,
+                  days: 'Sabtu – Minggu',
+                  icon: Icons.weekend_outlined,
+                  highlighted: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChildPriceDay({
+    required String title,
+    required String price,
+    required String days,
+    required IconData icon,
+    bool highlighted = false,
+  }) {
+    final Color accent = highlighted ? const Color(0xffFFD166) : Colors.white;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(9, 9, 9, 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(highlighted ? .12 : .06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: highlighted
+              ? const Color(0xffFFD166).withOpacity(.32)
+              : Colors.white.withOpacity(.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: accent),
+              const SizedBox(width: 5),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(.9),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              price,
+              style: TextStyle(
+                color: accent,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -.3,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            days,
+            style: TextStyle(color: Colors.white.withOpacity(.68), fontSize: 9),
           ),
         ],
       ),
