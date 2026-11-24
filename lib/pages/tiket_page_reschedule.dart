@@ -251,7 +251,11 @@ extension _TicketRescheduleUi on _TiketPageState {
           final minimumVisit = ticketMinimumVisit.isAfter(todayMinimumVisit)
               ? ticketMinimumVisit
               : todayMinimumVisit;
+          final hasCompletedReschedule =
+              (ticket['reschedule'] as int? ?? 0) > 0 ||
+              asMap(statusData?['latest_successful_request']) != null;
           final canReschedule =
+              !hasCompletedReschedule &&
               reservationStatus != 'Selesai' &&
               reservationStatus != 'Dibatalkan';
           final cardPoolName =
@@ -385,10 +389,11 @@ extension _TicketRescheduleUi on _TiketPageState {
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                Text(
-                                  'Tanggal baru: ${requestInfo['tanggal_baru'] ?? '—'}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
+                                if (requestStatus != 'berhasil')
+                                  Text(
+                                    'Tanggal baru: ${requestInfo['tanggal_baru'] ?? '—'}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                 if ((requestInfo['selisih_harga'] as num? ??
                                         0) >
                                     0)
@@ -497,7 +502,9 @@ extension _TicketRescheduleUi on _TiketPageState {
                             pad: 12,
                             border: kRed.withOpacity(.3),
                             child: Text(
-                              reservationStatus == 'Selesai'
+                              hasCompletedReschedule
+                                  ? 'Reschedule tiket telah digunakan.'
+                                  : reservationStatus == 'Selesai'
                                   ? 'Tiket sudah digunakan dan tidak dapat dijadwalkan ulang.'
                                   : reservationStatus == 'Dibatalkan'
                                   ? 'Tiket yang dibatalkan tidak dapat dijadwalkan ulang.'
@@ -587,6 +594,8 @@ extension _TicketRescheduleUi on _TiketPageState {
                             : Text(
                                 isStatusLoading
                                     ? 'Memuat Status...'
+                                    : hasCompletedReschedule
+                                    ? 'Reschedule Terpakai'
                                     : awaitingApproval
                                     ? 'Menunggu Persetujuan'
                                     : awaitingPayment

@@ -308,6 +308,9 @@ class _MainShellState extends State<MainShell> {
                         key: const ValueKey('tiket_guest'),
                         onSignIn: _openLogin,
                         onRegister: _openRegister,
+                        onReturnHome: () {
+                          setState(() => _currentIndex = _tabHome);
+                        },
                       ),
                 ReviewPage(
                   key: ValueKey('review_$_poolId'),
@@ -479,10 +482,12 @@ class _GuestTiket extends StatelessWidget {
     super.key,
     required this.onSignIn,
     required this.onRegister,
+    required this.onReturnHome,
   });
 
   final VoidCallback onSignIn;
   final VoidCallback onRegister;
+  final VoidCallback onReturnHome;
 
   static const Color navy = Color(0xFF173F7A);
   static const Color blue = Color(0xFF2675D8);
@@ -500,7 +505,11 @@ class _GuestTiket extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: onReturnHome,
+          tooltip: 'Kembali ke Home',
+        ),
       ),
       body: Center(
         child: SingleChildScrollView(

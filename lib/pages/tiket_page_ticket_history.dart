@@ -530,7 +530,8 @@ extension _TicketHistoryUi on _TiketPageState {
   ) {
     final isPaid = status == 'paid';
     final isPending = status == 'pending';
-    final isActive = isPaid && _isTicketActive(ticket);
+    final resched = ticket['reschedule'] as int? ?? 0;
+    final canReschedule = isPaid && resched == 0 && _isTicketActive(ticket);
 
     return Row(
       children: [
@@ -568,21 +569,23 @@ extension _TicketHistoryUi on _TiketPageState {
             child: ElevatedButton.icon(
               onPressed: isPending
                   ? () => cancelTransaction(index)
-                  : isActive
+                  : canReschedule
                   ? () => openReschedule(index)
                   : null,
               icon: Icon(
                 isPaid ? Icons.sync_rounded : Icons.cancel_rounded,
                 size: 16,
               ),
-              label: Text(isPaid ? 'Reschedule' : 'Batalkan'),
+              label: Text(
+                isPaid && resched > 0 ? 'Reschedule Terpakai' : 'Reschedule',
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isActive
+                backgroundColor: canReschedule
                     ? kPurpleSoft
                     : isPending
                     ? kRedSoft
                     : context.softBg,
-                foregroundColor: isActive
+                foregroundColor: canReschedule
                     ? kPurple
                     : isPending
                     ? kRed

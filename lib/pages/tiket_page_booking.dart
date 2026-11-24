@@ -961,7 +961,7 @@ extension _TicketBookingUi on _TiketPageState {
                     : adultPrice > 0
                     ? rupiah(adultPrice)
                     : 'Belum tersedia',
-                hasChildPricing ? 'Tarif Dewasa' : adultHeightLabel,
+                hasChildPricing ? 'Tarif Dewasa' : '',
                 category == 'dewasa',
                 () => _selectTicketCategory('dewasa'),
               ),
@@ -1034,7 +1034,7 @@ extension _TicketBookingUi on _TiketPageState {
 
         buildQuantity(
           'Dewasa',
-          hasChildPricing ? 'Tarif Dewasa' : adultHeightLabel,
+          hasChildPricing ? 'Tarif Dewasa' : '',
           qtyAdult,
           Icons.person_rounded,
           kBlue,
@@ -1166,15 +1166,17 @@ extension _TicketBookingUi on _TiketPageState {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                desc,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: context.mutedText,
-                  fontWeight: FontWeight.w600,
+              if (desc.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: context.mutedText,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -1306,11 +1308,13 @@ extension _TicketBookingUi on _TiketPageState {
                       fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                    ),
+                  ],
                 ],
               ),
             ),

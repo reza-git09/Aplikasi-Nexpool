@@ -585,7 +585,6 @@ class _TiketPageState extends State<TiketPage>
     if (qtyChild > 0) '$qtyChild Anak',
   ].join(', ');
 
-  String get adultHeightLabel => isTiaraPark ? 'Tinggi >90cm' : 'Tinggi >100cm';
   String get childFreeHeightLabel =>
       isTiaraPark ? 'Tinggi ≤90cm' : 'Tinggi ≤100cm';
   int get adminFee => 2000;
@@ -1518,7 +1517,11 @@ class _TiketPageState extends State<TiketPage>
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: _openBookingTab,
               )
-            : null,
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: _returnToHome,
+                tooltip: 'Kembali ke Home',
+              ),
       ),
       body: SafeArea(
         child: Column(

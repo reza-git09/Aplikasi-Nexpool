@@ -474,27 +474,7 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                                 const SizedBox(height: 25),
 
-                                Text(
-                                  'Selamat Datang 👋',
-                                  style: TextStyle(
-                                    fontSize: 25,
-                                    fontWeight: FontWeight.w900,
-                                    color: context.textMain,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Masuk ke akunmu untuk melanjutkan '
-                                  'pemesanan tiket kolam renang.',
-                                  style: TextStyle(
-                                    color: context.mutedText,
-                                    fontSize: 13,
-                                    height: 1.6,
-                                  ),
-                                ),
-                                const SizedBox(height: 27),
-
+                                
                                 _label('Email atau Nomor HP'),
                                 const SizedBox(height: 9),
                                 _input(
