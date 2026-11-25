@@ -51,32 +51,229 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+Widget _buildGlassHeaderButton({
+  required String tooltip,
+  required VoidCallback onTap,
+  required Widget child,
+  Widget? badge,
+  double size = 42,
+}) {
+  return _GlassHeaderButton(
+    tooltip: tooltip,
+    onTap: onTap,
+    child: child,
+    badge: badge,
+    size: size,
+  );
+}
+
+class _GlassHeaderButton extends StatefulWidget {
+  const _GlassHeaderButton({
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+    required this.size,
+    this.badge,
+  });
+
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+  final Widget? badge;
+  final double size;
+
+  @override
+  State<_GlassHeaderButton> createState() => _GlassHeaderButtonState();
+}
+
+class _GlassHeaderButtonState extends State<_GlassHeaderButton>
+    with SingleTickerProviderStateMixin {
+  bool _isPressed = false;
+  late final AnimationController _rippleController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rippleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
+  }
+
+  @override
+  void dispose() {
+    _rippleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: -widget.size * .35,
+              top: -widget.size * .35,
+              width: widget.size * 1.7,
+              height: widget.size * 1.7,
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _rippleController,
+                  builder: (context, child) => CustomPaint(
+                    painter: _WaterRipplePainter(
+                      progress: _rippleController.value,
+                      buttonSize: widget.size,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: AnimatedScale(
+                scale: _isPressed ? .96 : 1,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOutCubic,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(_isPressed ? .2 : .12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.16),
+                        blurRadius: _isPressed ? 7 : 10,
+                        offset: Offset(0, _isPressed ? 2 : 4),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xff70E9FF)
+                            .withOpacity(_isPressed ? .38 : .08),
+                        blurRadius: _isPressed ? 12 : 6,
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.white.withOpacity(.08),
+                      onTapDown: (_) => _rippleController.forward(from: 0),
+                      onHighlightChanged: (pressed) {
+                        if (_isPressed != pressed) {
+                          setState(() => _isPressed = pressed);
+                        }
+                      },
+                      onTap: widget.onTap,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withOpacity(_isPressed ? .32 : .24),
+                              Colors.white.withOpacity(.06),
+                            ],
+                          ),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Positioned(
+                              top: 3,
+                              left: 7,
+                              right: 7,
+                              child: Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(.4),
+                                      Colors.white.withOpacity(.02),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            widget.child,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.badge != null)
+              Positioned(right: -2, top: -2, child: widget.badge!),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WaterRipplePainter extends CustomPainter {
+  const _WaterRipplePainter({required this.progress, required this.buttonSize});
+
+  final double progress;
+  final double buttonSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    for (var ripple = 0; ripple < 2; ripple++) {
+      final delay = ripple * .24;
+      if (progress < delay) continue;
+
+      final normalizedProgress = ((progress - delay) / (1 - delay)).clamp(
+        0.0,
+        1.0,
+      );
+      final opacity = (1 - normalizedProgress) * .42;
+      final radius = buttonSize * .48 + normalizedProgress * buttonSize * .38;
+      final paint = Paint()
+        ..color = const Color(0xffA9F5FF).withOpacity(opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.15
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2);
+
+      canvas.drawCircle(Offset(size.width / 2, size.height / 2), radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaterRipplePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.buttonSize != buttonSize;
+  }
+}
+
 Widget _buildThemeToggleButton() {
   return ValueListenableBuilder<ThemeMode>(
     valueListenable: ThemeService.mode,
     builder: (context, mode, _) {
       final isDark = mode == ThemeMode.dark;
-      return Tooltip(
-        message: isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap',
-        child: Material(
-          color: Colors.white.withOpacity(0.18),
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              ThemeService.setDark(!isDark);
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 38,
-              height: 38,
-              child: Icon(
-                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                color: isDark ? const Color(0xFFFFD166) : Colors.white,
-                size: 19,
-              ),
-            ),
-          ),
+      return _buildGlassHeaderButton(
+        tooltip: isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap',
+        onTap: () {
+          HapticFeedback.selectionClick();
+          ThemeService.setDark(!isDark);
+        },
+        child: Icon(
+          isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+          color: isDark ? const Color(0xFFFFD166) : Colors.white,
+          size: 21,
         ),
       );
     },
@@ -279,13 +476,10 @@ class _HomePageState extends State<HomePage>
       const Duration(seconds: 30),
       (_) => _loadHargaTiket(),
     );
-    _operationalHoursTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) {
-        if (!mounted) return;
-        setState(() => _operationalNowUtc = DateTime.now().toUtc());
-      },
-    );
+    _operationalHoursTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() => _operationalNowUtc = DateTime.now().toUtc());
+    });
   }
 
   @override
@@ -1083,35 +1277,13 @@ class _HomePageState extends State<HomePage>
   // TOMBOL SIGN IN (muncul kalau belum login)
   // ============================================================
   Widget _buildSignInButton() {
-    return GestureDetector(
+    return _buildGlassHeaderButton(
+      tooltip: 'Masuk ke akun',
       onTap: () {
         HapticFeedback.selectionClick();
         _openLogin();
       },
-      child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.35)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.person_rounded, color: Colors.white, size: 20),
-            SizedBox(width: 6),
-            Text(
-              'Sign In',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
     );
   }
 
@@ -1119,42 +1291,38 @@ class _HomePageState extends State<HomePage>
   // AVATAR PROFIL (muncul di sebelah notifikasi kalau sudah login)
   // ============================================================
   Widget _buildProfileAvatar() {
-    return GestureDetector(
+    return _buildGlassHeaderButton(
+      tooltip: 'Buka profil',
       onTap: () {
         HapticFeedback.selectionClick();
         _openProfile();
       },
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
-        ),
-        child: ClipOval(
-          child: ValueListenableBuilder<Uint8List?>(
-            valueListenable: ProfilePhotoService.photo,
-            builder: (_, bytes, __) {
-              const Widget icon = Center(
-                child: Icon(
-                  Icons.person_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              );
-              if (bytes == null) return icon;
-              return Image.memory(
-                bytes,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => icon,
-              );
-            },
-          ),
-        ),
+      child: ValueListenableBuilder<Uint8List?>(
+        valueListenable: ProfilePhotoService.photo,
+        builder: (_, bytes, __) {
+          if (bytes == null) {
+            return const Icon(
+              Icons.person_rounded,
+              color: Colors.white,
+              size: 22,
+            );
+          }
+
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 38,
+              height: 38,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.person_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1233,69 +1401,73 @@ class _HomePageState extends State<HomePage>
 
                 // Teks NEXPOOL
                 const Expanded(
-                  child: Text(
-                    'NEXPOOL',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'NEXPOOL',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
 
                 // Kontrol tema diletakkan sejajar dengan Sign In / profil.
                 _isLoggedIn ? _buildProfileAvatar() : _buildSignInButton(),
-                const SizedBox(width: 8),
+                const SizedBox(width: 5),
                 _buildThemeToggleButton(),
-                const SizedBox(width: 8),
+                const SizedBox(width: 5),
 
                 // Tombol Notifikasi
-                GestureDetector(
+                _buildGlassHeaderButton(
+                  tooltip: 'Notifikasi',
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const NotifikasiPage()),
                     );
                   },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(13),
+                  child: const Icon(
+                    Icons.notifications_rounded,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                  badge: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xffFF6B91), Color(0xffE93668)],
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(.95),
+                        width: 1.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xffE93668).withOpacity(.45),
+                          blurRadius: 7,
+                          offset: const Offset(0, 2),
                         ),
-                        child: const Icon(
-                          Icons.notifications_none_rounded,
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '3',
+                        style: TextStyle(
                           color: Colors.white,
+                          fontSize: 9,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: const Color(0xffEF476F),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '3',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -2528,8 +2700,7 @@ class _HomePageState extends State<HomePage>
     final List<Map<String, String>> wahana = [
       {
         'name': 'Kolam Utama',
-        'desc':
-            'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
+        'desc': 'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
         'image': 'assets/images/pool_main.png',
         'emoji': '🏊',
         'detail1': 'Kedalaman: 1.2m – 1.5m',
@@ -2537,8 +2708,7 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Balap',
-        'desc':
-            'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
+        'desc': 'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
         'image': 'assets/images/waterslide_fun.png',
         'emoji': '🏆',
         'detail1': 'Lintasan balap air',
@@ -2546,8 +2716,7 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Keluarga',
-        'desc':
-            'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
+        'desc': 'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
         'image': 'assets/images/family_pool.png',
         'emoji': '👨‍👩‍👧‍👦',
         'detail1': 'Kedalaman: 0.5m – 1m',
@@ -2555,8 +2724,7 @@ class _HomePageState extends State<HomePage>
       },
       {
         'name': 'Kolam Cangkir',
-        'desc':
-            'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
+        'desc': 'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
         'image': '',
         'emoji': '🍵',
         'detail1': 'Wahana Air',
@@ -2856,9 +3024,7 @@ class _HomePageState extends State<HomePage>
         : _operatingHours.nextOpenTime(_operationalNowUtc);
     final nextOpenTime = nextOpen == null
         ? openingTime
-        : OperatingHours.formatWibTime(
-            nextOpen.hour * 60 + nextOpen.minute,
-          );
+        : OperatingHours.formatWibTime(nextOpen.hour * 60 + nextOpen.minute);
     final todayUtc = DateTime.utc(
       _operationalNowUtc.year,
       _operationalNowUtc.month,
@@ -2866,8 +3032,11 @@ class _HomePageState extends State<HomePage>
     );
     final opensTomorrow =
         nextOpen != null &&
-        DateTime.utc(nextOpen.year, nextOpen.month, nextOpen.day)
-            .isAfter(todayUtc);
+        DateTime.utc(
+          nextOpen.year,
+          nextOpen.month,
+          nextOpen.day,
+        ).isAfter(todayUtc);
 
     final Color warna = sedangBuka
         ? const Color(0xff06A87E)
@@ -2997,6 +3166,7 @@ class _HomePageState extends State<HomePage>
   Widget _buildRatingSection(Map<String, dynamic> pool) {
     final String rating = pool['rating']?.toString() ?? '0.0';
     final String ratingCount = pool['ratingCount']?.toString() ?? '0 ulasan';
+    final double numericRating = double.tryParse(rating) ?? 0;
 
     double bar5 = 0.8;
     if (pool['bar5'] is num) {
@@ -3010,33 +3180,27 @@ class _HomePageState extends State<HomePage>
         'Kolam Renang';
     final String gambarKolam = pool['image']?.toString() ?? '';
 
+    void openReviewPage() {
+      if (selectedPool == 0) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReviewPage(
+            poolId: pool['pool_id']?.toString() ?? '',
+            namaKolam: namaKolam,
+            gambarKolam: gambarKolam,
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTitle(
-          'Rating Pengunjung',
-          Icons.star_rounded,
-          const Color(0xffD4960A),
-          action: 'Beri Review',
-          onAction: () {
-            if (selectedPool == 0) return;
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ReviewPage(
-                  poolId: pool['pool_id']?.toString() ?? '',
-                  namaKolam: namaKolam,
-                  gambarKolam: gambarKolam,
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(18),
@@ -3044,46 +3208,91 @@ class _HomePageState extends State<HomePage>
               BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 9),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 90,
-                child: Column(
-                  children: [
-                    Text(
-                      rating,
-                      style: const TextStyle(
-                        fontSize: 37,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const Text(
-                      '★★★★★',
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Rating Pengunjung',
                       style: TextStyle(
-                        color: Color(0xffFFD166),
                         fontSize: 14,
-                        letterSpacing: 1,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      ratingCount,
-                      style: const TextStyle(color: Colors.grey, fontSize: 9),
+                  ),
+                  TextButton.icon(
+                    onPressed: openReviewPage,
+                    icon: const Icon(Icons.edit_outlined, size: 14),
+                    label: const Text(
+                      'Beri Review',
+                      style: TextStyle(fontSize: 11),
                     ),
-                  ],
-                ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xffD4960A),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  children: [
-                    _ratingBar('5', bar5),
-                    _ratingBar('4', 0.15),
-                    _ratingBar('3', 0.04),
-                    _ratingBar('2', 0.01),
-                    _ratingBar('1', 0.00),
-                  ],
-                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rating,
+                          style: const TextStyle(
+                            fontSize: 37,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          children: List.generate(5, (index) {
+                            return Icon(
+                              Icons.star_rounded,
+                              size: 15,
+                              color: index < numericRating.round()
+                                  ? const Color(0xffF5AA24)
+                                  : const Color(0xffD8DADD),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          ratingCount,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xff82909B),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _ratingBar('5', bar5),
+                        _ratingBar('4', 0.15),
+                        _ratingBar('3', 0.04),
+                        _ratingBar('2', 0.01),
+                        _ratingBar('1', 0.00),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -3097,6 +3306,13 @@ class _HomePageState extends State<HomePage>
   // ============================================================
   Widget _ratingBar(String number, double value) {
     final double safeValue = value.clamp(0.0, 1.0);
+    final Color ratingColor = switch (number) {
+      '5' => const Color(0xff267443),
+      '4' => const Color(0xff35B65C),
+      '3' => const Color(0xffF4C542),
+      '2' => const Color(0xffF4975B),
+      _ => const Color(0xffEF476F),
+    };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -3106,7 +3322,7 @@ class _HomePageState extends State<HomePage>
             width: 10,
             child: Text(
               number,
-              style: const TextStyle(color: Colors.grey, fontSize: 9),
+              style: const TextStyle(color: Color(0xff62717D), fontSize: 9),
             ),
           ),
           const SizedBox(width: 5),
@@ -3116,10 +3332,8 @@ class _HomePageState extends State<HomePage>
               child: LinearProgressIndicator(
                 value: safeValue,
                 minHeight: 6,
-                backgroundColor: const Color(0xffEEEEEE),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xffFFD166),
-                ),
+                backgroundColor: const Color(0xffE6E9EB),
+                valueColor: AlwaysStoppedAnimation<Color>(ratingColor),
               ),
             ),
           ),
@@ -3129,7 +3343,7 @@ class _HomePageState extends State<HomePage>
             child: Text(
               '${(safeValue * 100).round()}%',
               textAlign: TextAlign.right,
-              style: const TextStyle(color: Colors.grey, fontSize: 8),
+              style: const TextStyle(color: Color(0xff62717D), fontSize: 8),
             ),
           ),
         ],
