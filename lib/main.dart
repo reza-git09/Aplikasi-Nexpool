@@ -12,6 +12,7 @@ import 'pages/profile_page.dart';
 import 'pages/liquid_glass_navbar.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
+import 'pages/splash_page.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_service.dart';
@@ -24,7 +25,8 @@ void main() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
   await ThemeService.load(); // baca tema terang/gelap yang tersimpan di HP
-  await ApiService.init(); // baca URL server yang tersimpan (jika ada)
+  // ApiService.init() sekarang dijalankan di SplashPage (lihat MyApp.home),
+  // jadi layar loading langsung tampil tanpa menunggu layar putih.
   // Dimatikan supaya login tetap tersimpan setelah app dibuka ulang.
   // Kalau mau reset login tiap app jalan (untuk tes), aktifkan lagi:
   // await AuthService.logout();
@@ -45,7 +47,10 @@ class MyApp extends StatelessWidget {
         themeMode: mode,
         themeAnimationDuration: const Duration(milliseconds: 360),
         themeAnimationCurve: Curves.easeInOutCubic,
-        home: const MainShell(),
+        home: SplashPage(
+          preload: ApiService.init, // baca URL server yang tersimpan (jika ada)
+          nextBuilder: (_) => const MainShell(),
+        ),
       ),
     );
   }

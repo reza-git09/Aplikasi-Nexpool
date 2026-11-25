@@ -35,8 +35,24 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
 
+  # Untuk mengganti ikon aplikasi (logo tim)
+  flutter_launcher_icons: ^0.14.4
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+
+# Pengaturan ikon aplikasi.
+# Simpan logo tim (PNG persegi, sekitar 1024x1024) di assets/icon/logo.png,
+# lalu jalankan:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/LOGO_NEXPOOL.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  # Opsional (ikon adaptif Android). Aktifkan kalau sudah punya logo_foreground.png
+  # adaptive_icon_background: "#FFFFFF"
+  # adaptive_icon_foreground: "assets/icon/logo_foreground.png"

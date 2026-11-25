@@ -11,7 +11,7 @@ class ApiService {
   // ALAMAT API LARAVEL
 
   static const String _webBaseUrl = 'http://localhost:8000/api';
-  static const String _deviceBaseUrl = 'http://10.10.184.220:8000/api';
+  static const String _deviceBaseUrl = 'http://192.168.1.24:8000/api';
   static String get defaultBaseUrl => kIsWeb ? _webBaseUrl : _deviceBaseUrl;
   static String _baseUrl = kIsWeb ? _webBaseUrl : _deviceBaseUrl;
 
