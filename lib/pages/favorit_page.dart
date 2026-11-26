@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'home_page.dart';
 import 'paket_page.dart';
 import '../theme/app_theme.dart';
@@ -13,32 +14,7 @@ class FavoritPage extends StatefulWidget {
 class _FavoritPageState extends State<FavoritPage> {
   int selectedTab = 0;
 
-  final List<Map<String, dynamic>> favoritePools = [
-    {
-      'name': 'Kolam Keluarga',
-      'desc': 'Kedalaman 0.5m – 1m · Aman semua usia',
-      'rating': '4.9',
-      'image': 'assets/images/family_pool.png',
-      'color': null,
-    },
-    {
-      'name': 'Kolam Utama',
-      'desc': 'Kedalaman 1.2m – 1.5m · Dewasa',
-      'rating': '4.8',
-      'image': 'assets/images/pool_main.png',
-      'color': null,
-    },
-    {
-      'name': 'Kolam Cangkir Tumpah',
-      'desc': 'Wahana unik · Semua usia',
-      'rating': '4.7',
-      'image': null,
-      'color': const [
-        Color(0xffAEE6F7),
-        Color(0xff00B4D8),
-      ],
-    },
-  ];
+  final List<Map<String, dynamic>> favoritePools = <Map<String, dynamic>>[];
 
   final List<Map<String, dynamic>> favoritePackages = [
     {
@@ -46,20 +22,14 @@ class _FavoritPageState extends State<FavoritPage> {
       'desc': '4 Tiket + Gazebo + Pelampung',
       'price': 'Rp70.000/paket',
       'icon': Icons.family_restroom,
-      'color': const [
-        Color(0xff7B61FF),
-        Color(0xff0077A8),
-      ],
+      'color': const [Color(0xff7B61FF), Color(0xff0077A8)],
     },
     {
       'name': 'Paket Premium',
       'desc': 'VIP Gazebo + Makan + Foto Profesional',
       'price': 'Rp150.000/paket',
       'icon': Icons.workspace_premium,
-      'color': const [
-        Color(0xffB7791F),
-        Color(0xffFFD166),
-      ],
+      'color': const [Color(0xffB7791F), Color(0xffFFD166)],
     },
   ];
 
@@ -76,18 +46,10 @@ class _FavoritPageState extends State<FavoritPage> {
             // ==============================
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                25,
-                20,
-                24,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 25, 20, 24),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xff123c73),
-                    Color(0xff00B4D8),
-                  ],
+                  colors: [Color(0xff123c73), Color(0xff00B4D8)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -108,10 +70,7 @@ class _FavoritPageState extends State<FavoritPage> {
                           color: Colors.white.withOpacity(0.2),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                   ),
 
@@ -142,10 +101,7 @@ class _FavoritPageState extends State<FavoritPage> {
                         SizedBox(height: 4),
                         Text(
                           'Koleksi favorit Anda',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 13, color: Colors.white70),
                         ),
                       ],
                     ),
@@ -182,15 +138,10 @@ class _FavoritPageState extends State<FavoritPage> {
             // ==============================
             // CONTENT
             // ==============================
-            Expanded(
-              child: selectedTab == 0
-                  ? _poolTab()
-                  : _packageTab(),
-            ),
+            Expanded(child: selectedTab == 0 ? _poolTab() : _packageTab()),
           ],
         ),
       ),
-
     );
   }
 
@@ -211,15 +162,11 @@ class _FavoritPageState extends State<FavoritPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 16,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: active
-                  ? const Color(0xff123c73)
-                  : Colors.transparent,
+              color: active ? const Color(0xff123c73) : Colors.transparent,
               width: 2,
             ),
           ),
@@ -230,9 +177,7 @@ class _FavoritPageState extends State<FavoritPage> {
             Icon(
               icon,
               size: 17,
-              color: active
-                  ? const Color(0xff123c73)
-                  : Colors.grey,
+              color: active ? const Color(0xff123c73) : Colors.grey,
             ),
             const SizedBox(width: 6),
             Text(
@@ -240,9 +185,7 @@ class _FavoritPageState extends State<FavoritPage> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: active
-                    ? const Color(0xff123c73)
-                    : Colors.grey,
+                color: active ? const Color(0xff123c73) : Colors.grey,
               ),
             ),
           ],
@@ -294,9 +237,7 @@ class _FavoritPageState extends State<FavoritPage> {
 
           const SizedBox(height: 14),
 
-          ...favoritePools.map(
-            (pool) => _favoritePoolCard(pool),
-          ),
+          ...favoritePools.map((pool) => _favoritePoolCard(pool)),
         ],
       ),
     );
@@ -345,9 +286,7 @@ class _FavoritPageState extends State<FavoritPage> {
 
           const SizedBox(height: 14),
 
-          ...favoritePackages.map(
-            (package) => _favoritePackageCard(package),
-          ),
+          ...favoritePackages.map((package) => _favoritePackageCard(package)),
         ],
       ),
     );
@@ -356,9 +295,7 @@ class _FavoritPageState extends State<FavoritPage> {
   // ==============================
   // FAVORITE POOL CARD
   // ==============================
-  Widget _favoritePoolCard(
-    Map<String, dynamic> pool,
-  ) {
+  Widget _favoritePoolCard(Map<String, dynamic> pool) {
     return Dismissible(
       key: Key(pool['name']),
       direction: DismissDirection.endToStart,
@@ -371,10 +308,7 @@ class _FavoritPageState extends State<FavoritPage> {
           color: const Color(0xffEF476F),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(
-          Icons.delete_outline,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
 
       onDismissed: (_) {
@@ -383,11 +317,7 @@ class _FavoritPageState extends State<FavoritPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${pool['name']} dihapus dari favorit',
-            ),
-          ),
+          SnackBar(content: Text('${pool['name']} dihapus dari favorit')),
         );
       },
 
@@ -395,9 +325,7 @@ class _FavoritPageState extends State<FavoritPage> {
         onTap: () {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(
-              builder: (context) => const HomePage(),
-            ),
+            MaterialPageRoute(builder: (context) => const HomePage()),
             (route) => false,
           );
         },
@@ -409,10 +337,7 @@ class _FavoritPageState extends State<FavoritPage> {
             color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
             ],
           ),
 
@@ -426,11 +351,7 @@ class _FavoritPageState extends State<FavoritPage> {
                     width: 70,
                     height: 70,
                     fit: BoxFit.cover,
-                    errorBuilder: (
-                      context,
-                      error,
-                      stackTrace,
-                    ) {
+                    errorBuilder: (context, error, stackTrace) {
                       return _placeholder(pool['color']);
                     },
                   ),
@@ -442,8 +363,7 @@ class _FavoritPageState extends State<FavoritPage> {
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       pool['name'],
@@ -460,10 +380,7 @@ class _FavoritPageState extends State<FavoritPage> {
                       pool['desc'],
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
 
                     const SizedBox(height: 7),
@@ -500,9 +417,7 @@ class _FavoritPageState extends State<FavoritPage> {
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        '${pool['name']} dihapus dari favorit',
-                      ),
+                      content: Text('${pool['name']} dihapus dari favorit'),
                     ),
                   );
                 },
@@ -532,9 +447,7 @@ class _FavoritPageState extends State<FavoritPage> {
   // ==============================
   // FAVORITE PACKAGE CARD
   // ==============================
-  Widget _favoritePackageCard(
-    Map<String, dynamic> package,
-  ) {
+  Widget _favoritePackageCard(Map<String, dynamic> package) {
     return Dismissible(
       key: Key(package['name']),
       direction: DismissDirection.endToStart,
@@ -547,10 +460,7 @@ class _FavoritPageState extends State<FavoritPage> {
           color: const Color(0xffEF476F),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(
-          Icons.delete_outline,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
 
       onDismissed: (_) {
@@ -559,11 +469,7 @@ class _FavoritPageState extends State<FavoritPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${package['name']} dihapus dari favorit',
-            ),
-          ),
+          SnackBar(content: Text('${package['name']} dihapus dari favorit')),
         );
       },
 
@@ -571,9 +477,7 @@ class _FavoritPageState extends State<FavoritPage> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => PaketPage(),
-            ),
+            MaterialPageRoute(builder: (context) => PaketPage()),
           );
         },
 
@@ -584,10 +488,7 @@ class _FavoritPageState extends State<FavoritPage> {
             color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8),
             ],
           ),
 
@@ -604,19 +505,14 @@ class _FavoritPageState extends State<FavoritPage> {
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  package['icon'],
-                  size: 30,
-                  color: Colors.white,
-                ),
+                child: Icon(package['icon'], size: 30, color: Colors.white),
               ),
 
               const SizedBox(width: 12),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       package['name'],
@@ -633,10 +529,7 @@ class _FavoritPageState extends State<FavoritPage> {
                       package['desc'],
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
 
                     const SizedBox(height: 7),
@@ -673,9 +566,7 @@ class _FavoritPageState extends State<FavoritPage> {
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        '${package['name']} dihapus dari favorit',
-                      ),
+                      content: Text('${package['name']} dihapus dari favorit'),
                     ),
                   );
                 },
@@ -711,21 +602,13 @@ class _FavoritPageState extends State<FavoritPage> {
       height: 70,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: colors ??
-              const [
-                Color(0xffAEE6F7),
-                Color(0xff00B4D8),
-              ],
+          colors: colors ?? const [Color(0xffAEE6F7), Color(0xff00B4D8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(
-        Icons.water_drop,
-        size: 30,
-        color: Colors.white,
-      ),
+      child: const Icon(Icons.water_drop, size: 30, color: Colors.white),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import 'login_page.dart';
 import 'tiket_page.dart';
 import 'review_page.dart';
 import 'promo_page.dart';
@@ -119,7 +121,20 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     });
   }
 
-  void handleAction(String? type) {
+  Future<bool> _ensureLoggedIn() async {
+    if (await AuthService.isLoggedIn()) return true;
+    if (!mounted) return false;
+
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    return false;
+  }
+
+  Future<void> handleAction(String? type) async {
+    if (!await _ensureLoggedIn()) return;
+
     if (type == 'tiket') {
       Navigator.push(
         context,
@@ -138,7 +153,12 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
     }
   }
 
-  void showNotificationDetail(Map<String, dynamic> data, int index) {
+  Future<void> showNotificationDetail(
+    Map<String, dynamic> data,
+    int index,
+  ) async {
+    if (!await _ensureLoggedIn()) return;
+
     readNotification(index);
 
     showModalBottomSheet(
