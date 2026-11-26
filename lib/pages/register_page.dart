@@ -25,8 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool passwordVisible = false;
   bool isLoading = false;
 
-  // Bukti verifikasi OTP. Disimpan supaya kalau registrasi gagal karena
-  // Email ganda tidak mengharuskan pengguna meminta OTP lagi.
+  // Bukti verifikasi OTP (hanya dipakai di mode backend).
   String? _otpToken;
   String? _otpPhone;
 
@@ -51,8 +50,10 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final String noHp = noHpController.text.trim();
 
-      // 1) Kirim kode OTP ke WhatsApp (dilewati kalau nomor ini sudah diverifikasi)
-      if (_otpToken == null || _otpPhone != noHp) {
+      // Mode SQLite: tanpa OTP & tanpa server.
+      // Mode Backend: wajib verifikasi OTP WhatsApp lewat server.
+      if (!await AuthService.isSqliteMode() &&
+          (_otpToken == null || _otpPhone != noHp)) {
         final sent = await OtpService.send(noHp);
         if (!mounted) return;
 
@@ -61,7 +62,6 @@ class _RegisterPageState extends State<RegisterPage> {
           return;
         }
 
-        // 2) Pengguna mengisi kode OTP
         final String? token = await Navigator.push<String>(
           context,
           MaterialPageRoute(
@@ -82,7 +82,6 @@ class _RegisterPageState extends State<RegisterPage> {
         _otpPhone = noHp;
       }
 
-      // 3) Daftar dengan bukti verifikasi
       final String? error = await AuthService.register(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
@@ -109,10 +108,7 @@ class _RegisterPageState extends State<RegisterPage> {
     } catch (e) {
       debugPrint('ERROR REGISTER: $e');
       if (!mounted) return;
-      _showMessage(
-        'Gagal terhubung ke server. Periksa koneksi dan coba lagi.',
-        isError: true,
-      );
+      _showMessage('Gagal menyimpan akun. Coba lagi.', isError: true);
     } finally {
       // Spinner SELALU berhenti, apa pun hasilnya
       if (mounted) setState(() => isLoading = false);

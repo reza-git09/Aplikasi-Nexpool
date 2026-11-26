@@ -5,11 +5,75 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
+import 'db_helper.dart';
 
 class AuthService {
   static const String _kToken = 'auth_token';
 
   static String lastError = '';
+
+  // =====================================================
+  // MODE AUTH: 'sqlite' (lokal di HP) atau 'api' (Laravel/MySQL)
+  // Pilihan disimpan di SharedPreferences. Default: sqlite.
+  // =====================================================
+
+  static const String _kAuthMode = 'auth_mode';
+  static const String modeSqlite = 'sqlite';
+  static const String modeApi = 'api';
+
+  static Future<String> getAuthMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kAuthMode) ?? modeSqlite;
+  }
+
+  static Future<void> setAuthMode(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kAuthMode, mode == modeApi ? modeApi : modeSqlite);
+  }
+
+  static Future<bool> isSqliteMode() async =>
+      (await getAuthMode()) == modeSqlite;
+
+  // =====================================================
+  // REGISTER: otomatis ikut mode yang dipilih
+  // Return: null = sukses, String = pesan error
+  // =====================================================
+
+  static Future<String?> register({
+    required String name,
+    required String email,
+    required String password,
+    required String noHp,
+    String? otpToken, // hanya dipakai di mode backend
+  }) async {
+    if (await isSqliteMode()) {
+      return registerLocal(
+        name: name,
+        email: email,
+        password: password,
+        noHp: noHp,
+      );
+    }
+    return registerApi(
+      name: name,
+      email: email,
+      password: password,
+      noHp: noHp,
+      otpToken: otpToken,
+    );
+  }
+
+  // =====================================================
+  // LOGIN: otomatis ikut mode yang dipilih
+  // Return: nama user kalau sukses, null kalau gagal
+  // =====================================================
+
+  static Future<String?> verifyLogin(String identifier, String password) async {
+    if (await isSqliteMode()) {
+      return verifyLoginLocal(identifier, password);
+    }
+    return verifyLoginApi(identifier, password);
+  }
 
   static Map<String, String> get _headers => {
     'Accept': 'application/json',
@@ -67,12 +131,42 @@ class AuthService {
   }
 
   // =====================================================
-  // REGISTER PENGUNJUNG
+  // REGISTER PENGUNJUNG (SQLite lokal)
+  // Return: null = sukses, String = pesan error
+  // =====================================================
+
+  static Future<String?> registerLocal({
+    required String name,
+    required String email,
+    required String password,
+    required String noHp,
+    String? otpToken, // dibiarkan supaya parameter tetap sama
+  }) async {
+    lastError = '';
+
+    try {
+      final err = await DbHelper.register(
+        nama: name,
+        email: email,
+        noHp: noHp,
+        password: password,
+      );
+      if (err != null) lastError = err;
+      return err;
+    } catch (e) {
+      debugPrint('REGISTER SQLITE ERROR: $e');
+      lastError = 'Gagal menyimpan ke database lokal.';
+      return lastError;
+    }
+  }
+
+  // =====================================================
+  // REGISTER PENGUNJUNG (versi lama: API Laravel / MySQL)
   // POST /api/register
   // Return: null = sukses, String = pesan error
   // =====================================================
 
-  static Future<String?> register({
+  static Future<String?> registerApi({
     required String name,
     required String email,
     required String password,
@@ -101,9 +195,6 @@ class AuthService {
 
       final body = _decodeResponse(response);
 
-      // Sukses kalau status 200/201 dan backend tidak bilang success=false.
-      // (Sebelumnya wajib success == true, padahal backend tidak
-      // selalu mengirim key "success".)
       final bool statusOk =
           response.statusCode == 200 || response.statusCode == 201;
       final bool notFailed = body['success'] != false;
@@ -117,18 +208,61 @@ class AuthService {
       return lastError;
     } catch (e) {
       debugPrint('REGISTER ERROR: $e');
-      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError =
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
     }
   }
 
   // =====================================================
-  // LOGIN PENGUNJUNG
+  // LOGIN PENGUNJUNG (SQLite lokal)
+  // Return: nama user kalau sukses, null kalau gagal
+  // =====================================================
+
+  static Future<String?> verifyLoginLocal(
+    String identifier,
+    String password,
+  ) async {
+    lastError = '';
+
+    try {
+      final user = await DbHelper.login(identifier, password);
+      if (user == null) {
+        lastError = 'Email/nomor HP atau password salah.';
+        return null;
+      }
+
+      final nama = (user['nama'] ?? '').toString();
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setInt('user_id', user['id'] as int);
+      await prefs.setString('user_name', nama);
+      await prefs.setString('user_nama_lengkap', nama);
+      await prefs.setString('user_email', (user['email'] ?? '').toString());
+      await prefs.setString('user_no_hp', (user['no_hp'] ?? '').toString());
+      await prefs.remove('user_username');
+      await prefs.remove('user_alamat');
+      await prefs.remove(_kToken);
+
+      return nama.isNotEmpty ? nama : identifier;
+    } catch (e) {
+      debugPrint('LOGIN SQLITE ERROR: $e');
+      lastError = 'Terjadi kesalahan pada database lokal.';
+      return null;
+    }
+  }
+
+  // =====================================================
+  // LOGIN PENGUNJUNG (versi lama: API Laravel / MySQL)
   // POST /api/login
   // Return: nama user kalau sukses, null kalau gagal
   // =====================================================
 
-  static Future<String?> verifyLogin(String identifier, String password) async {
+  static Future<String?> verifyLoginApi(
+    String identifier,
+    String password,
+  ) async {
     lastError = '';
 
     try {
@@ -221,7 +355,8 @@ class AuthService {
       return null;
     } catch (e) {
       debugPrint('LOGIN ERROR: $e');
-      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError =
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return null;
     }
   }
@@ -268,7 +403,8 @@ class AuthService {
       return false;
     } catch (e) {
       debugPrint('CHECK ACCOUNT ERROR: $e');
-      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError =
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return false;
     }
   }
@@ -318,7 +454,8 @@ class AuthService {
       return lastError;
     } catch (e) {
       debugPrint('RESET PASSWORD ERROR: $e');
-      lastError = 'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+      lastError =
+          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
       return lastError;
     }
   }
