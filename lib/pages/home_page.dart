@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/operating_hours.dart';
 import '../services/profile_photo_service.dart';
 import '../theme/theme_service.dart';
@@ -342,6 +341,22 @@ class _HomePageState extends State<HomePage>
     widget.onSessionChanged?.call();
   }
 
+  Future<void> _openNotifications() async {
+    var isLoggedIn = await AuthService.isLoggedIn();
+    if (!isLoggedIn) {
+      await _openLogin();
+      if (!mounted) return;
+      isLoggedIn = await AuthService.isLoggedIn();
+    }
+
+    if (!mounted || !isLoggedIn) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotifikasiPage()),
+    );
+  }
+
   Future<void> _openProfile() async {
     // Di dalam MainShell: pindah ke tab Profil
     if (widget.onOpenProfile != null) {
@@ -621,6 +636,9 @@ class _HomePageState extends State<HomePage>
   // FASILITAS DARI API LARAVEL (diisi lewat admin)
   // ============================================================
   List<Map<String, dynamic>> _fasilitas = [];
+  bool _isLoadingFasilitas = false;
+  String? _fasilitasError;
+  int _fasilitasRequestVersion = 0;
 
   // ============================================================
   // PROMO DARI API LARAVEL (diisi lewat admin)
@@ -741,19 +759,19 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _loadFasilitas([String poolId = '']) async {
-    try {
-      final String q = poolId.isEmpty ? '' : '?pool_id=$poolId';
-      final res = await http
-          .get(
-            Uri.parse('${ApiService.baseUrl}/fasilitas$q'),
-            headers: {'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 15));
+    final requestVersion = ++_fasilitasRequestVersion;
+    if (mounted) {
+      setState(() {
+        _isLoadingFasilitas = true;
+        _fasilitasError = null;
+        _fasilitas = [];
+      });
+    }
 
-      if (res.statusCode != 200) return;
-      final body = jsonDecode(res.body);
-      final raw = body is Map ? (body['data'] ?? []) : body;
-      if (raw is! List) return;
+    try {
+      final raw = await ApiService.getFasilitas(
+        poolId: poolId.isEmpty ? null : poolId,
+      );
 
       final String origin = ApiService.baseUrl.replaceFirst(
         RegExp(r'/api/?$'),
@@ -774,9 +792,16 @@ class _HomePageState extends State<HomePage>
           'usia': (item['usia'] ?? '').toString(),
         });
       }
-      if (mounted) setState(() => _fasilitas = list);
+      if (!mounted || requestVersion != _fasilitasRequestVersion) return;
+      setState(() => _fasilitas = list);
     } catch (e) {
       debugPrint('Gagal ambil fasilitas: $e');
+      if (!mounted || requestVersion != _fasilitasRequestVersion) return;
+      setState(() => _fasilitasError = 'Gagal memuat wahana dan fasilitas.');
+    } finally {
+      if (mounted && requestVersion == _fasilitasRequestVersion) {
+        setState(() => _isLoadingFasilitas = false);
+      }
     }
   }
 
@@ -1425,50 +1450,49 @@ class _HomePageState extends State<HomePage>
                 _buildGlassHeaderButton(
                   tooltip: 'Notifikasi',
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NotifikasiPage()),
-                    );
+                    _openNotifications();
                   },
                   child: const Icon(
                     Icons.notifications_rounded,
                     color: Colors.white,
                     size: 21,
                   ),
-                  badge: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xffFF6B91), Color(0xffE93668)],
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(.95),
-                        width: 1.8,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xffE93668).withOpacity(.45),
-                          blurRadius: 7,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '3',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          height: 1,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
+                  badge: _isLoggedIn
+                      ? Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xffFF6B91), Color(0xffE93668)],
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.95),
+                              width: 1.8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xffE93668).withOpacity(.45),
+                                blurRadius: 7,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '3',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                height: 1,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ],
             ),
@@ -2692,49 +2716,10 @@ class _HomePageState extends State<HomePage>
   }
 
   // ============================================================
-  // WAHANA & FASILITAS — satu section, satu daftar geser
-  // Wahana: bisa diketuk (muncul bottom sheet detail).
-  // Fasilitas: hanya tampilan, tidak bisa diklik.
+  // Wahana & fasilitas ditampilkan berdasarkan data dari API.
   // ============================================================
   Widget _buildWahanaFasilitasSection() {
-    final List<Map<String, String>> wahana = [
-      {
-        'name': 'Kolam Utama',
-        'desc': 'Kolam renang utama dengan kedalaman 1,2m hingga 1,5m. Cocok untuk berenang bebas dan olahraga air.',
-        'image': 'assets/images/pool_main.png',
-        'emoji': '🏊',
-        'detail1': 'Kedalaman: 1.2m – 1.5m',
-        'detail2': 'Usia: Dewasa',
-      },
-      {
-        'name': 'Kolam Balap',
-        'desc': 'Adu cepat di lintasan balap! Arena perlombaan air yang seru untuk remaja dan dewasa.',
-        'image': 'assets/images/waterslide_fun.png',
-        'emoji': '🏆',
-        'detail1': 'Lintasan balap air',
-        'detail2': 'Remaja & Dewasa',
-      },
-      {
-        'name': 'Kolam Keluarga',
-        'desc': 'Kolam keluarga dengan kedalaman dangkal, aman untuk anak-anak dan orang tua. Area yang luas dan nyaman.',
-        'image': 'assets/images/family_pool.png',
-        'emoji': '👨‍👩‍👧‍👦',
-        'detail1': 'Kedalaman: 0.5m – 1m',
-        'detail2': 'Semua usia',
-      },
-      {
-        'name': 'Kolam Cangkir',
-        'desc': 'Wahana unik berbentuk cangkir raksasa yang menumpahkan air. Pengalaman seru dan tak terlupakan untuk anak-anak!',
-        'image': '',
-        'emoji': '🍵',
-        'detail1': 'Wahana Air',
-        'detail2': 'Anak-anak',
-      },
-    ];
-
     final List<Map<String, dynamic>> facilities = _fasilitas;
-
-    final int total = wahana.length + facilities.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2748,142 +2733,63 @@ class _HomePageState extends State<HomePage>
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            'Geser untuk melihat semua · ketuk wahana untuk detail',
+            'Geser untuk melihat semua · ketuk kolam atau fasilitas untuk detail',
             style: TextStyle(color: Colors.grey, fontSize: 11),
           ),
         ),
         const SizedBox(height: 12),
         SizedBox(
           height: 175,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: total,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              if (index < wahana.length) {
-                return _wahanaCard(wahana[index]);
-              }
-              return _facilityCard(facilities[index - wahana.length]);
-            },
-          ),
+          child: _isLoadingFasilitas
+              ? const Center(child: CircularProgressIndicator())
+              : _fasilitasError != null
+              ? Center(
+                  child: Text(
+                    _fasilitasError!,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : facilities.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Belum ada wahana atau fasilitas untuk kolam ini.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: facilities.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) =>
+                      _facilityCard(facilities[index]),
+                ),
         ),
       ],
     );
   }
 
-  // Card wahana — bisa diklik
-  Widget _wahanaCard(Map<String, String> item) {
-    final String name = item['name'] ?? 'Wahana';
-    final String desc = item['desc'] ?? '';
-    final String image = item['image'] ?? '';
-    final String emoji = item['emoji'] ?? '🏊';
-
-    return GestureDetector(
-      onTap: () => _showWahanaDetail(item),
-      child: Container(
-        width: 155,
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(17),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.07),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                if (image.isNotEmpty)
-                  Image.asset(
-                    image,
-                    width: double.infinity,
-                    height: 96,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _wahanaPlaceholder(emoji),
-                  )
-                else
-                  _wahanaPlaceholder(emoji),
-                Positioned(
-                  bottom: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xff00B4D8).withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.info_rounded, color: Colors.white, size: 10),
-                        SizedBox(width: 3),
-                        Text(
-                          'Detail',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: context.textMain,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    desc,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey, fontSize: 8.5),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Card fasilitas — tidak bisa diklik, ukuran sama dengan card wahana
   Widget _facilityCard(Map<String, dynamic> item) {
     final String name = item['name']?.toString() ?? 'Fasilitas';
     final String desc = item['desc']?.toString() ?? '';
     final String image = item['image']?.toString() ?? '';
     final String kedalaman = item['kedalaman']?.toString() ?? '';
     final String usia = item['usia']?.toString() ?? '';
-    final String jenis = item['jenis']?.toString().toLowerCase() ?? '';
-    // Hanya KOLAM yang bisa diketuk (detail). Gazebo, mushola, dll tidak.
+    final String jenis = item['jenis']?.toString().trim().toLowerCase() ?? '';
     final bool isKolam = jenis.isNotEmpty
         ? jenis == 'kolam'
         : name.toLowerCase().contains('kolam');
+    final String jenisLabel = jenis.isEmpty
+        ? (isKolam ? 'Kolam' : 'Fasilitas')
+        : '${jenis[0].toUpperCase()}${jenis.substring(1)}';
+    final String detail1 = kedalaman.isNotEmpty
+        ? 'Kedalaman: $kedalaman'
+        : 'Jenis: $jenisLabel';
+    final String detail2 = usia.isNotEmpty
+        ? 'Usia: $usia'
+        : (kedalaman.isNotEmpty ? 'Jenis: $jenisLabel' : '');
     final Color color = isKolam
         ? const Color(0xff00B4D8)
         : const Color(0xff06D6A0);
@@ -2943,7 +2849,7 @@ class _HomePageState extends State<HomePage>
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    isKolam ? 'Detail' : 'Fasilitas',
+                    'Detail',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 8,
@@ -2983,31 +2889,16 @@ class _HomePageState extends State<HomePage>
       ),
     );
 
-    if (!isKolam) return card;
-
     return GestureDetector(
       onTap: () => _showWahanaDetail({
         'name': name,
         'desc': desc,
         'image': image,
         'emoji': '🏊',
-        'detail1': kedalaman.isEmpty ? '' : 'Kedalaman: $kedalaman',
-        'detail2': usia.isEmpty ? '' : 'Usia: $usia',
+        'detail1': detail1,
+        'detail2': detail2,
       }),
       child: card,
-    );
-  }
-
-  Widget _wahanaPlaceholder(String emoji) {
-    return Container(
-      width: double.infinity,
-      height: 96,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xff90E0EF), Color(0xff00B4D8)],
-        ),
-      ),
-      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 38))),
     );
   }
 
