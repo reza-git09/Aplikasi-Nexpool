@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 import '../services/auth_service.dart';
-import '../widgets/auth_mode_switch.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
@@ -70,8 +69,6 @@ class _LoginPageState extends State<LoginPage>
     setState(() => isLoading = true);
 
     try {
-      // Mengikuti mode auth yang dipilih lewat saklar:
-      // SQLite (lokal di HP) atau Backend (API Laravel).
       final nama = await AuthService.verifyLogin(identifier, password);
 
       if (!mounted) return;
@@ -643,11 +640,6 @@ class _LoginPageState extends State<LoginPage>
                                     ],
                                   ),
                                 ),
-
-                                const SizedBox(height: 12),
-
-                                // SAKLAR MODE AUTH: SQLite (lokal) / Backend (server)
-                                const AuthModeSwitch(),
 
                                 const SizedBox(height: 23),
 

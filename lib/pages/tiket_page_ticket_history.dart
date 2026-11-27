@@ -249,7 +249,10 @@ extension _TicketHistoryUi on _TiketPageState {
     final quantity = ticket['qty']?.toString() ?? '—';
     final paymentMethod = ticket['payment']?.toString() ?? '—';
     final total = rupiah(ticket['total'] as int? ?? 0);
-    final paidAt = ticket['paidAt']?.toString() ?? '';
+    final paidAt = _receiptDate(
+      ticket['paidAtIso']?.toString() ?? ticket['paidAt']?.toString(),
+      includeTime: true,
+    );
     final accent = status == 'paid'
         ? isActive
               ? const Color(0xff10b981)

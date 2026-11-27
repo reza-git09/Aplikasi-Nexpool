@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
-import 'db_helper.dart';
 
 class AuthService {
   static const String _kToken = 'auth_token';
@@ -13,29 +12,7 @@ class AuthService {
   static String lastError = '';
 
   // =====================================================
-  // MODE AUTH: 'sqlite' (lokal di HP) atau 'api' (Laravel/MySQL)
-  // Pilihan disimpan di SharedPreferences. Default: sqlite.
-  // =====================================================
-
-  static const String _kAuthMode = 'auth_mode';
-  static const String modeSqlite = 'sqlite';
-  static const String modeApi = 'api';
-
-  static Future<String> getAuthMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kAuthMode) ?? modeSqlite;
-  }
-
-  static Future<void> setAuthMode(String mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kAuthMode, mode == modeApi ? modeApi : modeSqlite);
-  }
-
-  static Future<bool> isSqliteMode() async =>
-      (await getAuthMode()) == modeSqlite;
-
-  // =====================================================
-  // REGISTER: otomatis ikut mode yang dipilih
+  // REGISTER: Laravel / MySQL
   // Return: null = sukses, String = pesan error
   // =====================================================
 
@@ -44,16 +21,8 @@ class AuthService {
     required String email,
     required String password,
     required String noHp,
-    String? otpToken, // hanya dipakai di mode backend
+    String? otpToken,
   }) async {
-    if (await isSqliteMode()) {
-      return registerLocal(
-        name: name,
-        email: email,
-        password: password,
-        noHp: noHp,
-      );
-    }
     return registerApi(
       name: name,
       email: email,
@@ -64,14 +33,11 @@ class AuthService {
   }
 
   // =====================================================
-  // LOGIN: otomatis ikut mode yang dipilih
+  // LOGIN: Laravel / MySQL
   // Return: nama user kalau sukses, null kalau gagal
   // =====================================================
 
   static Future<String?> verifyLogin(String identifier, String password) async {
-    if (await isSqliteMode()) {
-      return verifyLoginLocal(identifier, password);
-    }
     return verifyLoginApi(identifier, password);
   }
 
@@ -131,37 +97,7 @@ class AuthService {
   }
 
   // =====================================================
-  // REGISTER PENGUNJUNG (SQLite lokal)
-  // Return: null = sukses, String = pesan error
-  // =====================================================
-
-  static Future<String?> registerLocal({
-    required String name,
-    required String email,
-    required String password,
-    required String noHp,
-    String? otpToken, // dibiarkan supaya parameter tetap sama
-  }) async {
-    lastError = '';
-
-    try {
-      final err = await DbHelper.register(
-        nama: name,
-        email: email,
-        noHp: noHp,
-        password: password,
-      );
-      if (err != null) lastError = err;
-      return err;
-    } catch (e) {
-      debugPrint('REGISTER SQLITE ERROR: $e');
-      lastError = 'Gagal menyimpan ke database lokal.';
-      return lastError;
-    }
-  }
-
-  // =====================================================
-  // REGISTER PENGUNJUNG (versi lama: API Laravel / MySQL)
+  // REGISTER PENGUNJUNG
   // POST /api/register
   // Return: null = sukses, String = pesan error
   // =====================================================
@@ -215,46 +151,7 @@ class AuthService {
   }
 
   // =====================================================
-  // LOGIN PENGUNJUNG (SQLite lokal)
-  // Return: nama user kalau sukses, null kalau gagal
-  // =====================================================
-
-  static Future<String?> verifyLoginLocal(
-    String identifier,
-    String password,
-  ) async {
-    lastError = '';
-
-    try {
-      final user = await DbHelper.login(identifier, password);
-      if (user == null) {
-        lastError = 'Email/nomor HP atau password salah.';
-        return null;
-      }
-
-      final nama = (user['nama'] ?? '').toString();
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setBool('is_logged_in', true);
-      await prefs.setInt('user_id', user['id'] as int);
-      await prefs.setString('user_name', nama);
-      await prefs.setString('user_nama_lengkap', nama);
-      await prefs.setString('user_email', (user['email'] ?? '').toString());
-      await prefs.setString('user_no_hp', (user['no_hp'] ?? '').toString());
-      await prefs.remove('user_username');
-      await prefs.remove('user_alamat');
-      await prefs.remove(_kToken);
-
-      return nama.isNotEmpty ? nama : identifier;
-    } catch (e) {
-      debugPrint('LOGIN SQLITE ERROR: $e');
-      lastError = 'Terjadi kesalahan pada database lokal.';
-      return null;
-    }
-  }
-
-  // =====================================================
-  // LOGIN PENGUNJUNG (versi lama: API Laravel / MySQL)
+  // LOGIN PENGUNJUNG
   // POST /api/login
   // Return: nama user kalau sukses, null kalau gagal
   // =====================================================
@@ -356,7 +253,9 @@ class AuthService {
     } catch (e) {
       debugPrint('LOGIN ERROR: $e');
       lastError =
-          'Tidak bisa terhubung ke server Laravel. Periksa IP, server, dan jaringan.';
+          'Tidak bisa menghubungi server Laravel (${ApiService.baseUrl}). '
+          'Pastikan HP dan komputer memakai Wi-Fi yang sama, server aktif '
+          'dengan --host=0.0.0.0 --port=8000, dan firewall mengizinkan port 8000.';
       return null;
     }
   }

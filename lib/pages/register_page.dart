@@ -25,7 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool passwordVisible = false;
   bool isLoading = false;
 
-  // Bukti verifikasi OTP (hanya dipakai di mode backend).
+  // Bukti verifikasi OTP dari backend.
   String? _otpToken;
   String? _otpPhone;
 
@@ -50,10 +50,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final String noHp = noHpController.text.trim();
 
-      // Mode SQLite: tanpa OTP & tanpa server.
-      // Mode Backend: wajib verifikasi OTP WhatsApp lewat server.
-      if (!await AuthService.isSqliteMode() &&
-          (_otpToken == null || _otpPhone != noHp)) {
+      if (_otpToken == null || _otpPhone != noHp) {
         final sent = await OtpService.send(noHp);
         if (!mounted) return;
 

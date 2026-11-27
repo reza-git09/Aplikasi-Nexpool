@@ -61,11 +61,16 @@ extension _TicketRescheduleUi on _TiketPageState {
 
         final successfulRequest = asMap(response['latest_successful_request']);
         final actualDate = DateTime.tryParse(
-          response['tanggal_kunjungan']?.toString() ?? '',
+          response['tanggal_kunjungan']?.toString() ??
+              successfulRequest?['tanggal_baru']?.toString() ??
+              '',
         );
         final successfulId = successfulRequest?['id']?.toString() ?? '';
-        if (successfulId.isNotEmpty &&
-            actualDate != null &&
+        final isRescheduleComplete =
+            latestRequest?['status']?.toString() == 'berhasil' &&
+            successfulId.isNotEmpty &&
+            actualDate != null;
+        if (isRescheduleComplete &&
             ticket['appliedRescheduleRequestId']?.toString() != successfulId) {
           final initialDate = DateTime.tryParse(
             response['tanggal_kunjungan_awal']?.toString() ??
@@ -102,12 +107,25 @@ extension _TicketRescheduleUi on _TiketPageState {
                   ? 'Pengajuan reschedule ditolak admin.'
                   : 'Pengajuan ditolak: $reason',
             'berhasil' =>
-              'Pembayaran berhasil. Tanggal tiket sudah diperbarui.',
+              'Reschedule berhasil. Tanggal tiket sudah diperbarui.',
             'kedaluwarsa' =>
               'Pengajuan reschedule kedaluwarsa. Tiket lama tetap berlaku.',
             _ => '',
           };
-          if (message.isNotEmpty && mounted) showMessage(message);
+          if (message.isNotEmpty &&
+              mounted &&
+              (currentStatus != 'berhasil' || !isPaying)) {
+            showMessage(message);
+          }
+        }
+
+        if (isRescheduleComplete && !isPaying && sheetOpen && mounted) {
+          if (previousStatus == null) {
+            showMessage('Reschedule berhasil. Tanggal tiket sudah diperbarui.');
+          }
+          sheetOpen = false;
+          statusTimer?.cancel();
+          Navigator.of(context).pop();
         }
       } catch (error) {
         debugPrint('Gagal memuat status reschedule: $error');
@@ -177,7 +195,7 @@ extension _TicketRescheduleUi on _TiketPageState {
 
         if (payment['status_pembayaran']?.toString() == 'paid') {
           await refreshStatus();
-          if (mounted) {
+          if (mounted && sheetOpen) {
             showMessage('Pembayaran selisih berhasil. Tiket sudah diperbarui.');
           }
           return;
@@ -203,14 +221,19 @@ extension _TicketRescheduleUi on _TiketPageState {
         );
         if (isPaid == true && mounted) {
           await refreshStatus();
-          showMessage('Pembayaran selisih berhasil. Tiket sudah diperbarui.');
+          if (sheetOpen) {
+            showMessage('Pembayaran selisih berhasil. Tiket sudah diperbarui.');
+          }
         }
       } catch (error) {
         if (mounted) {
           showMessage(error.toString().replaceFirst('Exception: ', ''));
         }
       } finally {
-        if (sheetOpen) updateModal(() => isPaying = false);
+        if (sheetOpen) {
+          updateModal(() => isPaying = false);
+          unawaited(refreshStatus());
+        }
       }
     }
 

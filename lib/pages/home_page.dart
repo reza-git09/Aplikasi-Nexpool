@@ -476,7 +476,6 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    // TODO: Prefer a trusted server time source when the API supports one.
     _operationalNowUtc = DateTime.now().toUtc();
     debugPrint('🔥 HOME PAGE INIT JALAN');
     _loadSession();
