@@ -10,8 +10,8 @@ class ApiService {
   // =========================================================
   // ALAMAT API LARAVEL
 
-  static const String _webBaseUrl = 'http://localhost:8000/api';
-  static const String _deviceBaseUrl = 'http://192.168.1.61:8000/api';
+  static const String _webBaseUrl = 'https://nexpool.my.id/api';
+  static const String _deviceBaseUrl = 'https://nexpool.my.id/api';
   static String get defaultBaseUrl => kIsWeb ? _webBaseUrl : _deviceBaseUrl;
   static String _baseUrl = kIsWeb ? _webBaseUrl : _deviceBaseUrl;
 
